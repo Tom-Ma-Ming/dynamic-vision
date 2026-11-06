@@ -1,0 +1,6 @@
+.superpowers/
+build*/
+out/
+__pycache__/
+.venv/
+artifacts/
