@@ -1,5 +1,7 @@
 # Grok 工程交接 · 2026-11-07
 
+> 2026-11-08 标注接收更新：用户完成 180 帧人工 JSON。11 处类别/ID/越界笔误已在独立 corrected-candidate 副本修正；原标注已快照保留。仍存在 person 未覆盖可见腿脚的质量问题，暂不训练或正式评分。下一步入口 docs/reviewed-label-audit.md；不要把“结构检查通过”当作真值验收。
+
 > 连续录像更新：用户 docs/rec_*.avi 四段已接入，21,169 帧，CV/IMM 8 次完整回放通过。身份真值仍缺，180 帧候选框与三栏视频在 artifacts/real-recordings-v1/review；当前动作是人工复核，而非重新采集或将候选框当 GT 评分。入口 docs/real-recording-intake.md。
 
 > 最新复核：旧 SIM-01 的 10/1/1 成功率与旧 ByteTrack 消融结论已撤回，见 docs/review-fixes.md。控制改进已提交 7031bb1；IMM 默认关闭实验已完成，最新 CPU 25/25、SDK 5/5、pytest 11/11，开/关各两轮 1000 帧通过。当前 IMM 三 seed 均为 1/10/1；详情和复现入口以 docs/imm-experiment.md 为准。下方其他数字保留对应历史阶段语境。
