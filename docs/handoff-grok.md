@@ -1,5 +1,7 @@
 # Grok 工程交接 · 2026-11-07
 
+> 连续录像更新：用户 docs/rec_*.avi 四段已接入，21,169 帧，CV/IMM 8 次完整回放通过。身份真值仍缺，180 帧候选框与三栏视频在 artifacts/real-recordings-v1/review；当前动作是人工复核，而非重新采集或将候选框当 GT 评分。入口 docs/real-recording-intake.md。
+
 > 最新复核：旧 SIM-01 的 10/1/1 成功率与旧 ByteTrack 消融结论已撤回，见 docs/review-fixes.md。控制改进已提交 7031bb1；IMM 默认关闭实验已完成，最新 CPU 25/25、SDK 5/5、pytest 11/11，开/关各两轮 1000 帧通过。当前 IMM 三 seed 均为 1/10/1；详情和复现入口以 docs/imm-experiment.md 为准。下方其他数字保留对应历史阶段语境。
 
 > 2026-11-07 接手复核更新：工作树已由检查点提交 `900c440` 入库；总设计已复制到仓库 `docs/FPS_Vision_Tracking_TensorRT_Official_v2.0.md`；新增 `windows-full` / `windows-cpu` 构建入口；TRACK-02 已实现并通过 CPU/GPU/1000 帧验收，EVAL-01 最新 review-fixed 报告为 6/4/2，TRT2-06 pinned memory 已完成同机前后对比，SIM-01 二维闭环在严格评分下为 0/8/4，MOT-08 ByteTrack 与 IMM 均提供默认关闭的实验开关。OpenSpec 与证据见 `openspec/changes/`、`docs/review-remediation.md`、`docs/eval-report.md`、`docs/performance.md`、`docs/sim-report.md`、`docs/review-fixes.md`、`docs/imm-experiment.md` 和 `docs/mot-ablation.md`。
