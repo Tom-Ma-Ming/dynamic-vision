@@ -1,7 +1,9 @@
+> 已归档的历史草案，2026-11-07 起停止作为实施依据。当前设计为仓库内 docs/FPS_Vision_Tracking_TensorRT_Official_v2.0.md，当前进度见 docs/progress.md。本页路径、硬件及未勾选任务保留作历史记录。
+
 # 高速动态目标视觉跟踪与预测实验平台——设计文档
 
 > 状态：待用户审批 ｜ 日期：2026-11-06  
-> 本文是新平台的唯一设计基线，不从 `Precision_Vision_TensorRT_Engineering_v2.3.md` 批量改名得来。旧文档只作为被审查的参考，见第 12 节。
+> 本文曾作为历史方案，不从 `Precision_Vision_TensorRT_Engineering_v2.3.md` 批量改名得来。旧文档只作为被审查的参考，见第 12 节。
 
 ## 1. 意图
 

@@ -35,8 +35,12 @@ def main():
         for i,row in enumerate(rows):
             assert row["frame_id"]==i and abs(row["source_ts_ns"]-i*40_000_000)<=1
             assert row["timestamp_source"]=="video_pts"
-            del row["detect_ms"]
-        signatures.append(hashlib.sha256(json.dumps(rows).encode()).hexdigest())
+
+        # Stable semantic contract; wall-clock measurements are intentionally excluded.
+        fields = ("frame_id", "source_ts_ns", "timestamp_source", "detections",
+                  "tracks", "removed_ids", "selection")
+        stable = [{key: row[key] for key in fields if key in row} for row in rows]
+        signatures.append(hashlib.sha256(json.dumps(stable, sort_keys=True).encode()).hexdigest())
         cap=cv2.VideoCapture(str(out/"overlay.mp4"))
         decoded=0
         while cap.read()[0]:

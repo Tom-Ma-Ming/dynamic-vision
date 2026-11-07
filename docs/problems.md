@@ -5,3 +5,4 @@
 person 召回目标 95% 尚未达到。固定 NMS 0.45、置信度 0.25、IoU 0.5 时，42 张验证图 44 TP / 15 FN / 21 FP。
 回放验收当前使用固定帧率合成序列，真实录制视频、变帧率和长时显存趋势待专项验证。
 真实场景中交叉、长遮挡和快速镜头移动的 ID 切换、重捕获率需有连续录像和身份真值评估。实验配置尚未标定。
+2026-11-07：指标口径并存：baseline.json 的 person R=0.712 为 Ultralytics val 口径，person-diagnosis.json 在 conf 0.25/IoU 0.5 下为 0.746（44 TP / 15 FN / 21 FP）；引用时需注明口径。远程 GitHub Actions 尚未实际运行。

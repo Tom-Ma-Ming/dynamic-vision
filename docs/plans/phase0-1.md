@@ -1,3 +1,5 @@
+> 已归档的历史草案，2026-11-07 起停止作为实施依据。当前设计为仓库内 docs/FPS_Vision_Tracking_TensorRT_Official_v2.0.md，当前进度见 docs/progress.md。本页路径、硬件及未勾选任务保留作历史记录。
+
 # 动态目标视觉平台（阶段 0–1 最小闭环）实施计划
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.

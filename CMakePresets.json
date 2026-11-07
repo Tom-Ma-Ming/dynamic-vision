@@ -1,15 +1,87 @@
 {
   "version": 2,
   "configurePresets": [
-    {"name":"windows-base","generator":"Visual Studio 16 2019","architecture":"x64","binaryDir":"${sourceDir}/out/${presetName}","cacheVariables":{"VISION_PROBE_ONLY":"ON"}},
-    {"name":"windows-sdk","inherits":"windows-base","cacheVariables":{"VISION_WITH_TRT":"ON"}}
+    {
+      "name": "windows-base",
+      "generator": "Visual Studio 16 2019",
+      "architecture": "x64",
+      "binaryDir": "${sourceDir}/out/${presetName}",
+      "cacheVariables": {
+        "VISION_PROBE_ONLY": "ON"
+      }
+    },
+    {
+      "name": "windows-sdk",
+      "inherits": "windows-base",
+      "cacheVariables": {
+        "VISION_WITH_TRT": "ON"
+      }
+    },
+    {
+      "name": "windows-full",
+      "inherits": "windows-sdk",
+      "cacheVariables": {
+        "VISION_PROBE_ONLY": "OFF"
+      }
+    },
+    {
+      "name": "windows-cpu",
+      "inherits": "windows-base",
+      "cacheVariables": {
+        "VISION_PROBE_ONLY": "OFF",
+        "VISION_WITH_TRT": "OFF",
+        "VISION_WITH_OPENCV": "ON"
+      }
+    }
   ],
-  "buildPresets":[
-    {"name":"windows-base","configurePreset":"windows-base","configuration":"Release"},
-    {"name":"windows-sdk","configurePreset":"windows-sdk","configuration":"Release"}
+  "buildPresets": [
+    {
+      "name": "windows-base",
+      "configurePreset": "windows-base",
+      "configuration": "Release"
+    },
+    {
+      "name": "windows-sdk",
+      "configurePreset": "windows-sdk",
+      "configuration": "Release"
+    },
+    {
+      "name": "windows-full",
+      "configurePreset": "windows-full",
+      "configuration": "Release"
+    },
+    {
+      "name": "windows-cpu",
+      "configurePreset": "windows-cpu",
+      "configuration": "Release"
+    }
   ],
-  "testPresets":[
-    {"name":"windows-base","configurePreset":"windows-base","configuration":"Release","output":{"outputOnFailure":true}},
-    {"name":"windows-sdk","configurePreset":"windows-sdk","configuration":"Release","output":{"outputOnFailure":true}}
+  "testPresets": [
+    {
+      "name": "windows-base",
+      "configurePreset": "windows-base",
+      "configuration": "Release",
+      "output": {
+        "outputOnFailure": true
+      }
+    },
+    {
+      "name": "windows-sdk",
+      "configurePreset": "windows-sdk",
+      "configuration": "Release",
+      "output": {
+        "outputOnFailure": true
+      }
+    },
+    {
+      "name": "windows-full",
+      "configurePreset": "windows-full",
+      "configuration": "Release"
+    },
+    {
+      "name": "windows-cpu",
+      "configurePreset": "windows-cpu",
+      "configuration": "Release"
+    }
   ]
 }

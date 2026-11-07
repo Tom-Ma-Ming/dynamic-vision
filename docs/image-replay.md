@@ -15,6 +15,6 @@ $image = (Get-ChildItem artifacts/datasets/yolo_v002/images/val/*.jpg | Select-O
 & "$bin/vision_replay.exe" $engine artifacts/replay/v1/fixture.avi artifacts/replay/my-run
 ~~~
 
-回放命令需要一个新的输出目录。frames.jsonl 包含从 0 开始的帧号、媒体时间戳（纳秒）、时间来源、原始图像像素坐标 xyxy、类别和分数。媒体时间缺失或倒退时由 FPS 估算并显式标记。overlay.mp4 使用源标称 FPS 编码，变帧率输入请以 JSONL 时间为准。summary.json 给出包含预处理、推理和解码的耗时分位数，不含视频读写。
+回放命令需要一个新的输出目录。frames.jsonl 包含从 0 开始的帧号、媒体时间戳（纳秒）、时间来源、原始图像像素坐标 xyxy、类别和分数。媒体时间缺失或倒退时由 FPS 估算并显式标记。overlay.mp4 使用源标称 FPS 编码，变帧率输入请以 JSONL 时间为准。summary.json 给出包含图像缩放/归一化、GPU 推理、检测张量解码和 NMS 的耗时分位数；计时从 capture.read 返回后开始，排除视频解码与视频写入。mot_p50_ms/mot_p95_ms 单独测量跟踪更新。
 
 回归入口为 tools/verify_image.py、tools/verify_trt.py 和 tools/verify_replay.py，均支持 --help。回放测试将 200 张采集图片按文件名排序，以 25 FPS 循环拼成 1000 帧夹具；它用于验证顺序与可重复性，不能用来估计真实人物运动速度。

@@ -14,7 +14,7 @@
 
 复现实验：CTest 的 mot_synthetic 检查 1/2/5/10 人、交叉、短时遮挡、仅头部观测、失效、选择和拒绝倒序。可用下列命令重算双人真值测试指标。评估仅使用 Confirmed 输出，真值包含短时遮挡人物；评估输入每帧含 gt、tracks 两组 [id,x1,y1,x2,y2]。
 ~~~powershell
-out/windows-sdk/apps/trt_infer/Release/mot_test.exe configs/tracker.yml artifacts/replay/mot-v1/synthetic.jsonl
+out/windows-sdk/Release/mot_test.exe configs/tracker.yml artifacts/replay/mot-v1/synthetic.jsonl
 .\.venv\Scripts\python.exe tools/score_mot.py artifacts/replay/mot-v1/synthetic.jsonl artifacts/replay/mot-v1/synthetic-metrics.json
 ~~~
 本机使用 TrackEval 1.3.0 和 SciPy 1.18.1。暂无真实录像跨帧身份真值，不能在截图拼接夹具上报告实景身份准确率。
