@@ -147,8 +147,13 @@ void writeFrame(std::ostream& out, const std::string& scene,
       << ",\"age_ms\":" << frame.age_ms
       << ",\"covariance_trace\":" << frame.covariance_trace
       << ",\"detections\":" << frame.detections
-      << ",\"false_positives\":" << frame.false_positives
-      << "}\n";
+      << ",\"false_positives\":" << frame.false_positives;
+  if(frame.has_modes) {
+    out<<",\"mode_probabilities\":[";
+    for(size_t j=0;j<3;++j) out<<(j?",":"")<<frame.mode_probabilities[j];
+    out<<"]";
+  }
+  out<<"}\n";
 }
 
 std::string metricJson(const sim::Metrics& metrics) {

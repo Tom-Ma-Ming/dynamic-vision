@@ -15,7 +15,13 @@ inline void writeTracking(std::ostream& out,const mot::Snapshot& s,const mot::Se
            <<",\"association_cost\":"<<t.cost<<",\"mahalanobis_squared\":"<<t.innovation
            <<",\"identity_ambiguous\":"<<(t.ambiguous?"true":"false")<<",\"covariance\":[";
         for(int i=0;i<16;++i) out<<(i?",":"")<<t.covariance.val[i];
-        out<<"]}";
+        out<<"]";
+        if(t.imm) {
+            out<<",\"mode_probabilities\":[";
+            for(size_t j=0;j<3;++j) out<<(j?",":"")<<t.imm->probabilities[j];
+            out<<"]";
+        }
+        out<<"}";
     }
     out<<"],\"removed_ids\":[";
     for(size_t i=0;i<s.removed.size();++i) out<<(i?",":"")<<s.removed[i];

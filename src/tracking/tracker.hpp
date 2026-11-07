@@ -1,5 +1,6 @@
 #pragma once
 #include <opencv2/core.hpp>
+#include "imm.hpp"
 #include <cstdint>
 #include <optional>
 #include <vector>
@@ -11,6 +12,7 @@ struct Detection { int cls; float score; cv::Rect2f box; };
 struct Config {
     int minHits;
     double maxLostMs, birthScore, sigma, headSigma, accel, initialSpeed, gate, iouWeight, ambiguity;
+    ImmConfig imm;
     bool byteTrack = false;
     double highScore = 0.4;
     double lowScore = 0.1;
@@ -22,6 +24,7 @@ struct Track {
     State state = State::Tentative;
     cv::Vec4d x{};
     cv::Matx44d covariance{};
+    std::optional<ImmState> imm;
     cv::Size2f size;
     cv::Point2f headOffset{};
     bool body = false, ambiguous = false;

@@ -1,5 +1,7 @@
 # Grok 工程交接 · 2026-11-07
 
+> 最新复核：旧 SIM-01 的 10/1/1 成功率与旧 ByteTrack 消融结论已撤回，见 docs/review-fixes.md。控制改进已提交 7031bb1；IMM 默认关闭实验已完成，最新 CPU 25/25、SDK 5/5、pytest 11/11，开/关各两轮 1000 帧通过。当前 IMM 三 seed 均为 1/10/1；详情和复现入口以 docs/imm-experiment.md 为准。下方其他数字保留对应历史阶段语境。
+
 > 2026-11-07 接手复核更新：工作树已由检查点提交 `900c440` 入库；总设计已复制到仓库 `docs/FPS_Vision_Tracking_TensorRT_Official_v2.0.md`；新增 `windows-full` / `windows-cpu` 构建入口；TRACK-02 已实现并通过 CPU/GPU/1000 帧验收，EVAL-01 统一评估报告已实现并输出 gates 7/3/2，TRT2-06 pinned memory 已完成同机前后对比，SIM-01 二维闭环已实现并通过 T12，MOT-08 低置信度二次关联已有实验开关和消融。OpenSpec 与证据见 `openspec/changes/`、`docs/review-remediation.md`、`docs/eval-report.md`、`docs/performance.md`、`docs/sim-report.md` 和 `docs/mot-ablation.md`。
 
 ## 从这里开始
@@ -20,8 +22,8 @@
 | TRT2-04 / 05 | 图片 letterbox、解码、逐类 NMS、坐标还原以及顺序视频回放已完成实图对照和合成录像回归。真实录像与长时资源趋势待测。 |
 | TRACK-01 / 03；MOT-01～07 | 已有原图坐标、时间戳、CV Kalman、匈牙利关联、头身合并、生命周期、独立选择、UI、JSONL、合成指标。证据覆盖交叉、遮挡、失效、乱序和重复回放。真实身份标注录像、急停/蹲下/镜头快速旋转的分层验收仍待补。 |
 | **TRACK-02** | **已实现。replay 改为有界队列的生产者/消费者流水线；blocking 默认不丢帧，realtime（latest + 媒体节奏）丢旧待处理帧。CPU CTest 20/20，windows-sdk 3/3；blocking 1000 帧与既有轨迹逐字段一致；realtime 25 FPS 1000 采集/1000 处理/0 替换，500 FPS 过载 1000 采集/250 处理/750 替换。证据 artifacts/track02/verification.md。** |
-| TRACK-04 / MOT-08 | MOT-08 低置信度二次关联已实现（ByteTrack 风格，默认关闭；SIM low_conf MAE 68.73→65.44，稳定时间 0.48→0.64，默认不回退）。IMM、镜头补偿、ReID 仍待真实数据与消融。见 docs/mot-ablation.md。 |
-| TRT2-06 / EVAL-01 / SIM-01 | TRT2-06 已实现 pinned host buffer（result_age P50 -10.1%、infer P50 -11.1%），单帧同步未启用多 stream；EVAL-01 已实现 gates 7/3/2；SIM-01 自建二维闭环已实现，12 场景 SUCCESS 10 / FAILED 1 / UNKNOWN 1，T12 通过。见 docs/performance.md、docs/sim-report.md。 |
+| TRACK-04 / MOT-08 | ByteTrack 与 IMM 均已实现为默认关闭的实验配置。IMM 三种子、两种 CV 对照和开关兼容回归通过；小目标仍退化，真实身份指标待测。镜头补偿、ReID 尚未实现。见 docs/imm-experiment.md。 |
+| TRT2-06 / EVAL-01 / SIM-01 | pinned host buffer、统一评估聚合和二维模拟器已实现。SIM 评分已修复为完整窗口；旧 10/1/1 结论撤回，当前 IMM 严格结果每组 1/10/1。聚合旧 artifacts 的报告不能证明最新阶段精度。见 docs/review-fixes.md、docs/sim-control-baseline.md、docs/imm-experiment.md。 |
 
 ## 关键输入与验收证据（相对于应用根目录）
 

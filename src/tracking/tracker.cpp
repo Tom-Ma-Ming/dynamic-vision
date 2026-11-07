@@ -18,6 +18,18 @@ Config Config::load(const std::string& path) {
     c.byteTrack = !f["byte_track"].empty() && static_cast<int>(f["byte_track"]) != 0;
     c.highScore = f["high_score"].empty() ? c.birthScore : get("high_score");
     c.lowScore = f["low_score"].empty() ? 0.1 : get("low_score");
+    c.imm.enabled = !f["imm_enabled"].empty() && static_cast<int>(f["imm_enabled"]) != 0;
+    if(c.imm.enabled) {
+        c.imm.stationaryAcceleration=get("imm_stationary_acceleration");
+        c.imm.maneuverAcceleration=get("imm_maneuver_acceleration");
+        c.imm.stationaryTau=get("imm_stationary_tau");
+        c.imm.switchRate=get("imm_switch_rate");
+        c.imm.gateProbability=get("imm_gate_probability");
+        for(double value:{c.imm.stationaryAcceleration,c.imm.maneuverAcceleration,
+                          c.imm.stationaryTau,c.imm.switchRate,c.imm.gateProbability})
+            if(!std::isfinite(value) || value<=0) throw std::runtime_error("Invalid IMM parameter");
+        if(c.imm.gateProbability>1./3) throw std::runtime_error("IMM gate probability exceeds 1/3");
+    }
     if(!(c.minHits>=1 && c.maxLostMs>0 && c.birthScore>=0 && c.birthScore<=1 && c.sigma>0 &&
          c.headSigma>0 && c.accel>0 && c.initialSpeed>0 && c.gate>0 &&
          c.iouWeight>=0 && c.iouWeight<=1 && c.ambiguity>=0 &&
@@ -70,7 +82,14 @@ Snapshot Tracker::predictAt(Time ts) const {
     if(ts<current.timestamp) throw std::invalid_argument("Prediction before snapshot");
     auto s=current;
     s.timestamp=ts;
-    for(auto& t:s.tracks) predict(t,(ts-current.timestamp)*1e-9,cfg.accel);
+    for(auto& t:s.tracks) {
+        double dt=(ts-current.timestamp)*1e-9;
+        if(t.imm) {
+            t.imm->predict(dt,cfg.accel,cfg.imm);
+            auto fused=t.imm->fused();
+            t.x=fused.mean; t.covariance=fused.covariance;
+        } else predict(t,dt,cfg.accel);
+    }
     s.tracks.erase(std::remove_if(s.tracks.begin(),s.tracks.end(),[&](const auto& t){
         return (ts-t.lastSeen)*1e-6>cfg.maxLostMs;
     }),s.tracks.end());
@@ -121,10 +140,29 @@ static Candidate candidate(const Track& t,const Observation& o,const Config& c) 
     double sigma=t.body && body ? c.sigma : c.headSigma;
     double var=sigma*sigma;
     auto inv=(H*t.covariance*H.t()+cv::Matx22d::eye()*var).inv();
-    double d2=r.dot(inv*r);
+    double d2=t.imm ? t.imm->gateDistance({anchor.x,anchor.y},var,c.imm.gateProbability) : r.dot(inv*r);
     double common=(t.box() & o.d.box).area();
     double iou=common/(t.box().area()+o.d.box.area()-common);
     return {r,inv,var,d2,c.iouWeight*(1-iou)+(1-c.iouWeight)*d2/c.gate};
+}
+static void correct(Track& t,const Candidate& c) {
+    if(t.imm) {
+        cv::Vec2d observation(t.x[0]+c.residual[0],t.x[1]+c.residual[1]);
+        t.imm->update(observation,c.variance);
+        auto fused=t.imm->fused();
+        t.x=fused.mean; t.covariance=fused.covariance;
+    } else {
+        auto k=t.covariance*H.t()*c.inv;
+        auto a=cv::Matx44d::eye()-k*H;
+        t.x+=k*c.residual;
+        t.covariance=a*t.covariance*a.t()+c.variance*(k*k.t());
+    }
+}
+static void initializeImm(Track& t,const Config& c) {
+    if(c.imm.enabled) {
+        t.imm.emplace();
+        t.imm->initialize(t.x,t.covariance);
+    }
 }
 static bool assignmentAmbiguous(const std::vector<std::vector<double>>& costs,
                                 size_t row, size_t col, size_t observations,
@@ -150,14 +188,12 @@ bool Tracker::update(Time frame,Time ts,const std::vector<Detection>& detections
             else if(o.d.score>=cfg.lowScore) low.push_back(o);
         }
         auto apply=[&](Track& t,const Observation& o,const Candidate& c) {
-            auto k=t.covariance*H.t()*c.inv;
-            auto a=cv::Matx44d::eye()-k*H;
-            t.x+=k*c.residual;
-            t.covariance=a*t.covariance*a.t()+c.variance*(k*k.t());
+            correct(t,c);
             if(!t.body && o.d.cls==1) {
                 auto anchor=o.head.value_or(cv::Point2f(center(o.d.box).x,o.d.box.y+t.size.height/2));
                 auto offset=center(o.d.box)-anchor;
                 t.x[0]+=offset.x; t.x[1]+=offset.y;
+                if(t.imm) t.imm->translate(offset);
                 t.headOffset=-offset;
             }
             if(o.d.cls==1 || !t.body) t.size=o.d.box.size();
@@ -238,6 +274,7 @@ bool Tracker::update(Time frame,Time ts,const std::vector<Detection>& detections
             t.ambiguous=o.ambiguous;
             t.covariance=cv::Matx44d::eye();
             for(int a=0;a<4;++a) t.covariance(a,a)=std::pow(a<2?cfg.headSigma:cfg.initialSpeed,2);
+            initializeImm(t,cfg);
             if(cfg.minHits==1) t.state=State::Confirmed;
             live.push_back(t);
         }
@@ -273,14 +310,12 @@ bool Tracker::update(Time frame,Time ts,const std::vector<Detection>& detections
             used[j]=true;
             auto& o=obs[j];
             auto c=candidate(t,o,cfg);
-            auto k=t.covariance*H.t()*c.inv;
-            auto a=cv::Matx44d::eye()-k*H;
-            t.x+=k*c.residual;
-            t.covariance=a*t.covariance*a.t()+c.variance*(k*k.t());
+            correct(t,c);
             if(!t.body && o.d.cls==1) {
                 auto anchor=o.head.value_or(cv::Point2f(center(o.d.box).x,o.d.box.y+t.size.height/2));
                 auto offset=center(o.d.box)-anchor;
                 t.x[0]+=offset.x; t.x[1]+=offset.y;
+                if(t.imm) t.imm->translate(offset);
                 t.headOffset=-offset;
             }
             if(o.d.cls==1 || !t.body) t.size=o.d.box.size();
@@ -305,6 +340,7 @@ bool Tracker::update(Time frame,Time ts,const std::vector<Detection>& detections
         t.ambiguous=o.ambiguous;
         t.covariance=cv::Matx44d::eye();
         for(int a=0;a<4;++a) t.covariance(a,a)=std::pow(a<2?cfg.headSigma:cfg.initialSpeed,2);
+        initializeImm(t,cfg);
         if(cfg.minHits==1) t.state=State::Confirmed;
         live.push_back(t);
     }

@@ -58,6 +58,8 @@ struct FrameRecord {
   bool occluded = false;
   bool observed = false;
   bool has_track = false;
+  bool has_modes = false;
+  std::array<double,3> mode_probabilities{};
   std::uint64_t track_id = 0;
   std::string track_state;
   bool ambiguous = false;

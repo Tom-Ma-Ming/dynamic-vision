@@ -284,6 +284,14 @@ ScenarioResult Simulator::run() {
       last_pred_x = predicted_x;
       last_pred_y = predicted_y;
     }
+    if (selected && selected->imm) {
+      auto forecast=tracker.predictAt(ts_ns+std::llround(config_.command_horizon_s*1e9));
+      for(const auto& future:forecast.tracks) if(future.id==selected->id) {
+        predicted_x=static_cast<float>(future.x[0]);
+        predicted_y=static_cast<float>(future.x[1]);
+      }
+      last_pred_x=predicted_x; last_pred_y=predicted_y;
+    }
     predicted_x = clampf(predicted_x, 0, static_cast<float>(config_.width));
     predicted_y = clampf(predicted_y, 0, static_cast<float>(config_.height));
 
@@ -301,6 +309,13 @@ ScenarioResult Simulator::run() {
                             static_cast<float>(config_.width));
       target.second = clampf(estimate_y + static_cast<float>(selected->x[3])*horizon, 0,
                              static_cast<float>(config_.height));
+      if(selected->imm) {
+        auto future=tracker.predictAt(ts_ns+std::llround(horizon*1e9));
+        for(const auto& track:future.tracks) if(track.id==selected->id) {
+          target.first=clampf(static_cast<float>(track.x[0]),0,static_cast<float>(config_.width));
+          target.second=clampf(static_cast<float>(track.x[1]),0,static_cast<float>(config_.height));
+        }
+      }
     }
     command_queue.push_back(target);
     std::pair<float,float> command{aim_x,aim_y};
@@ -337,6 +352,10 @@ ScenarioResult Simulator::run() {
     record.observed = detected;
     record.has_track = has_track;
     record.track_id = track_id;
+    if(selected && selected->imm) {
+      record.has_modes=true;
+      record.mode_probabilities=selected->imm->probabilities;
+    }
     record.track_state = selected ? mot::name(selected->state) : "None";
     record.ambiguous = ambiguous;
     record.est_x = estimate_x;
