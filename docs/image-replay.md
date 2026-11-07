@@ -22,7 +22,7 @@ $image = (Get-ChildItem artifacts/datasets/yolo_v002/images/val/*.jpg | Select-O
 & "$bin/vision_replay.exe" $engine artifacts/replay/mot-v1/fixture.avi artifacts/replay/my-realtime --config "$bin/replay-realtime.yml"
 ~~~
 
-回放命令需要一个新的输出目录。`vision_replay` 默认读取可执行文件旁的 tracker.yml 和 replay.yml；`--config` 可以指定其他回放配置。配置项为 queue_capacity（1 或 2）、queue_mode（blocking 或 latest）、realtime_pace（0 或 1），未知键或越界值启动即报错；realtime_pace=1 时必须使用 latest。blocking 模式不丢帧，用于离线评估；latest 模式在队列满时只替换尚未消费的旧帧，正在推理的帧不会被修改。
+回放命令需要一个新的输出目录。`vision_replay` 默认读取可执行文件旁的 tracker.yml 和 replay.yml；`--config` 可以指定其他回放配置。配置项为 queue_capacity（1 或 2）、queue_mode（blocking 或 latest）、realtime_pace（0 或 1），未知键或越界值启动即报错；realtime_pace=1 时必须使用 latest。blocking 模式不丢帧，用于离线评估；latest 模式在队列满时只替换尚未消费的旧帧，正在推理的帧不会被修改。tracker 第 4 个位置参数可传 configs/tracker-bytetrack.yml 打开低置信度二次关联（默认关闭，见 docs/mot-ablation.md）。
 
 frames.jsonl 包含从 0 开始的帧号、媒体时间戳（纳秒）、时间来源、原始图像像素坐标 xyxy、类别和分数。媒体时间缺失或倒退时由 FPS 估算并显式标记。新增字段：capture_steady_ns（模拟采集时刻）、publish_steady_ns（快照发布时刻）、queue_wait_ms（入队到出队）、infer_ms（预处理+推理+解码+NMS）、mot_ms（跟踪更新）、result_age_ms（capture 到 publish，不含叠加写入）。overlay.mp4 使用源标称 FPS 编码，变帧率输入请以 JSONL 时间为准；realtime 模式丢帧时 overlay 与 JSONL 都只保留已处理帧，frame_id 会出现空洞。
 

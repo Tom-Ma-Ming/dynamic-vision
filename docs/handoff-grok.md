@@ -1,6 +1,6 @@
 # Grok 工程交接 · 2026-11-07
 
-> 2026-11-07 接手复核更新：工作树已由检查点提交 `900c440` 入库；总设计已复制到仓库 `docs/FPS_Vision_Tracking_TensorRT_Official_v2.0.md`；新增 `windows-full` / `windows-cpu` 构建入口；TRACK-02 已实现并通过 CPU/GPU/1000 帧验收，EVAL-01 统一评估报告已实现并输出 gates 7/3/2，TRT2-06 pinned memory 已完成同机前后对比，SIM-01 二维闭环已实现并通过 T12。OpenSpec 与证据见 `openspec/changes/`、`docs/review-remediation.md`、`docs/eval-report.md`、`docs/performance.md` 和 `docs/sim-report.md`。
+> 2026-11-07 接手复核更新：工作树已由检查点提交 `900c440` 入库；总设计已复制到仓库 `docs/FPS_Vision_Tracking_TensorRT_Official_v2.0.md`；新增 `windows-full` / `windows-cpu` 构建入口；TRACK-02 已实现并通过 CPU/GPU/1000 帧验收，EVAL-01 统一评估报告已实现并输出 gates 7/3/2，TRT2-06 pinned memory 已完成同机前后对比，SIM-01 二维闭环已实现并通过 T12，MOT-08 低置信度二次关联已有实验开关和消融。OpenSpec 与证据见 `openspec/changes/`、`docs/review-remediation.md`、`docs/eval-report.md`、`docs/performance.md`、`docs/sim-report.md` 和 `docs/mot-ablation.md`。
 
 ## 从这里开始
 
@@ -20,8 +20,8 @@
 | TRT2-04 / 05 | 图片 letterbox、解码、逐类 NMS、坐标还原以及顺序视频回放已完成实图对照和合成录像回归。真实录像与长时资源趋势待测。 |
 | TRACK-01 / 03；MOT-01～07 | 已有原图坐标、时间戳、CV Kalman、匈牙利关联、头身合并、生命周期、独立选择、UI、JSONL、合成指标。证据覆盖交叉、遮挡、失效、乱序和重复回放。真实身份标注录像、急停/蹲下/镜头快速旋转的分层验收仍待补。 |
 | **TRACK-02** | **已实现。replay 改为有界队列的生产者/消费者流水线；blocking 默认不丢帧，realtime（latest + 媒体节奏）丢旧待处理帧。CPU CTest 20/20，windows-sdk 3/3；blocking 1000 帧与既有轨迹逐字段一致；realtime 25 FPS 1000 采集/1000 处理/0 替换，500 FPS 过载 1000 采集/250 处理/750 替换。证据 artifacts/track02/verification.md。** |
-| TRACK-04 / MOT-08 | IMM、镜头补偿、低置信度二次关联或 ReID 为后续实验，需基线与消融。 |
-| TRT2-06 / EVAL-01 / SIM-01 | TRT2-06 已实现 pinned host buffer（result_age P50 -10.1%、infer P50 -11.1%），单帧同步未启用多 stream；EVAL-01 已实现 gates 7/3/2；SIM-01 自建二维闭环已实现，11 场景 SUCCESS 9 / FAILED 1 / UNKNOWN 1，T12 通过。见 docs/performance.md、docs/sim-report.md。 |
+| TRACK-04 / MOT-08 | MOT-08 低置信度二次关联已实现（ByteTrack 风格，默认关闭；SIM low_conf MAE 68.73→65.44，稳定时间 0.48→0.64，默认不回退）。IMM、镜头补偿、ReID 仍待真实数据与消融。见 docs/mot-ablation.md。 |
+| TRT2-06 / EVAL-01 / SIM-01 | TRT2-06 已实现 pinned host buffer（result_age P50 -10.1%、infer P50 -11.1%），单帧同步未启用多 stream；EVAL-01 已实现 gates 7/3/2；SIM-01 自建二维闭环已实现，12 场景 SUCCESS 10 / FAILED 1 / UNKNOWN 1，T12 通过。见 docs/performance.md、docs/sim-report.md。 |
 
 ## 关键输入与验收证据（相对于应用根目录）
 
@@ -32,7 +32,8 @@
 - 源码入口 apps/trt_infer/replay.cpp、src/tracking/tracker.cpp、configs/tracker.yml、configs/replay.yml。构建与运行命令见 docs/image-replay.md，跟踪测试与复核操作见 docs/mot-replay.md。按前者设置 OpenCV/CUDA/TRT 的 PATH 后执行 cmake --build --preset windows-sdk 和 ctest --preset windows-sdk；启用 OpenCV 的 windows-sdk 最近一次验收为 3/3。完整构建（含 vision_core/GTest）用 windows-full，无 TRT 的 CPU 全量测试用 windows-cpu；两者都需要追加 -DOpenCV_DIR=F:/opencv/opencv/build，CPU CTest 最近一次为 20/20。
 - 统一评估入口 tools/eval_report.py：只读聚合检测/Engine/MOT/回放/仿真/测试证据，输出 report.json/md/html，支持 --strict；当前 gates 7 pass/3 partial/2 missing。使用见 docs/eval-report.md，证据在 artifacts/eval-report/。
 - GPU 性能入口 tools/benchmark_replay.py：同机重复回放并汇总 P50/P95/P99；TRT2-06 前后对比见 docs/performance.md，before/after 二进制与 benchmark.json 在 artifacts/bench/。
-- 仿真入口 out/windows-cpu/apps/sim_runner/Release/sim_runner.exe + configs/sim.yml：11 个二维场景，输出 runs.jsonl/summary.json/report.md；见 docs/sim-report.md，证据在 artifacts/sim/sim-01/。
+- 仿真入口 out/windows-cpu/apps/sim_runner/Release/sim_runner.exe + configs/sim.yml：12 个二维场景，输出 runs.jsonl/summary.json/report.md；见 docs/sim-report.md，证据在 artifacts/sim/sim-01/。
+- MOT-08 实验配置 configs/tracker-bytetrack.yml：低置信度二次关联，默认关闭；消融见 docs/mot-ablation.md，证据 artifacts/sim/sim-02-base/、sim-02-byte/。
 
 ## TRACK-02 交付要求（2026-11-07 已完成）
 

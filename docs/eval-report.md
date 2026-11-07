@@ -31,7 +31,7 @@
 
 - 状态：`complete-with-gaps`；gates 7 pass / 3 partial / 2 missing。
 - person Box-R 0.7119（目标 0.95）；合成 MOT HOTA 0.9370、IDF1 0.9714、IDSW 0。
-- 仿真：11 场景 SUCCESS 9 / FAILED 1 / UNKNOWN 1，成功率 0.818，全部终止。
+- 仿真：12 场景 SUCCESS 10 / FAILED 1 / UNKNOWN 1，成功率 0.833，全部终止。
 - T03、T06、T07、T08、T10、T11、T12 通过；T01/T02/T05 部分；T04 负样本、T09 急停/蹲下仍缺真实数据。
 - 证据目录：`artifacts/eval-report/`（artifacts 被 Git 忽略）；仿真证据见 docs/sim-report.md。
 

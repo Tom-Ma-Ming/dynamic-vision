@@ -80,7 +80,27 @@ int main(int argc,char** argv) try {
     single.update(1,step,{head(20)});
     single.update(2,step*2,{head(20),person(20)});
     require(single.snapshot().tracks.size()==1 && single.snapshot().tracks[0].body,"head to body");
-    std::cout<<"Synthetic sequences passed: 1/2/5/10 people, crossing, head-only, occlusion, selection, stale results\n";
+
+    auto high=person(100); high.score=.9f;
+    auto low=person(100); low.score=.2f;
+    Config byteCfg=cfg; byteCfg.byteTrack=true; byteCfg.highScore=.4; byteCfg.lowScore=.1;
+    Tracker baseline(cfg), byte(byteCfg);
+    baseline.update(0,0,{high}); byte.update(0,0,{high});
+    require(baseline.snapshot().tracks.size()==1 && byte.snapshot().tracks.size()==1,"high birth");
+    baseline.update(1,step,{low}); byte.update(1,step,{low});
+    require(baseline.snapshot().tracks.size()==1,"baseline low association");
+    require(byte.snapshot().tracks.empty(),"bytetrack low must not confirm tentative");
+    Tracker confirmed(byteCfg);
+    confirmed.update(0,0,{high}); confirmed.update(1,step,{high});
+    require(confirmed.snapshot().tracks.size()==1 &&
+            confirmed.snapshot().tracks[0].state==State::Confirmed,"confirmed setup");
+    confirmed.update(2,step*2,{low});
+    require(confirmed.snapshot().tracks.size()==1 &&
+            confirmed.snapshot().tracks[0].state==State::Confirmed,"low second association");
+    require(confirmed.snapshot().tracks[0].lastSeen==step*2,"low second association timestamp");
+    Tracker lowOnly(byteCfg); lowOnly.update(0,0,{low});
+    require(lowOnly.snapshot().tracks.empty(),"low must not birth");
+    std::cout<<"Synthetic sequences passed: 1/2/5/10 people, crossing, head-only, occlusion, selection, stale results, bytetrack\n";
     return 0;
 } catch(const std::exception& e) {std::cerr<<e.what()<<"\n"; return 1;}
 

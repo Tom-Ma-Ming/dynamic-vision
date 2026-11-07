@@ -13,4 +13,4 @@
 | sim_closed_loop CTest | 退出 0；T12 三类结果均出现 |
 | windows-cpu / windows-full | 原 20/20 变为 21/21，不退化 |
 
-实测（2026-11-07）：11 场景 SUCCESS 9 / FAILED 1 / UNKNOWN 1，成功率 0.818，全部终止；control_fail 为 FAILED/control，unknown 为 UNKNOWN/detection，occlusion 恢复后 SUCCESS；同一 seed 重跑结果、终止帧、MAE、IDSW 一致。sim_closed_loop 通过；windows-cpu 21/21。证据 artifacts/sim/sim-01/ 与 docs/sim-report.md。
+实测（2026-11-07）：12 场景 SUCCESS 10 / FAILED 1 / UNKNOWN 1，成功率 0.833，全部终止；control_fail 为 FAILED/control，unknown 为 UNKNOWN/detection，occlusion 恢复后 SUCCESS；同一 seed 重跑结果、终止帧、MAE、IDSW 一致。sim_closed_loop 通过；windows-cpu 21/21。证据 artifacts/sim/sim-01/ 与 docs/sim-report.md。

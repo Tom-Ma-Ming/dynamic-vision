@@ -32,6 +32,8 @@ struct ScenarioConfig {
   int occlusion_start = -1;
   int occlusion_frames = 0;
   float false_positive_rate = 0;
+  float low_confidence_rate = 0;
+  float low_confidence_score = 0.2f;
   float epsilon_enter = 0.02f;
   float epsilon_exit = 0.03f;
   int settle_frames = 5;

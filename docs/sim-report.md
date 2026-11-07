@@ -15,7 +15,7 @@ out/windows-cpu/apps/sim_runner/Release/sim_runner.exe configs/sim.yml artifacts
 
 ## 场景
 
-`configs/sim.yml` 包含 11 个场景：匀速、急停、变向、蹲下、短遮挡、相机平移、小目标、大目标、误检、无观测、执行器过慢。`success_after_frame` 让急停/变向/蹲下/遮挡/相机平移在事件发生后才判定成功。
+`configs/sim.yml` 包含 12 个场景：匀速、急停、变向、蹲下、短遮挡、相机平移、小目标、大目标、误检、低置信度、无观测、执行器过慢。`success_after_frame` 让急停/变向/蹲下/遮挡/相机平移在事件发生后才判定成功。
 
 ## 闭环
 
@@ -25,7 +25,7 @@ out/windows-cpu/apps/sim_runner/Release/sim_runner.exe configs/sim.yml artifacts
 
 ## 当前结果（2026-11-07）
 
-当前 11 个场景：SUCCESS 9、FAILED 1、UNKNOWN 1，成功率 0.818；全部终止，无重试。
+当前 12 个场景：SUCCESS 10、FAILED 1、UNKNOWN 1，成功率 0.833；全部终止，无重试。
 
 | 场景 | 结果 | 原因 | 稳定(s) | MAE(px) | 遮挡恢复(s) | IDSW |
 |---|---|---|---|---|---|---|
@@ -38,6 +38,7 @@ out/windows-cpu/apps/sim_runner/Release/sim_runner.exe configs/sim.yml artifacts
 | small | SUCCESS | none | 0.48 | 68.42 | -1 | 0 |
 | large | SUCCESS | none | 0.48 | 68.32 | -1 | 0 |
 | false_positive | SUCCESS | none | 0.48 | 69.24 | -1 | 0 |
+| low_conf | SUCCESS | none | 0.48 | 68.73 | -1 | 0 |
 | unknown | UNKNOWN | detection | -1 | 0 | -1 | 0 |
 | control_fail | FAILED | control | -1 | 227.46 | -1 | 0 |
 

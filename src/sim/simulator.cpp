@@ -35,6 +35,8 @@ bool validate(const ScenarioConfig& config) {
          config.actuator_max_speed > 0 && config.actuator_delay_frames >= 0 &&
          config.dropout >= 0 && config.dropout <= 1 &&
          config.false_positive_rate >= 0 && config.false_positive_rate <= 1 &&
+         config.low_confidence_rate >= 0 && config.low_confidence_rate <= 1 &&
+         config.low_confidence_score >= 0 && config.low_confidence_score <= 1 &&
          config.occlusion_frames >= 0 &&
          (config.occlusion_start < 0 ||
           config.occlusion_start + config.occlusion_frames <= config.frames);
@@ -194,17 +196,20 @@ ScenarioResult Simulator::run() {
       detected = true;
       const float sx = truth_x + noise(rng);
       const float sy = truth_y + noise(rng);
+      const float score = unit(rng) < config_.low_confidence_rate
+                              ? config_.low_confidence_score
+                              : 0.9f;
       const cv::Rect2f person{sx - config_.target_w * 0.5f,
                               sy - height * 0.5f,
                               config_.target_w, height};
-      detections.push_back({1, 0.9f, person});
+      detections.push_back({1, score, person});
 
       const float head_h = std::max(6.0f, height * 0.22f);
       const float head_w = std::max(4.0f, config_.target_w * 0.45f);
       const float head_cy = sy - height * 0.5f + head_h * 0.55f;
       const cv::Rect2f head{sx - head_w * 0.5f, head_cy - head_h * 0.5f,
                             head_w, head_h};
-      detections.push_back({0, 0.85f, head});
+      detections.push_back({0, score, head});
     } else if (!occluded) {
       ++missed;
     }
@@ -375,10 +380,10 @@ ScenarioResult Simulator::run() {
     output.terminal_frame = static_cast<int>(output.frames.size()) - 1;
     if (confirmed_frames == 0) {
       output.cause = Cause::Detection;
-    } else if (id_switches > 0) {
-      output.cause = Cause::Association;
     } else if (saturated_frames > config_.frames / 2) {
       output.cause = Cause::Control;
+    } else if (id_switches > 0) {
+      output.cause = Cause::Association;
     } else {
       output.cause = Cause::Timeout;
     }

@@ -11,6 +11,9 @@ struct Detection { int cls; float score; cv::Rect2f box; };
 struct Config {
     int minHits;
     double maxLostMs, birthScore, sigma, headSigma, accel, initialSpeed, gate, iouWeight, ambiguity;
+    bool byteTrack = false;
+    double highScore = 0.4;
+    double lowScore = 0.1;
     static Config load(const std::string& path);
 };
 enum class State { Tentative, Confirmed, Lost };

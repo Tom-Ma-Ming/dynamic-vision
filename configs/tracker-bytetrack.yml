@@ -1,0 +1,14 @@
+%YAML:1.0
+min_hits: 2
+max_lost_ms: 500
+birth_score: 0.4
+measurement_sigma: 3.
+head_sigma: 6.
+acceleration_sigma: 180.
+initial_speed_sigma: 120.
+mahalanobis_gate: 12.
+iou_weight: 0.4
+ambiguity_margin: 0.04
+byte_track: 1
+high_score: 0.4
+low_score: 0.1

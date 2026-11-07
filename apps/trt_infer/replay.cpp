@@ -169,7 +169,8 @@ int main(int argc, char** argv) try {
     throw std::runtime_error("Missing video FPS");
   }
 
-  mot::Tracker tracker(mot::Config::load(args->tracker));
+  const mot::Config tracker_config = mot::Config::load(args->tracker);
+  mot::Tracker tracker(tracker_config);
   mot::Selection selection;
   const auto commands = loadSelectionCommands(args->selection);
 
@@ -262,7 +263,9 @@ int main(int argc, char** argv) try {
         auto& frame = packet->image;
 
         const auto infer_start = Clock::now();
-        const auto detections = detect(detector, frame, .25f, .45f);
+        const float detect_confidence =
+            tracker_config.byteTrack ? static_cast<float>(tracker_config.lowScore) : .25f;
+        const auto detections = detect(detector, frame, detect_confidence, .45f);
         const auto infer_end = Clock::now();
 
         std::vector<mot::Detection> observations;

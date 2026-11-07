@@ -79,6 +79,10 @@ std::vector<sim::ScenarioConfig> loadScenarios(const std::string& path) {
     config.occlusion_frames = intOr(node, "occlusion_frames", config.occlusion_frames);
     config.false_positive_rate =
         floatOr(node, "false_positive_rate", config.false_positive_rate);
+    config.low_confidence_rate =
+        floatOr(node, "low_confidence_rate", config.low_confidence_rate);
+    config.low_confidence_score =
+        floatOr(node, "low_confidence_score", config.low_confidence_score);
     config.epsilon_enter = floatOr(node, "epsilon_enter", config.epsilon_enter);
     config.epsilon_exit = floatOr(node, "epsilon_exit", config.epsilon_exit);
     config.settle_frames = intOr(node, "settle_frames", config.settle_frames);

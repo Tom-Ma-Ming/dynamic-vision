@@ -15,9 +15,13 @@ Config Config::load(const std::string& path) {
     Config c{int(get("min_hits")),get("max_lost_ms"),get("birth_score"),get("measurement_sigma"),
              get("head_sigma"),get("acceleration_sigma"),get("initial_speed_sigma"),
              get("mahalanobis_gate"),get("iou_weight"),get("ambiguity_margin")};
+    c.byteTrack = !f["byte_track"].empty() && static_cast<int>(f["byte_track"]) != 0;
+    c.highScore = f["high_score"].empty() ? c.birthScore : get("high_score");
+    c.lowScore = f["low_score"].empty() ? 0.1 : get("low_score");
     if(!(c.minHits>=1 && c.maxLostMs>0 && c.birthScore>=0 && c.birthScore<=1 && c.sigma>0 &&
          c.headSigma>0 && c.accel>0 && c.initialSpeed>0 && c.gate>0 &&
-         c.iouWeight>=0 && c.iouWeight<=1 && c.ambiguity>=0))
+         c.iouWeight>=0 && c.iouWeight<=1 && c.ambiguity>=0 &&
+         c.highScore>=c.lowScore && c.lowScore>=0 && c.highScore<=1))
         throw std::runtime_error("Invalid tracker configuration");
     return c;
 }
@@ -124,6 +128,110 @@ static Candidate candidate(const Track& t,const Observation& o,const Config& c) 
 }
 bool Tracker::update(Time frame,Time ts,const std::vector<Detection>& detections) {
     if(frame<=current.frame || ts<=current.timestamp) return false;
+    if(cfg.byteTrack) {
+        auto s=predictAt(ts);
+        s.removed.clear();
+        for(auto& t:current.tracks)
+            if((ts-t.lastSeen)*1e-6>cfg.maxLostMs) s.removed.push_back(t.id);
+        auto obs=group(detections);
+        std::vector<Observation> high,low;
+        for(auto& o:obs) {
+            if(o.d.score>=cfg.highScore) high.push_back(o);
+            else if(o.d.score>=cfg.lowScore) low.push_back(o);
+        }
+        auto apply=[&](Track& t,const Observation& o,const Candidate& c) {
+            auto k=t.covariance*H.t()*c.inv;
+            auto a=cv::Matx44d::eye()-k*H;
+            t.x+=k*c.residual;
+            t.covariance=a*t.covariance*a.t()+c.variance*(k*k.t());
+            if(!t.body && o.d.cls==1) {
+                auto anchor=o.head.value_or(cv::Point2f(center(o.d.box).x,o.d.box.y+t.size.height/2));
+                auto offset=center(o.d.box)-anchor;
+                t.x[0]+=offset.x; t.x[1]+=offset.y;
+                t.headOffset=-offset;
+            }
+            if(o.d.cls==1 || !t.body) t.size=o.d.box.size();
+            if(o.d.cls==1) {
+                t.body=true;
+                if(o.head) t.headOffset=*o.head-center(o.d.box);
+            }
+            t.score=o.d.score; t.cost=c.cost; t.innovation=c.d2;
+            t.ambiguous=o.ambiguous;
+            t.lastSeen=ts;
+            if(++t.hits>=cfg.minHits) t.state=State::Confirmed;
+        };
+        const size_t n=s.tracks.size(),m=high.size();
+        const double unmatched=double(n)+2, forbidden=unmatched*2;
+        std::vector<std::vector<double>> costs(n,std::vector<double>(m+n,forbidden));
+        for(size_t i=0;i<n;++i) {
+            costs[i][m+i]=unmatched;
+            for(size_t j=0;j<m;++j) {
+                auto c=candidate(s.tracks[i],high[j],cfg);
+                if(c.d2<=cfg.gate) costs[i][j]=c.cost;
+            }
+        }
+        auto matches=assign(costs);
+        std::vector<bool> used_high(m);
+        std::vector<Track> live, unmatched_tracks;
+        for(size_t i=0;i<n;++i) {
+            auto t=s.tracks[i];
+            size_t j=matches[i];
+            if(j>=m) {
+                if(t.state==State::Tentative) s.removed.push_back(t.id);
+                else unmatched_tracks.push_back(t);
+            } else {
+                used_high[j]=true;
+                auto c=candidate(t,high[j],cfg);
+                apply(t,high[j],c);
+                live.push_back(t);
+            }
+        }
+        const size_t n2=unmatched_tracks.size(),m2=low.size();
+        if(n2 && m2) {
+            const double unmatched2=double(n2)+2, forbidden2=unmatched2*2;
+            std::vector<std::vector<double>> costs2(n2,std::vector<double>(m2+n2,forbidden2));
+            for(size_t i=0;i<n2;++i) {
+                costs2[i][m2+i]=unmatched2;
+                for(size_t j=0;j<m2;++j) {
+                    auto c=candidate(unmatched_tracks[i],low[j],cfg);
+                    if(c.d2<=cfg.gate) costs2[i][j]=c.cost;
+                }
+            }
+            auto matches2=assign(costs2);
+            for(size_t i=0;i<n2;++i) {
+                auto t=unmatched_tracks[i];
+                size_t j=matches2[i];
+                if(j>=m2) {
+                    t.state=State::Lost;
+                    t.cost=t.innovation=-1;
+                } else {
+                    auto c=candidate(t,low[j],cfg);
+                    apply(t,low[j],c);
+                }
+                live.push_back(t);
+            }
+        } else {
+            for(auto& t:unmatched_tracks) {
+                t.state=State::Lost;
+                t.cost=t.innovation=-1;
+                live.push_back(t);
+            }
+        }
+        for(size_t j=0;j<m;++j) if(!used_high[j] && high[j].d.score>=cfg.birthScore) {
+            const auto& o=high[j];
+            Track t{};
+            t.id=nextId++; t.size=o.d.box.size(); t.lastSeen=ts; t.score=o.d.score;
+            auto p=center(o.d.box); t.x={p.x,p.y,0,0}; t.body=o.d.cls==1;
+            t.headOffset=o.head.value_or(cv::Point2f(p.x,o.d.box.y))-p;
+            t.ambiguous=o.ambiguous;
+            t.covariance=cv::Matx44d::eye();
+            for(int a=0;a<4;++a) t.covariance(a,a)=std::pow(a<2?cfg.headSigma:cfg.initialSpeed,2);
+            if(cfg.minHits==1) t.state=State::Confirmed;
+            live.push_back(t);
+        }
+        s.tracks=std::move(live); s.frame=frame; current=std::move(s);
+        return true;
+    }
     auto s=predictAt(ts);
     s.removed.clear();
     for(auto& t:current.tracks)
