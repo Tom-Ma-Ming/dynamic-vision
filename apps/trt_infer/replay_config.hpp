@@ -19,6 +19,14 @@ struct ReplayConfig {
     if (!file.isOpened()) {
       throw std::runtime_error("Cannot open replay config: " + path);
     }
+    const cv::FileNode root = file.root();
+    for (auto it = root.begin(); it != root.end(); ++it) {
+      const std::string key = (*it).name();
+      if (key != "queue_capacity" && key != "queue_mode" &&
+          key != "realtime_pace") {
+        throw std::runtime_error("Unknown replay setting: " + key);
+      }
+    }
     for (const char* key : {"queue_capacity", "queue_mode", "realtime_pace"}) {
       if (file[key].empty()) {
         throw std::runtime_error(std::string("Missing replay setting: ") + key);
