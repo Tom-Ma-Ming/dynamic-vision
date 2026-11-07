@@ -1,5 +1,7 @@
 # Grok 工程交接 · 2026-11-07
 
+> 最新（2026-11-08）：用户实际修改目录是原 review/clip01、clip02，不是 corrected-candidate。最新 180 帧已冻结到 artifacts/real-recordings-v1/evaluation-20261108-v1/scores-final/labels，并完成 provisional 诊断评分；有少量剩余框范围误差，不属于最终真值验收。以 docs/reviewed-clip-evaluation.md 为当前入口，暂不用用户重做整批标注；下一步分析 head 漏匹配、背景误检和镜头运动断轨。默认 CV/模型不变。
+
 > 2026-11-08 标注接收更新：用户完成 180 帧人工 JSON。11 处类别/ID/越界笔误已在独立 corrected-candidate 副本修正；原标注已快照保留。仍存在 person 未覆盖可见腿脚的质量问题，暂不训练或正式评分。下一步入口 docs/reviewed-label-audit.md；不要把“结构检查通过”当作真值验收。
 
 > 连续录像更新：用户 docs/rec_*.avi 四段已接入，21,169 帧，CV/IMM 8 次完整回放通过。身份真值仍缺，180 帧候选框与三栏视频在 artifacts/real-recordings-v1/review；当前动作是人工复核，而非重新采集或将候选框当 GT 评分。入口 docs/real-recording-intake.md。

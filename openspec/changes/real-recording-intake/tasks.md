@@ -5,4 +5,5 @@
 - [x] RV-03：两个 90 帧复核包，原图像素/JSON 配对/对照视频通过检查；结果与局限见 docs/real-recording-intake.md。
 - [ ] 后续：人工确认连续人物身份与漏检，才可计算真实跟踪/召回指标。
 - [x] RV-04（2026-11-08）：接收 180 帧人工标注并创建源快照；11 处确定问题在独立副本修正，审计工具 3 项测试通过。见 docs/reviewed-label-audit.md。
-- [ ] RV-05：统一 person 可见人体框范围，核对跨遮挡身份后验收 GT；目前不发布真实 MOT 分数。
+- [ ] RV-05：统一 person 可见人体框范围，核对跨遮挡身份后验收 GT；当前仅有明确标记 provisional 的诊断评分，未发布最终验收分数。
+- [x] RV-06：用户原目录 34 帧范围更新后冻结 180 帧，计算 CV/IMM 诊断对照；见 openspec/changes/reviewed-clip-evaluation 与 docs/reviewed-clip-evaluation.md。
