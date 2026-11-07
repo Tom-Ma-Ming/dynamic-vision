@@ -16,3 +16,4 @@ TRT2-04/05：C++ 实图与 ONNX 5 图 13 框通过，最大坐标差 <0.001 px�
 2026-11-07：SIM-01 完成。新增 sim::Simulator、sim_runner、sim_test、configs/sim.yml；12 个二维场景（匀速/急停/变向/蹲下/遮挡/相机平移/小目标/大目标/误检/低置信度/无观测/执行器过慢）SUCCESS 10、FAILED 1、UNKNOWN 1，全部终止；T12 通过，EVAL gates 7/3/2。证据 artifacts/sim/sim-01/，见 docs/sim-report.md。
 2026-11-07：MOT-08 低置信度二次关联完成。Config 增加 byte_track/high_score/low_score（默认关闭），Tracker 增加 high/low 两阶段关联，low 不 birth、不确认 Tentative；SIM low_conf 基线 MAE 68.73→65.44、稳定 0.48→0.64，状态均为 SUCCESS 10/1/1；CTest 21/21，默认禁用。见 docs/mot-ablation.md。
 2026-11-07：修复评审五项缺陷并验收。CPU 23/23、SDK 3/3、pytest 11/11，1000 帧双跑一致；60 秒间隔下消费异常 0.390 秒退出。固定窗口仿真 v2 基线 0/8/4、ByteTrack 0/7/5，旧成功率/消融结论撤回。详见 docs/review-fixes.md。
+2026-11-07：完成仿真首次选择与延迟匹配控制，CPU 23/23、pytest 11/11。三种子机动 CV 对照使变向控制 MAE 95.652→8.447 px、覆盖率 58.8%→99.3%，小目标误差略增；实验参数默认未启用。见 docs/sim-control-baseline.md。

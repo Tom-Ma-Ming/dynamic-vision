@@ -18,6 +18,8 @@ struct ScenarioConfig {
   Motion motion = Motion::Constant;
   int frames = 200;
   int selected_track_id = 1;
+  bool acquire_single_confirmed = false;
+  bool compensate_actuator_delay = false;
   double dt_s = 0.04;
   int width = 640;
   int height = 480;

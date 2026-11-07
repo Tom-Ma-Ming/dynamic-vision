@@ -62,6 +62,8 @@ std::vector<sim::ScenarioConfig> loadScenarios(const std::string& path) {
     sim::ScenarioConfig config;
     config.scene_id = stringOr(node, "id", "scene");
     config.motion = parseMotion(stringOr(node, "motion", "constant"));
+    config.acquire_single_confirmed = intOr(node, "acquire_single_confirmed", 0) != 0;
+    config.compensate_actuator_delay = intOr(node, "compensate_actuator_delay", 0) != 0;
     config.selected_track_id = intOr(node, "selected_track_id", config.selected_track_id);
     config.frames = intOr(node, "frames", config.frames);
     config.dt_s = floatOr(node, "dt_s", static_cast<float>(config.dt_s));
@@ -244,6 +246,8 @@ int main(int argc, char** argv) try {
             << jsonString(sim::sizeBucket(scenarios[i].target_w, scenarios[i].target_h))
             << ",\"result\":" << jsonString(sim::name(result.result))
             << ",\"cause\":" << jsonString(sim::name(result.cause))
+            << ",\"acquire_single_confirmed\":" << (scenarios[i].acquire_single_confirmed ? "true" : "false")
+            << ",\"compensate_actuator_delay\":" << (scenarios[i].compensate_actuator_delay ? "true" : "false")
             << ",\"planned_frames\":" << scenarios[i].frames
             << ",\"selected_track_id\":" << scenarios[i].selected_track_id
             << ",\"prediction_horizon_s\":" << scenarios[i].command_horizon_s

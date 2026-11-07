@@ -1,0 +1,15 @@
+%YAML:1.0
+# Self-contained 2D simulation scenarios. No game/desktop input is used.
+scenarios:
+  - {acquire_single_confirmed: 1, compensate_actuator_delay: 1, id: "constant", motion: "constant", frames: 120, start_x: 120, start_y: 240, vx: 120, vy: 0, seed: 1}
+  - {acquire_single_confirmed: 1, compensate_actuator_delay: 1, id: "stop", motion: "stop", frames: 120, start_x: 120, start_y: 240, vx: 120, vy: 0, success_after_frame: 60, seed: 2}
+  - {acquire_single_confirmed: 1, compensate_actuator_delay: 1, id: "turn", motion: "turn", frames: 140, start_x: 160, start_y: 240, vx: 120, vy: 0, success_after_frame: 90, seed: 3}
+  - {acquire_single_confirmed: 1, compensate_actuator_delay: 1, id: "squat", motion: "squat", frames: 120, start_x: 180, start_y: 220, vx: 40, vy: 0, success_after_frame: 70, seed: 4}
+  - {acquire_single_confirmed: 1, compensate_actuator_delay: 1, id: "occlusion", motion: "occlusion", frames: 60, start_x: 120, start_y: 240, vx: 80, vy: 0, occlusion_start: 5, occlusion_frames: 10, success_after_frame: 30, seed: 5}
+  - {acquire_single_confirmed: 1, compensate_actuator_delay: 1, id: "camera_pan", motion: "camera_pan", frames: 140, start_x: 400, start_y: 240, vx: 0, vy: 0, camera_vx: 20, success_after_frame: 30, seed: 6}
+  - {acquire_single_confirmed: 1, compensate_actuator_delay: 1, id: "small", motion: "constant", frames: 120, start_x: 120, start_y: 240, vx: 80, vy: 0, target_w: 12, target_h: 24, noise_px: 1, seed: 7}
+  - {acquire_single_confirmed: 1, compensate_actuator_delay: 1, id: "large", motion: "constant", frames: 120, start_x: 120, start_y: 240, vx: 80, vy: 0, target_w: 48, target_h: 96, noise_px: 2, seed: 8}
+  - {acquire_single_confirmed: 1, compensate_actuator_delay: 1, id: "false_positive", motion: "constant", frames: 140, start_x: 120, start_y: 240, vx: 80, vy: 0, false_positive_rate: 0.2, seed: 9}
+  - {acquire_single_confirmed: 1, compensate_actuator_delay: 1, id: "low_conf", motion: "constant", frames: 140, start_x: 120, start_y: 240, vx: 80, vy: 0, low_confidence_rate: 0.5, seed: 12}
+  - {acquire_single_confirmed: 1, compensate_actuator_delay: 1, id: "unknown", motion: "constant", frames: 100, start_x: 120, start_y: 240, vx: 80, vy: 0, dropout: 1.0, unknown_grace_frames: 20, seed: 10}
+  - {acquire_single_confirmed: 1, compensate_actuator_delay: 1, id: "control_fail", motion: "constant", frames: 100, start_x: 480, start_y: 240, vx: 80, vy: 0, actuator_max_speed: 1, seed: 11}

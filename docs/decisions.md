@@ -11,3 +11,4 @@ TensorRT 8.6.1.6 本机引擎关闭 TF32，工作区 512 MiB。固定输入输�
 2026-11-07：TRT2-06 使用 pinned host 输入/输出 + 单条 CUDA stream；单帧同步路径不启用多 stream；输出指针有效期到下一次 infer；benchmark 取 3 轮中位数，mot_ms 的 0.01ms 量级差异视为噪声。
 2026-11-07：SIM-01 采用二维合成观测 + 复用 mot::Tracker + 受限执行器；SUCCESS 需误差/连续帧/协方差/age/观测同时满足，UNKNOWN 单独表示反馈缺失，不并入 FAILED；仿真结果不替代真实录像 MOT 指标。
 评审修复采用显式 selected_track_id 默认 1、固定完整评分窗口和目标尺寸归一化；未来预测评分仅在评分阶段读取真值。暂无轨迹时误差输出 null 并附覆盖率，避免缺失伪装为零误差。
+sim-control 场景启用唯一 Confirmed 轨迹首次选择；控制外推时域匹配执行延迟，未来预测评分仍使用独立时域。更高过程噪声 CV 作为 IMM 对照实验配置。

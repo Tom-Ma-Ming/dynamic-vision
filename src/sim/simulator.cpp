@@ -232,8 +232,21 @@ ScenarioResult Simulator::run() {
 
     const auto& snapshot = tracker.snapshot();
     const mot::Track* selected = nullptr;
-    if (!selection.selected)
-      selection.select(static_cast<mot::Id>(config_.selected_track_id), snapshot);
+    if (!selection.selected) {
+      if (config_.acquire_single_confirmed) {
+        const mot::Track* candidate = nullptr;
+        int eligible = 0;
+        for (const auto& track : snapshot.tracks) {
+          if (track.state == mot::State::Confirmed && !track.ambiguous) {
+            candidate = &track;
+            ++eligible;
+          }
+        }
+        if (eligible == 1) selection.select(candidate->id, snapshot);
+      } else {
+        selection.select(static_cast<mot::Id>(config_.selected_track_id), snapshot);
+      }
+    }
     for (const auto& track : snapshot.tracks) {
       if (selection.selected == track.id) {
         selected = &track;
@@ -274,12 +287,27 @@ ScenarioResult Simulator::run() {
     predicted_x = clampf(predicted_x, 0, static_cast<float>(config_.width));
     predicted_y = clampf(predicted_y, 0, static_cast<float>(config_.height));
 
-    command_queue.emplace_back(predicted_x, predicted_y);
-    while (command_queue.size() >
-           static_cast<std::size_t>(config_.actuator_delay_frames) + 1) {
+    // Only actionable observations may produce a new control command.
+    const bool controllable = selected && selected->state == mot::State::Confirmed &&
+                              !selected->ambiguous && selected->lastSeen == ts_ns &&
+                              age_ms <= config_.max_age_ms &&
+                              covariance_trace <= config_.covariance_limit;
+    std::pair<float,float> target{aim_x,aim_y};
+    if (controllable) {
+      const float horizon = config_.compensate_actuator_delay
+                                ? config_.actuator_delay_frames * dt
+                                : config_.command_horizon_s;
+      target.first = clampf(estimate_x + static_cast<float>(selected->x[2])*horizon, 0,
+                            static_cast<float>(config_.width));
+      target.second = clampf(estimate_y + static_cast<float>(selected->x[3])*horizon, 0,
+                             static_cast<float>(config_.height));
+    }
+    command_queue.push_back(target);
+    std::pair<float,float> command{aim_x,aim_y};
+    if (command_queue.size() > static_cast<size_t>(config_.actuator_delay_frames)) {
+      command = command_queue.front();
       command_queue.pop_front();
     }
-    const auto command = command_queue.front();
     const float max_step = config_.actuator_max_speed * dt;
     const float dx = command.first - aim_x;
     const float dy = command.second - aim_y;
@@ -298,10 +326,7 @@ ScenarioResult Simulator::run() {
     const float error_px = std::hypot(error_x, error_y);
     const float error_norm = normalizedError(error_x, error_y, config_.target_w, height);
 
-    const bool valid = selected && selected->state == mot::State::Confirmed &&
-                       !selected->ambiguous && selected->lastSeen == ts_ns &&
-                       age_ms <= config_.max_age_ms &&
-                       covariance_trace <= config_.covariance_limit;
+    const bool valid = controllable;
 
     FrameRecord record;
     record.frame = frame;

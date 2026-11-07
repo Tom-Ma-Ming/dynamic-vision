@@ -47,6 +47,32 @@ int main(int argc, char** argv) try {
   require(normalizedError(10,0,12,24)>.8f,"small target must reject ten pixel error");
   require(normalizedError(10,0,48,96)<normalizedError(10,0,12,24),"relative target scale");
 
+  auto moving = constant;
+  moving.start_x=200; moving.vx=80; moving.frames=60;
+  moving.actuator_max_speed=10000;
+  auto uncompensated=Simulator(moving,tracker).run();
+  moving.compensate_actuator_delay=true;
+  auto compensated=Simulator(moving,tracker).run();
+  double previous=0, corrected=0;
+  for(size_t i=25;i<compensated.frames.size();++i) {
+    previous+=uncompensated.frames[i].error_px;
+    corrected+=compensated.frames[i].error_px;
+  }
+  require(corrected<previous*.5,"delay compensation improves steady motion without relaxing thresholds");
+  require(compensated.result==TaskResult::Success,"noise-free delayed motion must settle");
+  for(int i=0;i<moving.actuator_delay_frames;++i)
+    require(compensated.frames[i].aim_x==moving.width*.5f,"actuator cannot respond before delay");
+  auto acquisition=constant;
+  acquisition.acquire_single_confirmed=true;
+  acquisition.low_confidence_rate=.5f;
+  auto byteConfig=tracker; byteConfig.byteTrack=true;
+  auto acquired=Simulator(acquisition,byteConfig).run();
+  require(acquired.metrics.track_coverage>0,"wait for an actual confirmed ID");
+  std::uint64_t chosen=0;
+  for(auto& frame:acquired.frames) if(frame.has_track) {
+    if(!chosen) chosen=frame.track_id;
+    require(frame.track_id==chosen,"acquisition must not switch established ID");
+  }
   const auto repeated = Simulator(constant, tracker).run();
   require(repeated.result == success.result, "determinism: result");
   require(repeated.terminal_frame == success.terminal_frame, "determinism: terminal frame");
@@ -68,6 +94,7 @@ int main(int argc, char** argv) try {
   const auto unselected=Simulator(missingId,tracker).run();
   require(unselected.metrics.tracked_frames==0,"selection cannot use truth to find another ID");
   auto removed=constant;
+  removed.acquire_single_confirmed=true;
   removed.frames=100; removed.occlusion_start=10; removed.occlusion_frames=30;
   const auto noReselect=Simulator(removed,tracker).run();
   for(const auto& frame:noReselect.frames)
