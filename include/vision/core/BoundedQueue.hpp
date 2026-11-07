@@ -1,6 +1,7 @@
 #pragma once
 
 #include <condition_variable>
+#include <chrono>
 #include <cstddef>
 #include <deque>
 #include <mutex>
@@ -80,6 +81,12 @@ class BoundedQueue {
     }
     not_empty_.notify_all();
     not_full_.notify_all();
+  }
+
+  // Returns false when close interrupts pacing; never consumes queued data.
+  bool waitUntil(std::chrono::steady_clock::time_point deadline) {
+    std::unique_lock<std::mutex> lock(mutex_);
+    return !not_full_.wait_until(lock, deadline, [this] { return closed_; });
   }
 
   std::size_t size() const {

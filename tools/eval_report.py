@@ -525,8 +525,12 @@ def build_gaps(
     return gaps
 
 
-def build_report(artifacts: Path) -> dict[str, Any]:
+def build_report(artifacts: Path, sim_summary: Path | None = None) -> dict[str, Any]:
     discovered = discover(artifacts)
+    if sim_summary is not None:
+        if load_json(sim_summary) is None:
+            raise ValueError(f"Invalid simulation summary: {sim_summary}")
+        discovered["sim_summary"] = sim_summary
     environment = parse_environment(discovered["environment"])
     data = parse_data(discovered, artifacts)
     detection = parse_detection(discovered, artifacts)
@@ -942,6 +946,7 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--out", type=Path, required=True, help="new output directory")
     parser.add_argument("--strict", action="store_true",
                         help="return 1 when required evidence is missing")
+    parser.add_argument("--sim-summary", type=Path, help="Explicit simulation evidence for this report")
     args = parser.parse_args(argv)
 
     artifacts = args.artifacts.resolve()
@@ -951,7 +956,7 @@ def main(argv: list[str] | None = None) -> int:
         parser.error(f"output directory must be new or empty: {args.out}")
     args.out.mkdir(parents=True, exist_ok=True)
 
-    report = build_report(artifacts)
+    report = build_report(artifacts, args.sim_summary)
     (args.out / "report.json").write_text(
         json.dumps(report, ensure_ascii=False, indent=2), encoding="utf-8")
     (args.out / "report.md").write_text(render_markdown(report), encoding="utf-8")

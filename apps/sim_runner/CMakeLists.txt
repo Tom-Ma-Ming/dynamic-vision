@@ -2,7 +2,7 @@ add_executable(sim_runner main.cpp)
 target_include_directories(sim_runner PRIVATE ${PROJECT_SOURCE_DIR}/include)
 target_link_libraries(sim_runner PRIVATE vision_sim ${OpenCV_LIBS})
 if(MSVC)
-  target_compile_options(sim_runner PRIVATE /utf-8)
+  target_compile_options(sim_runner PRIVATE $<$<CXX_COMPILER_ID:MSVC>:/utf-8>)
 endif()
 foreach(config_file sim.yml tracker.yml tracker-bytetrack.yml)
   add_custom_command(TARGET sim_runner POST_BUILD COMMAND ${CMAKE_COMMAND} -E copy_if_different

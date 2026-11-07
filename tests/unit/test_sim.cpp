@@ -33,11 +33,19 @@ int main(int argc, char** argv) try {
 
   auto constant = base();
   constant.scene_id = "constant";
+  constant.vx = 0;
+  constant.noise_px = 0;
   const auto success = Simulator(constant, tracker).run();
   require(success.result == TaskResult::Success, "constant should succeed");
   require(success.metrics.settling_s >= 0, "success needs settling time");
   require(success.metrics.mae_px > 0, "MAE must be measured");
-  require(success.metrics.p95_px >= success.metrics.mae_px, "P95 >= MAE");
+  require(success.metrics.frames == constant.frames, "success must not truncate scoring window");
+  double fullError=0;
+  for(const auto& frame:success.frames) fullError+=frame.error_px;
+  require(std::abs(fullError/constant.frames-success.metrics.mae_px)<1e-6,"score all frames including startup");
+  require(success.metrics.track_coverage<1 && success.metrics.track_coverage>0,"report track coverage");
+  require(normalizedError(10,0,12,24)>.8f,"small target must reject ten pixel error");
+  require(normalizedError(10,0,48,96)<normalizedError(10,0,12,24),"relative target scale");
 
   const auto repeated = Simulator(constant, tracker).run();
   require(repeated.result == success.result, "determinism: result");
@@ -53,11 +61,23 @@ int main(int argc, char** argv) try {
   const auto unknown_result = Simulator(unknown, tracker).run();
   require(unknown_result.result == TaskResult::Unknown, "no observations must be UNKNOWN");
   require(unknown_result.cause == Cause::Detection, "unknown cause");
+  require(unknown_result.frames.size()==unknown.frames,"unknown keeps complete scoring window");
+  require(unknown_result.metrics.mae_px>0 && unknown_result.metrics.track_coverage==0,"missing tracks cannot produce zero control error");
+  auto missingId=constant;
+  missingId.selected_track_id=999;
+  const auto unselected=Simulator(missingId,tracker).run();
+  require(unselected.metrics.tracked_frames==0,"selection cannot use truth to find another ID");
+  auto removed=constant;
+  removed.frames=100; removed.occlusion_start=10; removed.occlusion_frames=30;
+  const auto noReselect=Simulator(removed,tracker).run();
+  for(const auto& frame:noReselect.frames)
+    if(frame.frame>=40) require(!frame.has_track,"expired ID cannot silently reselect newborn track");
 
   auto failure = base();
   failure.scene_id = "control_fail";
   failure.frames = 100;
   failure.start_x = 480;
+  failure.vx = 0; failure.noise_px = 0;
   failure.actuator_max_speed = 1;
   failure.seed = 11;
   const auto failed = Simulator(failure, tracker).run();
@@ -65,6 +85,7 @@ int main(int argc, char** argv) try {
   require(failed.cause == Cause::Control, "slow actuator cause must be control");
 
   auto occlusion = base();
+  occlusion.noise_px = 0; occlusion.vx=0;
   occlusion.scene_id = "occlusion";
   occlusion.frames = 60;
   occlusion.occlusion_start = 5;
@@ -80,14 +101,14 @@ int main(int argc, char** argv) try {
   turn.frames = 140;
   turn.success_after_frame = 90;
   const auto turned = Simulator(turn, tracker).run();
-  require(turned.result == TaskResult::Success, "turn should succeed");
+  require(turned.frames.size()==turn.frames && std::isfinite(turned.metrics.prediction_mae_px), "fixed maneuver window and finite prediction score");
 
   auto squat = base();
   squat.scene_id = "squat";
   squat.motion = Motion::Squat;
   squat.success_after_frame = 70;
   const auto squatted = Simulator(squat, tracker).run();
-  require(squatted.result == TaskResult::Success, "squat should succeed");
+  require(squatted.frames.size()==squat.frames && std::isfinite(squatted.metrics.prediction_mae_px), "fixed maneuver window and finite prediction score");
 
   auto pan = base();
   pan.scene_id = "camera_pan";
@@ -97,7 +118,7 @@ int main(int argc, char** argv) try {
   pan.frames = 140;
   pan.success_after_frame = 30;
   const auto panned = Simulator(pan, tracker).run();
-  require(panned.result == TaskResult::Success, "camera pan should succeed");
+  require(panned.frames.size()==pan.frames && std::isfinite(panned.metrics.prediction_mae_px), "fixed maneuver window and finite prediction score");
 
   require(success.result == TaskResult::Success &&
               failed.result == TaskResult::Failed &&

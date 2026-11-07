@@ -197,3 +197,29 @@ TEST(BoundedQueue, PeakTracksMaximumPendingSize) {
   EXPECT_EQ(queue.peak(), 3u);
   EXPECT_EQ(queue.size(), 3u);
 }
+
+
+TEST(BoundedQueue, CloseInterruptsLongPacingWait) {
+  BoundedQueue<int> queue(1, QueueMode::Latest);
+  std::atomic<bool> waiting{false};
+  bool reachedDeadline = true;
+  std::thread producer([&] {
+    waiting = true;
+    reachedDeadline = queue.waitUntil(std::chrono::steady_clock::now()+60s);
+  });
+  while (!waiting) std::this_thread::yield();
+  auto start = std::chrono::steady_clock::now();
+  queue.close();
+  producer.join();
+  EXPECT_FALSE(reachedDeadline);
+  EXPECT_LT(std::chrono::steady_clock::now()-start, 1s);
+  EXPECT_FALSE(queue.waitUntil(std::chrono::steady_clock::now()+60s));
+}
+
+TEST(BoundedQueue, PacingTimeoutDoesNotConsumePendingData) {
+  BoundedQueue<int> queue(1, QueueMode::Latest);
+  queue.push(42);
+  EXPECT_TRUE(queue.waitUntil(std::chrono::steady_clock::now()+5ms));
+  ASSERT_TRUE(queue.tryPop().has_value());
+  EXPECT_EQ(queue.popped(),1);
+}

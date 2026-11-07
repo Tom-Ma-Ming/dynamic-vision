@@ -25,7 +25,8 @@ float clampf(float value, float low, float high) {
 }
 
 bool validate(const ScenarioConfig& config) {
-  return config.frames > 0 && config.dt_s > 0 && config.width > 0 &&
+  return config.selected_track_id > 0 && std::isfinite(config.command_horizon_s) &&
+         config.command_horizon_s >= 0 && config.noise_px >= 0 && config.frames > 0 && config.dt_s > 0 && config.width > 0 &&
          config.height > 0 && config.target_w > 0 && config.target_h > 0 &&
          config.target_w <= config.width && config.target_h <= config.height &&
          config.epsilon_enter > 0 && config.epsilon_exit > config.epsilon_enter &&
@@ -43,6 +44,10 @@ bool validate(const ScenarioConfig& config) {
 }
 
 }  // namespace
+
+float normalizedError(float dx, float dy, float width, float height) {
+  return std::hypot(dx / width, dy / height);
+}
 
 const char* name(Motion motion) {
   switch (motion) {
@@ -99,15 +104,12 @@ ScenarioResult Simulator::run() {
   output.motion = config_.motion;
 
   const float dt = static_cast<float>(config_.dt_s);
-  const double diagonal =
-      std::hypot(static_cast<double>(config_.width), static_cast<double>(config_.height));
-  const float pixel_epsilon = static_cast<float>(config_.epsilon_enter * diagonal);
-
   std::mt19937 rng(config_.seed);
   std::normal_distribution<float> noise(0.0f, config_.noise_px);
   std::uniform_real_distribution<float> unit(0.0f, 1.0f);
 
   mot::Tracker tracker(tracker_);
+  mot::Selection selection;
 
   float world_x = config_.start_x;
   float world_y = config_.start_y;
@@ -230,17 +232,12 @@ ScenarioResult Simulator::run() {
 
     const auto& snapshot = tracker.snapshot();
     const mot::Track* selected = nullptr;
-    double best_distance = std::numeric_limits<double>::infinity();
+    if (!selection.selected)
+      selection.select(static_cast<mot::Id>(config_.selected_track_id), snapshot);
     for (const auto& track : snapshot.tracks) {
-      if (track.state == mot::State::Tentative) continue;
-      const auto box = track.box();
-      const float cx = (box.x + box.br().x) * 0.5f;
-      const float cy = (box.y + box.br().y) * 0.5f;
-      const double distance = std::hypot(static_cast<double>(cx - truth_x),
-                                         static_cast<double>(cy - truth_y));
-      if (distance < best_distance) {
-        best_distance = distance;
+      if (selection.selected == track.id) {
         selected = &track;
+        break;
       }
     }
 
@@ -299,12 +296,10 @@ ScenarioResult Simulator::run() {
     const float error_x = aim_x - truth_x;
     const float error_y = aim_y - truth_y;
     const float error_px = std::hypot(error_x, error_y);
-    const float error_norm = std::sqrt(
-        (error_x / config_.width) * (error_x / config_.width) +
-        (error_y / config_.height) * (error_y / config_.height));
+    const float error_norm = normalizedError(error_x, error_y, config_.target_w, height);
 
     const bool valid = selected && selected->state == mot::State::Confirmed &&
-                       !selected->ambiguous && detected &&
+                       !selected->ambiguous && selected->lastSeen == ts_ns &&
                        age_ms <= config_.max_age_ms &&
                        covariance_trace <= config_.covariance_limit;
 
@@ -333,14 +328,18 @@ ScenarioResult Simulator::run() {
     record.false_positives = false_positive_this_frame ? 1 : 0;
     output.frames.push_back(record);
 
+    errors.push_back(error_px);
     if (selected) {
-      errors.push_back(error_px);
       ages.push_back(age_ms);
     }
     if (error_norm < config_.epsilon_enter) {
       seen_below = true;
     }
-    if (seen_below) max_after_below = std::max(max_after_below, static_cast<double>(error_px));
+    if (seen_below) {
+      float directionScale = error_norm > 0 ? error_px / error_norm : 0;
+      double overshoot = std::max(0.0f, error_px - config_.epsilon_enter * directionScale);
+      max_after_below = std::max(max_after_below, overshoot);
+    }
 
     if (config_.occlusion_start >= 0 && !occlusion_recovered &&
         frame >= occlusion_end && valid &&
@@ -352,10 +351,9 @@ ScenarioResult Simulator::run() {
     if (frame >= config_.success_after_frame && valid &&
         error_norm < config_.epsilon_enter) {
       ++settle_count;
-      if (settle_count >= config_.settle_frames) {
+      if (settle_count >= config_.settle_frames && output.result == TaskResult::Running) {
         output.result = TaskResult::Success;
         output.terminal_frame = frame;
-        break;
       }
     } else if (frame < config_.success_after_frame || !valid ||
                error_norm > config_.epsilon_exit) {
@@ -364,11 +362,10 @@ ScenarioResult Simulator::run() {
 
     if (!valid) {
       ++unseen_frames;
-      if (unseen_frames >= config_.unknown_grace_frames) {
+      if (unseen_frames >= config_.unknown_grace_frames && output.result == TaskResult::Running) {
         output.result = TaskResult::Unknown;
         output.cause = Cause::Detection;
         output.terminal_frame = frame;
-        break;
       }
     } else {
       unseen_frames = 0;
@@ -396,11 +393,36 @@ ScenarioResult Simulator::run() {
     for (double error : errors) sum += error;
     output.metrics.mae_px = sum / errors.size();
   }
+  double estimate_sum = 0, prediction_sum = 0;
+  int prediction_opportunities = 0;
+  for (const auto& record : output.frames) {
+    if (record.has_track) {
+      ++output.metrics.tracked_frames;
+      estimate_sum += std::hypot(record.est_x-record.truth_x, record.est_y-record.truth_y);
+    }
+    double query = record.frame + config_.command_horizon_s/config_.dt_s;
+    if (query > output.frames.size()-1) continue;
+    ++prediction_opportunities;
+    if (!record.has_track) continue;
+    auto lo = static_cast<size_t>(std::floor(query));
+    auto hi = std::min(lo+1, output.frames.size()-1);
+    double alpha = query-lo;
+    double x = (1-alpha)*output.frames[lo].truth_x+alpha*output.frames[hi].truth_x;
+    double y = (1-alpha)*output.frames[lo].truth_y+alpha*output.frames[hi].truth_y;
+    prediction_sum += std::hypot(record.pred_x-x,record.pred_y-y);
+    ++output.metrics.prediction_samples;
+  }
+  auto& metrics = output.metrics;
+  metrics.track_coverage = double(metrics.tracked_frames)/config_.frames;
+  if (metrics.tracked_frames) metrics.estimate_mae_px = estimate_sum/metrics.tracked_frames;
+  if (metrics.prediction_samples) metrics.prediction_mae_px = prediction_sum/metrics.prediction_samples;
+  if (prediction_opportunities) metrics.prediction_coverage =
+      double(metrics.prediction_samples)/prediction_opportunities;
   output.metrics.p95_px = percentile(errors, 0.95);
   output.metrics.settling_s =
       output.result == TaskResult::Success ? output.terminal_frame * config_.dt_s : -1;
   output.metrics.overshoot_px =
-      seen_below ? std::max(0.0, max_after_below - pixel_epsilon) : 0;
+      seen_below ? max_after_below : 0;
   output.metrics.occlusion_recovery_s =
       occlusion_recovered
           ? (occlusion_recovery_frame - occlusion_end) * config_.dt_s

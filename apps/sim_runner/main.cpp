@@ -62,6 +62,7 @@ std::vector<sim::ScenarioConfig> loadScenarios(const std::string& path) {
     sim::ScenarioConfig config;
     config.scene_id = stringOr(node, "id", "scene");
     config.motion = parseMotion(stringOr(node, "motion", "constant"));
+    config.selected_track_id = intOr(node, "selected_track_id", config.selected_track_id);
     config.frames = intOr(node, "frames", config.frames);
     config.dt_s = floatOr(node, "dt_s", static_cast<float>(config.dt_s));
     config.width = intOr(node, "width", config.width);
@@ -152,6 +153,13 @@ std::string metricJson(const sim::Metrics& metrics) {
   std::ostringstream out;
   out.precision(9);
   out << "{\"mae_px\":" << metrics.mae_px
+      << ",\"control_mae_px\":" << metrics.mae_px
+      << ",\"tracked_frames\":" << metrics.tracked_frames
+      << ",\"track_coverage\":" << metrics.track_coverage
+      << ",\"estimate_mae_px\":" << (metrics.tracked_frames ? std::to_string(metrics.estimate_mae_px) : "null")
+      << ",\"prediction_samples\":" << metrics.prediction_samples
+      << ",\"prediction_coverage\":" << metrics.prediction_coverage
+      << ",\"prediction_mae_px\":" << (metrics.prediction_samples ? std::to_string(metrics.prediction_mae_px) : "null")
       << ",\"p95_px\":" << metrics.p95_px
       << ",\"settling_s\":" << metrics.settling_s
       << ",\"overshoot_px\":" << metrics.overshoot_px
@@ -226,7 +234,7 @@ int main(int argc, char** argv) try {
   std::ofstream summary(output / "summary.json");
   summary.exceptions(std::ios::badbit | std::ios::failbit);
   summary.precision(9);
-  summary << "{\"scenarios\":[";
+  summary << "{\"schema_version\":2,\"evaluation_window\":\"full_scenario\",\"scenarios\":[";
   for (std::size_t i = 0; i < results.size(); ++i) {
     const auto& result = results[i];
     if (i) summary << ",";
@@ -236,6 +244,9 @@ int main(int argc, char** argv) try {
             << jsonString(sim::sizeBucket(scenarios[i].target_w, scenarios[i].target_h))
             << ",\"result\":" << jsonString(sim::name(result.result))
             << ",\"cause\":" << jsonString(sim::name(result.cause))
+            << ",\"planned_frames\":" << scenarios[i].frames
+            << ",\"selected_track_id\":" << scenarios[i].selected_track_id
+            << ",\"prediction_horizon_s\":" << scenarios[i].command_horizon_s
             << ",\"terminal_frame\":" << result.terminal_frame
             << ",\"metrics\":" << metricJson(result.metrics) << "}";
   }

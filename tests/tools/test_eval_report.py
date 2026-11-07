@@ -193,3 +193,17 @@ def test_output_directory_must_be_new_or_empty(tmp_path):
     result = run(artifacts, out)
     assert result.returncode != 0
     assert "output directory" in result.stderr
+
+
+def test_explicit_simulation_evidence_replaces_discovered_history(tmp_path):
+    artifacts = make_fixture(tmp_path)
+    old = artifacts / "sim" / "a-old" / "summary.json"
+    new = artifacts / "sim" / "z-fixed" / "summary.json"
+    write_json(old, {"scenarios": [{"id": "old"}], "aggregate": {"success": 1, "failed": 0, "unknown": 0, "all_terminal": True}})
+    write_json(new, {"scenarios": [{"id": "fixed"}], "aggregate": {"success": 0, "failed": 1, "unknown": 0, "all_terminal": True}})
+    out = tmp_path / "explicit-report"
+    result = run(artifacts, out, "--sim-summary", str(new))
+    assert result.returncode == 0, result.stderr
+    report = json.loads((out / "report.json").read_text(encoding="utf-8"))
+    assert report["sim"]["success"] == 0
+    assert report["sim"]["source"] == "sim/z-fixed/summary.json"

@@ -1,3 +1,5 @@
+> 2026-11-07 修订：以下旧成功率和 MAE 消融结论已撤回。固定窗口、持久选择 ID 和目标尺寸归一化后的结果与复现命令见 docs/review-fixes.md。
+
 # 自建二维仿真闭环（SIM-01）
 
 `apps/sim_runner` 在二维世界里生成目标/相机运动、带噪声和漏检的 person/head 观测，复用 `mot::Tracker` 做估计与预测，再由一个受限执行器向预测位置移动。仿真器独立给出 `SUCCESS / FAILED / UNKNOWN`，不接触游戏、桌面或外部设备。

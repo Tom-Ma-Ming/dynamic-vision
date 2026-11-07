@@ -229,7 +229,7 @@ int main(int argc, char** argv) try {
           }
           const auto target =
               pacing_start + std::chrono::nanoseconds(source_ts - first_source_ts);
-          std::this_thread::sleep_until(target);
+          if (!queue.waitUntil(target)) break;
         }
 
         replay::FramePacket packet;
@@ -330,6 +330,8 @@ int main(int argc, char** argv) try {
         result_age_ns.push_back(result_age);
 
         if (!writer_open) {
+          if (fs::is_directory(output / "overlay.mp4"))
+            throw std::runtime_error("Cannot open overlay writer");
           writer.open((output / "overlay.mp4").string(),
                       cv::VideoWriter::fourcc('m', 'p', '4', 'v'), fps,
                       frame.size());
@@ -372,7 +374,14 @@ int main(int argc, char** argv) try {
   };
 
   std::thread producer_thread(producer);
-  std::thread consumer_thread(consumer);
+  std::thread consumer_thread;
+  try {
+    consumer_thread = std::thread(consumer);
+  } catch (...) {
+    queue.close();
+    producer_thread.join();
+    throw;
+  }
   producer_thread.join();
   consumer_thread.join();
   queue.close();

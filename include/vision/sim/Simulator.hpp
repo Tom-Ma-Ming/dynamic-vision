@@ -17,6 +17,7 @@ struct ScenarioConfig {
   std::string scene_id = "scene";
   Motion motion = Motion::Constant;
   int frames = 200;
+  int selected_track_id = 1;
   double dt_s = 0.04;
   int width = 640;
   int height = 480;
@@ -73,7 +74,14 @@ struct FrameRecord {
 };
 
 struct Metrics {
+  // Full-window actuator error, including frames without an available track.
   double mae_px = 0;
+  int tracked_frames = 0;
+  int prediction_samples = 0;
+  double track_coverage = 0;
+  double estimate_mae_px = 0;
+  double prediction_mae_px = 0;
+  double prediction_coverage = 0;
   double p95_px = 0;
   double settling_s = -1;
   double overshoot_px = 0;
@@ -108,6 +116,7 @@ class Simulator {
   mot::Config tracker_;
 };
 
+float normalizedError(float dx, float dy, float width, float height);
 const char* name(Motion motion);
 const char* name(TaskResult result);
 const char* name(Cause cause);

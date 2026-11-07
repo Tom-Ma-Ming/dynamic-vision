@@ -100,6 +100,22 @@ int main(int argc,char** argv) try {
     require(confirmed.snapshot().tracks[0].lastSeen==step*2,"low second association timestamp");
     Tracker lowOnly(byteCfg); lowOnly.update(0,0,{low});
     require(lowOnly.snapshot().tracks.empty(),"low must not birth");
+    for(bool enabled : {false,true}) {
+        for(float lastScore : {.9f,.2f}) {
+            auto config=cfg; config.byteTrack=enabled;
+            Tracker overlap(config);
+            overlap.update(0,0,{person(100),person(102)});
+            overlap.update(1,step,{person(100),person(102)});
+            auto merged=person(101); merged.score=lastScore;
+            overlap.update(2,step*2,{merged,merged});
+            require(overlap.snapshot().tracks.size()==2,"overlap preserves two IDs");
+            Selection focus;
+            for(const auto& t:overlap.snapshot().tracks) {
+                require(t.ambiguous,"overlap must report assignment ambiguity in both stages");
+                require(!focus.select(t.id,overlap.snapshot()),"ambiguous selection rejected");
+            }
+        }
+    }
     std::cout<<"Synthetic sequences passed: 1/2/5/10 people, crossing, head-only, occlusion, selection, stale results, bytetrack\n";
     return 0;
 } catch(const std::exception& e) {std::cerr<<e.what()<<"\n"; return 1;}

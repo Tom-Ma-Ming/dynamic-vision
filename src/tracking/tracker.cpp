@@ -126,6 +126,16 @@ static Candidate candidate(const Track& t,const Observation& o,const Config& c) 
     double iou=common/(t.box().area()+o.d.box.area()-common);
     return {r,inv,var,d2,c.iouWeight*(1-iou)+(1-c.iouWeight)*d2/c.gate};
 }
+static bool assignmentAmbiguous(const std::vector<std::vector<double>>& costs,
+                                size_t row, size_t col, size_t observations,
+                                double margin) {
+    double chosen=costs[row][col];
+    for(size_t j=0;j<observations;++j)
+        if(j!=col && costs[row][j]<=chosen+margin) return true;
+    for(size_t i=0;i<costs.size();++i)
+        if(i!=row && costs[i][col]<=chosen+margin) return true;
+    return false;
+}
 bool Tracker::update(Time frame,Time ts,const std::vector<Detection>& detections) {
     if(frame<=current.frame || ts<=current.timestamp) return false;
     if(cfg.byteTrack) {
@@ -183,6 +193,7 @@ bool Tracker::update(Time frame,Time ts,const std::vector<Detection>& detections
                 used_high[j]=true;
                 auto c=candidate(t,high[j],cfg);
                 apply(t,high[j],c);
+                t.ambiguous |= assignmentAmbiguous(costs,i,j,m,cfg.ambiguity);
                 live.push_back(t);
             }
         }
@@ -207,6 +218,7 @@ bool Tracker::update(Time frame,Time ts,const std::vector<Detection>& detections
                 } else {
                     auto c=candidate(t,low[j],cfg);
                     apply(t,low[j],c);
+                    t.ambiguous |= assignmentAmbiguous(costs2,i,j,m2,cfg.ambiguity);
                 }
                 live.push_back(t);
             }
@@ -278,8 +290,7 @@ bool Tracker::update(Time frame,Time ts,const std::vector<Detection>& detections
             }
             t.score=o.d.score; t.cost=c.cost; t.innovation=c.d2;
             t.ambiguous=o.ambiguous;
-            for(size_t l=0;l<m;++l) if(l!=j && costs[i][l]<=c.cost+cfg.ambiguity) t.ambiguous=true;
-            for(size_t l=0;l<n;++l) if(l!=i && costs[l][j]<=c.cost+cfg.ambiguity) t.ambiguous=true;
+            t.ambiguous |= assignmentAmbiguous(costs,i,j,m,cfg.ambiguity);
             t.lastSeen=ts;
             if(++t.hits>=cfg.minHits) t.state=State::Confirmed;
         }
