@@ -1,0 +1,35 @@
+Start testing: Nov 06 23:59 中国标准时间
+----------------------------------------------------------
+1/2 Testing: probe_version
+1/2 Test: probe_version
+Command: "E:/mac-share/tensor/dynamic-vision/out/windows-base/apps/env_probe/Release/env_probe.exe" "--version"
+Directory: E:/mac-share/tensor/dynamic-vision/out/windows-base
+"probe_version" start time: Nov 06 23:59 中国标准时间
+Output:
+----------------------------------------------------------
+env_probe 1
+<end of output>
+Test time =   0.09 sec
+----------------------------------------------------------
+Test Passed.
+"probe_version" end time: Nov 06 23:59 中国标准时间
+"probe_version" time elapsed: 00:00:00
+----------------------------------------------------------
+
+2/2 Testing: probe_environment
+2/2 Test: probe_environment
+Command: "E:/mac-share/tensor/dynamic-vision/out/windows-base/apps/env_probe/Release/env_probe.exe"
+Directory: E:/mac-share/tensor/dynamic-vision/out/windows-base
+"probe_environment" start time: Nov 06 23:59 中国标准时间
+Output:
+----------------------------------------------------------
+TensorRT support disabled. Configure with windows-sdk and TensorRT_ROOT.
+<end of output>
+Test time =   0.01 sec
+----------------------------------------------------------
+Test Passed.
+"probe_environment" end time: Nov 06 23:59 中国标准时间
+"probe_environment" time elapsed: 00:00:00
+----------------------------------------------------------
+
+End testing: Nov 06 23:59 中国标准时间

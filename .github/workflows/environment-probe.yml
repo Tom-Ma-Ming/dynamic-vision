@@ -1,0 +1,10 @@
+name: Windows environment probe
+on: [push, pull_request]
+jobs:
+  probe:
+    runs-on: windows-2022
+    steps:
+      - uses: actions/checkout@v4
+      - run: cmake -S . -B out/ci -A x64 -DVISION_PROBE_ONLY=ON
+      - run: cmake --build out/ci --config Release
+      - run: ctest --test-dir out/ci -C Release --output-on-failure

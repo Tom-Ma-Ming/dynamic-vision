@@ -1,0 +1,54 @@
+#pragma once
+#include <opencv2/core.hpp>
+#include <cstdint>
+#include <optional>
+#include <vector>
+
+namespace mot {
+using Id = std::uint64_t;
+using Time = std::int64_t;
+struct Detection { int cls; float score; cv::Rect2f box; };
+struct Config {
+    int minHits;
+    double maxLostMs, birthScore, sigma, headSigma, accel, initialSpeed, gate, iouWeight, ambiguity;
+    static Config load(const std::string& path);
+};
+enum class State { Tentative, Confirmed, Lost };
+struct Track {
+    Id id;
+    State state = State::Tentative;
+    cv::Vec4d x{};
+    cv::Matx44d covariance{};
+    cv::Size2f size;
+    cv::Point2f headOffset{};
+    bool body = false, ambiguous = false;
+    Time lastSeen;
+    int hits = 1;
+    double score, cost = -1, innovation = -1;
+    cv::Rect2f box() const;
+};
+struct Snapshot {
+    Time frame = -1, timestamp = -1;
+    std::vector<Track> tracks;
+    std::vector<Id> removed;
+};
+class Tracker {
+public:
+    explicit Tracker(Config config) : cfg(config) {}
+    bool update(Time frame, Time timestamp, const std::vector<Detection>& detections);
+    Snapshot predictAt(Time timestamp) const;
+    const Snapshot& snapshot() const { return current; }
+private:
+    Config cfg;
+    Snapshot current;
+    Id nextId=1;
+};
+class Selection {
+public:
+    bool select(Id id,const Snapshot& snapshot);
+    void clear() { selected.reset(); }
+    const char* state(const Snapshot& snapshot) const;
+    std::optional<Id> selected;
+};
+const char* name(State state);
+}

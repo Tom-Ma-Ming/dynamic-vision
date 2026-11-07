@@ -1,0 +1,15 @@
+{
+  "version": 2,
+  "configurePresets": [
+    {"name":"windows-base","generator":"Visual Studio 16 2019","architecture":"x64","binaryDir":"${sourceDir}/out/${presetName}","cacheVariables":{"VISION_PROBE_ONLY":"ON"}},
+    {"name":"windows-sdk","inherits":"windows-base","cacheVariables":{"VISION_WITH_TRT":"ON"}}
+  ],
+  "buildPresets":[
+    {"name":"windows-base","configurePreset":"windows-base","configuration":"Release"},
+    {"name":"windows-sdk","configurePreset":"windows-sdk","configuration":"Release"}
+  ],
+  "testPresets":[
+    {"name":"windows-base","configurePreset":"windows-base","configuration":"Release","output":{"outputOnFailure":true}},
+    {"name":"windows-sdk","configurePreset":"windows-sdk","configuration":"Release","output":{"outputOnFailure":true}}
+  ]
+}
