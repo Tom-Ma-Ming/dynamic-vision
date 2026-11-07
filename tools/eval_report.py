@@ -17,7 +17,7 @@ import sys
 from pathlib import Path
 from typing import Any
 
-SCHEMA_VERSION = 1
+SCHEMA_VERSION = 2
 TOOL_NAME = "tools/eval_report.py"
 
 GATE_NAMES = [
@@ -101,6 +101,7 @@ def discover(artifacts: Path) -> dict[str, Any]:
 
     mot_candidates = sorted((artifacts / "replay").glob("*/synthetic-metrics.json"))
     mot = first_existing(mot_candidates)
+    sim = first_existing(sorted(artifacts.glob("sim/*/summary.json")))
 
     replay_paths: dict[str, Path] = {}
     for path in sorted((artifacts / "replay").glob("**/summary.json")):
@@ -131,6 +132,7 @@ def discover(artifacts: Path) -> dict[str, Any]:
         "engine_verification": engine / "verification.json" if engine else None,
         "image_check": engine / "image-check.json" if engine else None,
         "mot_metrics": mot,
+        "sim_summary": sim,
         "dataset_summary": artifacts / "datasets" / "yolo_v002" / "summary.json",
         "quality": first_existing(quality_candidates),
         "replay_summaries": [replay_paths[key] for key in sorted(replay_paths)],
@@ -269,6 +271,25 @@ def parse_mot(discovered: dict[str, Any], artifacts: Path) -> dict[str, Any] | N
     }
 
 
+def parse_sim(discovered: dict[str, Any], artifacts: Path) -> dict[str, Any] | None:
+    values = load_json(discovered["sim_summary"])
+    if not values:
+        return None
+    aggregate = values.get("aggregate", {})
+    scenarios = values.get("scenarios", [])
+    return {
+        "source": relative(discovered["sim_summary"], artifacts),
+        "scenarios": len(scenarios),
+        "success": aggregate.get("success"),
+        "failed": aggregate.get("failed"),
+        "unknown": aggregate.get("unknown"),
+        "success_rate": aggregate.get("success_rate"),
+        "all_terminal": aggregate.get("all_terminal"),
+        "by_motion": aggregate.get("by_motion", {}),
+        "by_size": aggregate.get("by_size", {}),
+    }
+
+
 def parse_replay(discovered: dict[str, Any], artifacts: Path) -> list[dict[str, Any]]:
     rows = []
     seen = set()
@@ -384,6 +405,7 @@ def build_gates(
     mot: dict[str, Any] | None,
     replay: list[dict[str, Any]],
     evidence: dict[str, Any],
+    sim: dict[str, Any] | None,
 ) -> list[dict[str, str]]:
     def status(condition: bool, missing: bool = False) -> str:
         if missing:
@@ -409,6 +431,13 @@ def build_gates(
         and engine["image_check_max_px"] < 1.0
     )
     t11 = verify.get("status") == "passed" and bool(replay)
+    t12 = bool(
+        sim
+        and sim.get("all_terminal")
+        and (sim.get("success") or 0) > 0
+        and (sim.get("failed") or 0) > 0
+        and (sim.get("unknown") or 0) > 0
+    )
     statuses = {
         "T01": ("partial", "env_probe 无 TRT 时返回 2；未做 DLL 缺失注入"),
         "T02": ("partial", "runner 检查 getInferLibVersion 与头文件版本；未做错版 Engine 注入"),
@@ -421,7 +450,8 @@ def build_gates(
         "T09": ("missing", "没有急停/变向/蹲下真值录像"),
         "T10": ("pass" if t10 else "missing", "engine/verification.json 原始张量与框对照"),
         "T11": ("pass" if t11 else "missing", "verify-replay.txt 双跑哈希"),
-        "T12": ("missing", "自建仿真闭环未实现"),
+        "T12": ("pass" if t12 else ("partial" if sim else "missing"),
+                "sim summary：SUCCESS/FAILED/UNKNOWN 均出现且全部终止"),
     }
     gates = []
     for gate_id, name in GATE_NAMES:
@@ -502,9 +532,10 @@ def build_report(artifacts: Path) -> dict[str, Any]:
     detection = parse_detection(discovered, artifacts)
     engine = parse_engine(discovered, artifacts)
     mot = parse_mot(discovered, artifacts)
+    sim = parse_sim(discovered, artifacts)
     replay = parse_replay(discovered, artifacts)
     evidence = parse_evidence(discovered, artifacts)
-    gates = build_gates(data, detection, engine, mot, replay, evidence)
+    gates = build_gates(data, detection, engine, mot, replay, evidence, sim)
     gaps = build_gaps(data, detection, mot, replay)
 
     required_paths = {
@@ -534,6 +565,7 @@ def build_report(artifacts: Path) -> dict[str, Any]:
         discovered["engine_verification"],
         discovered["image_check"],
         discovered["mot_metrics"],
+        discovered["sim_summary"],
         discovered["dataset_summary"],
         discovered["quality"],
         discovered["environment"],
@@ -559,6 +591,7 @@ def build_report(artifacts: Path) -> dict[str, Any]:
         "mot_hota": mot.get("HOTA") if mot else None,
         "mot_idf1": mot.get("IDF1") if mot else None,
         "mot_idsw": mot.get("IDSW") if mot else None,
+        "sim_success_rate": sim.get("success_rate") if sim else None,
         "replays": len(replay),
         "gaps": len(gaps),
     }
@@ -574,6 +607,7 @@ def build_report(artifacts: Path) -> dict[str, Any]:
         "detection": detection,
         "engine": engine,
         "mot": mot,
+        "sim": sim,
         "replay": replay,
         "evidence": evidence,
         "gates": gates,
@@ -629,6 +663,7 @@ def render_markdown(report: dict[str, Any]) -> str:
             ["MOT HOTA / IDF1 / IDSW", f"{fmt(report['summary']['mot_hota'])} / "
                                       f"{fmt(report['summary']['mot_idf1'])} / "
                                       f"{fmt(report['summary']['mot_idsw'])}"],
+            ["仿真成功率", fmt(report["summary"]["sim_success_rate"])],
             ["回放报告数", report["summary"]["replays"]],
             ["缺口数", report["summary"]["gaps"]],
         ],
@@ -705,6 +740,21 @@ def render_markdown(report: dict[str, Any]) -> str:
         )
     else:
         lines.append("MOT 指标缺失。")
+
+    lines += ["", "## 仿真闭环", ""]
+    if report.get("sim"):
+        sim = report["sim"]
+        lines += md_table(
+            ["项", "值"],
+            [["来源", sim["source"]],
+             ["场景数", sim["scenarios"]],
+             ["SUCCESS / FAILED / UNKNOWN",
+              f"{sim['success']} / {sim['failed']} / {sim['unknown']}"],
+             ["成功率", fmt(sim["success_rate"])],
+             ["全部终止", fmt(sim["all_terminal"])]],
+        )
+    else:
+        lines.append("仿真 summary 缺失。")
 
     lines += ["", "## 回放与延迟", ""]
     if report["replay"]:
@@ -828,6 +878,20 @@ def render_html(report: dict[str, Any]) -> str:
         ]))
     else:
         parts.append("<p class='missing'>MOT 指标缺失。</p>")
+
+    parts += ["<h2>仿真闭环</h2>"]
+    if report.get("sim"):
+        sim = report["sim"]
+        parts.append(table(["项", "值"], [
+            ["来源", sim["source"]],
+            ["场景数", sim["scenarios"]],
+            ["SUCCESS / FAILED / UNKNOWN",
+             f"{sim['success']} / {sim['failed']} / {sim['unknown']}"],
+            ["成功率", sim["success_rate"]],
+            ["全部终止", sim["all_terminal"]],
+        ]))
+    else:
+        parts.append("<p class='missing'>仿真 summary 缺失。</p>")
 
     parts += ["<h2>回放与延迟</h2>"]
     parts.append(table(

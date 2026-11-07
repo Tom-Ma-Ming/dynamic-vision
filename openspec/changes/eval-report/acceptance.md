@@ -13,4 +13,4 @@
 | HTML | 单文件、无外部依赖、特殊字符转义 |
 | pytest | tests/tools/test_eval_report.py 通过；真实 artifacts 的 --strict 返回 0 |
 
-实测（2026-11-07）：真实 artifacts 生成 report.json/md/html；状态 complete-with-gaps，gates 6 pass/3 partial/3 missing，7 项缺口；pytest tests/tools 8/8。缺失 fixture 默认返回 0、--strict 返回 1。证据 artifacts/eval-report/。
+实测（2026-11-07）：真实 artifacts 生成 report.json/md/html；状态 complete-with-gaps，当时 gates 6 pass/3 partial/3 missing（SIM-01 接入后 7/3/2），7 项缺口；pytest tests/tools 8/8（后续新增 benchmark 测试后 10/10）。缺失 fixture 默认返回 0、--strict 返回 1。证据 artifacts/eval-report/。

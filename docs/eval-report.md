@@ -29,9 +29,10 @@
 
 ## 当前基线（2026-11-07）
 
-- 状态：`complete-with-gaps`；gates 6 pass / 3 partial / 3 missing。
+- 状态：`complete-with-gaps`；gates 7 pass / 3 partial / 2 missing。
 - person Box-R 0.7119（目标 0.95）；合成 MOT HOTA 0.9370、IDF1 0.9714、IDSW 0。
-- T03、T06、T07、T08、T10、T11 通过；T01/T02/T05 部分；T04 负样本、T09 急停/蹲下、T12 仿真缺失。
-- 证据目录：`artifacts/eval-report/`（artifacts 被 Git 忽略）。
+- 仿真：11 场景 SUCCESS 9 / FAILED 1 / UNKNOWN 1，成功率 0.818，全部终止。
+- T03、T06、T07、T08、T10、T11、T12 通过；T01/T02/T05 部分；T04 负样本、T09 急停/蹲下仍缺真实数据。
+- 证据目录：`artifacts/eval-report/`（artifacts 被 Git 忽略）；仿真证据见 docs/sim-report.md。
 
 性能前后对比见 docs/performance.md；EVAL-01 当前不把 benchmark 混入检测/MOT 指标，避免把链路延迟当作模型精度。

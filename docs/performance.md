@@ -44,7 +44,7 @@ ctest --preset windows-sdk
 - `trt_infer` 同一 1×3×320×320 输入，原始输出 50400 字节逐字节一致。
 - before/after 各 3 轮 blocking 1000 帧，frames.jsonl 稳定字段都与 `artifacts/replay/mot-v1/first/frames.jsonl` 逐字段一致。
 - `tools/verify_replay.py` 两轮哈希 `25c13759…` 一致；`verify_trt.py` 三张实图 max_abs 与 image-check 不变。
-- `windows-cpu` 20/20、`windows-full` 20/20、`windows-sdk` 3/3、pytest 10/10。
+- `windows-cpu` 21/21、`windows-full` 21/21、`windows-sdk` 3/3、pytest 10/10（SIM-01 接入后 CTest 由 20 变 21）。
 
 ## 证据
 
