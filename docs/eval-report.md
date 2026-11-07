@@ -29,10 +29,10 @@
 
 ## 当前基线（2026-11-07）
 
-- 状态：`complete-with-gaps`；gates 7 pass / 3 partial / 2 missing。
+- 状态：`complete-with-gaps`；最新 review-fixed 报告 gates 6 pass / 4 partial / 2 missing。旧 pre-fix artifacts 的 7/3/2 不再作为当前精度结论。
 - person Box-R 0.7119（目标 0.95）；合成 MOT HOTA 0.9370、IDF1 0.9714、IDSW 0。
-- 仿真：12 场景 SUCCESS 10 / FAILED 1 / UNKNOWN 1，成功率 0.833，全部终止。
-- T03、T06、T07、T08、T10、T11、T12 通过；T01/T02/T05 部分；T04 负样本、T09 急停/蹲下仍缺真实数据。
-- 证据目录：`artifacts/eval-report/`（artifacts 被 Git 忽略）；仿真证据见 docs/sim-report.md。
+- 仿真：review-fixed-v2-base 12 场景 SUCCESS 0 / FAILED 8 / UNKNOWN 4；严格目标尺寸与完整窗口下控制器尚未达标。IMM 每个 seed 为 1/10/1。
+- T03、T06、T07、T08、T10、T11 通过；T01/T02/T05/T12 部分；T04 负样本、T09 真实急停/蹲下仍缺。
+- 证据目录：`artifacts/eval-report-review-fixed/`（旧 `artifacts/eval-report/` 仅为历史）；仿真证据见 docs/sim-report.md、docs/review-fixes.md、docs/imm-experiment.md。
 
 性能前后对比见 docs/performance.md；EVAL-01 当前不把 benchmark 混入检测/MOT 指标，避免把链路延迟当作模型精度。

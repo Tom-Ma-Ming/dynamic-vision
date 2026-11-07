@@ -2,7 +2,7 @@
 
 > 最新复核：旧 SIM-01 的 10/1/1 成功率与旧 ByteTrack 消融结论已撤回，见 docs/review-fixes.md。控制改进已提交 7031bb1；IMM 默认关闭实验已完成，最新 CPU 25/25、SDK 5/5、pytest 11/11，开/关各两轮 1000 帧通过。当前 IMM 三 seed 均为 1/10/1；详情和复现入口以 docs/imm-experiment.md 为准。下方其他数字保留对应历史阶段语境。
 
-> 2026-11-07 接手复核更新：工作树已由检查点提交 `900c440` 入库；总设计已复制到仓库 `docs/FPS_Vision_Tracking_TensorRT_Official_v2.0.md`；新增 `windows-full` / `windows-cpu` 构建入口；TRACK-02 已实现并通过 CPU/GPU/1000 帧验收，EVAL-01 统一评估报告已实现并输出 gates 7/3/2，TRT2-06 pinned memory 已完成同机前后对比，SIM-01 二维闭环已实现并通过 T12，MOT-08 低置信度二次关联已有实验开关和消融。OpenSpec 与证据见 `openspec/changes/`、`docs/review-remediation.md`、`docs/eval-report.md`、`docs/performance.md`、`docs/sim-report.md` 和 `docs/mot-ablation.md`。
+> 2026-11-07 接手复核更新：工作树已由检查点提交 `900c440` 入库；总设计已复制到仓库 `docs/FPS_Vision_Tracking_TensorRT_Official_v2.0.md`；新增 `windows-full` / `windows-cpu` 构建入口；TRACK-02 已实现并通过 CPU/GPU/1000 帧验收，EVAL-01 最新 review-fixed 报告为 6/4/2，TRT2-06 pinned memory 已完成同机前后对比，SIM-01 二维闭环在严格评分下为 0/8/4，MOT-08 ByteTrack 与 IMM 均提供默认关闭的实验开关。OpenSpec 与证据见 `openspec/changes/`、`docs/review-remediation.md`、`docs/eval-report.md`、`docs/performance.md`、`docs/sim-report.md`、`docs/review-fixes.md`、`docs/imm-experiment.md` 和 `docs/mot-ablation.md`。
 
 ## 从这里开始
 
@@ -15,7 +15,7 @@
 
 | 任务 | 当前交付与余项 |
 |---|---|
-| TRT2-00 / 01 | 本机探针、Windows x64 Release 预设、CTest 和 CI 配置已落地。环境见 docs/environment-lock.md。CI 已配置 Windows probe 与 Ubuntu CPU 两个 job；本机验证 CPU 20/20、windows-sdk 3/3，远程 Actions 尚待实际运行。 |
+| TRT2-00 / 01 | 本机探针、Windows x64 Release 预设、CTest 和 CI 配置已落地。环境见 docs/environment-lock.md。CI 已配置 Windows probe 与 Ubuntu CPU 两个 job；本机验证 CPU 25/25、windows-sdk 5/5，远程 Actions 尚待实际运行。 |
 | DATA-01 / 02 | 已完成本批截图导入、人工头身复核、独立录制验证划分与 SHA 去重。通用全帧/ROI 迁移、完整场次元数据、多场景测试集及负样本仍待补。 |
 | MODEL-01 | YOLO11n 320 FP32 基线、最佳权重、ONNX 契约和参考输出已验证。person 召回 95% 属于用户明确延后的优化工作。 |
 | TRT2-02 / 03 | 本机引擎构建、摘要清单、C++ RAII 加载、固定张量契约与单图推理已跑通。更换 GPU/SDK 后需要重建；本机部署基线是 8.6.1.6。 |
@@ -31,8 +31,8 @@
 - artifacts/runs/yolo11n-v002-320/ 包含 baseline.json、person-diagnosis.json、weights/best.pt、weights/best.onnx、weights/onnx-contract.json、weights/onnx-reference.npz。验证集只有一个场次，全部有人。
 - artifacts/engines/yolo11n-v002-fp32/ 有 best-fp32.engine、manifest.json、verification.json、image-check.json。输入 FP32 RGB 1×3×320×320；输出 1×6×2100；外部逐类 NMS。
 - artifacts/replay/mot-v1/ 有 fixture.avi、first/frames.jsonl、first/overlay.mp4、selection-demo/、synthetic-metrics.json。夹具由 200 张采集截图按 25 FPS 循环生成，适用于工程回归。跨帧真值指标来自另一条 36 帧合成序列：HOTA 0.9370、IDF1 0.9714、IDSW 0。
-- 源码入口 apps/trt_infer/replay.cpp、src/tracking/tracker.cpp、configs/tracker.yml、configs/replay.yml。构建与运行命令见 docs/image-replay.md，跟踪测试与复核操作见 docs/mot-replay.md。按前者设置 OpenCV/CUDA/TRT 的 PATH 后执行 cmake --build --preset windows-sdk 和 ctest --preset windows-sdk；启用 OpenCV 的 windows-sdk 最近一次验收为 3/3。完整构建（含 vision_core/GTest）用 windows-full，无 TRT 的 CPU 全量测试用 windows-cpu；两者都需要追加 -DOpenCV_DIR=F:/opencv/opencv/build，CPU CTest 最近一次为 20/20。
-- 统一评估入口 tools/eval_report.py：只读聚合检测/Engine/MOT/回放/仿真/测试证据，输出 report.json/md/html，支持 --strict；当前 gates 7 pass/3 partial/2 missing。使用见 docs/eval-report.md，证据在 artifacts/eval-report/。
+- 源码入口 apps/trt_infer/replay.cpp、src/tracking/tracker.cpp、configs/tracker.yml、configs/replay.yml。构建与运行命令见 docs/image-replay.md，跟踪测试与复核操作见 docs/mot-replay.md。按前者设置 OpenCV/CUDA/TRT 的 PATH 后执行 cmake --build --preset windows-sdk 和 ctest --preset windows-sdk；启用 OpenCV 的 windows-sdk 最近一次验收为 5/5。完整构建（含 vision_core/GTest）用 windows-full，无 TRT 的 CPU 全量测试用 windows-cpu；两者都需要追加 -DOpenCV_DIR=F:/opencv/opencv/build，CPU CTest 最近一次为 25/25。
+- 统一评估入口 tools/eval_report.py：只读聚合检测/Engine/MOT/回放/仿真/测试证据，输出 report.json/md/html，支持 --strict 和 --sim-summary；最新 review-fixed 报告 gates 6 pass/4 partial/2 missing，旧 artifacts/eval-report 的 7/3/2 不再作为当前结论。使用见 docs/eval-report.md。
 - GPU 性能入口 tools/benchmark_replay.py：同机重复回放并汇总 P50/P95/P99；TRT2-06 前后对比见 docs/performance.md，before/after 二进制与 benchmark.json 在 artifacts/bench/。
 - 仿真入口 out/windows-cpu/apps/sim_runner/Release/sim_runner.exe + configs/sim.yml：12 个二维场景，输出 runs.jsonl/summary.json/report.md；见 docs/sim-report.md，证据在 artifacts/sim/sim-01/。
 - MOT-08 实验配置 configs/tracker-bytetrack.yml：低置信度二次关联，默认关闭；消融见 docs/mot-ablation.md，证据 artifacts/sim/sim-02-base/、sim-02-byte/。
