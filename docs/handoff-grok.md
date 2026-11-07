@@ -1,6 +1,6 @@
 # Grok 工程交接 · 2026-11-07
 
-> 2026-11-07 接手复核更新：工作树已由检查点提交 `900c440` 入库；总设计已复制到仓库 `docs/FPS_Vision_Tracking_TensorRT_Official_v2.0.md`；新增 `windows-full` / `windows-cpu` 构建入口；TRACK-02 已实现并通过 CPU/GPU/1000 帧验收，EVAL-01 统一评估报告已实现并输出 gates 6/3/3。OpenSpec 与证据见 `openspec/changes/`、`docs/review-remediation.md` 和 `docs/eval-report.md`。
+> 2026-11-07 接手复核更新：工作树已由检查点提交 `900c440` 入库；总设计已复制到仓库 `docs/FPS_Vision_Tracking_TensorRT_Official_v2.0.md`；新增 `windows-full` / `windows-cpu` 构建入口；TRACK-02 已实现并通过 CPU/GPU/1000 帧验收，EVAL-01 统一评估报告已实现并输出 gates 6/3/3，TRT2-06 pinned memory 已完成同机前后对比。OpenSpec 与证据见 `openspec/changes/`、`docs/review-remediation.md`、`docs/eval-report.md` 和 `docs/performance.md`。
 
 ## 从这里开始
 
@@ -21,7 +21,7 @@
 | TRACK-01 / 03；MOT-01～07 | 已有原图坐标、时间戳、CV Kalman、匈牙利关联、头身合并、生命周期、独立选择、UI、JSONL、合成指标。证据覆盖交叉、遮挡、失效、乱序和重复回放。真实身份标注录像、急停/蹲下/镜头快速旋转的分层验收仍待补。 |
 | **TRACK-02** | **已实现。replay 改为有界队列的生产者/消费者流水线；blocking 默认不丢帧，realtime（latest + 媒体节奏）丢旧待处理帧。CPU CTest 20/20，windows-sdk 3/3；blocking 1000 帧与既有轨迹逐字段一致；realtime 25 FPS 1000 采集/1000 处理/0 替换，500 FPS 过载 1000 采集/250 处理/750 替换。证据 artifacts/track02/verification.md。** |
 | TRACK-04 / MOT-08 | IMM、镜头补偿、低置信度二次关联或 ReID 为后续实验，需基线与消融。 |
-| TRT2-06 / EVAL-01 / SIM-01 | EVAL-01 已实现：tools/eval_report.py 聚合 JSON/Markdown/HTML，支持 --strict；当前 gates 6 pass/3 partial/3 missing。TRT2-06 GPU 优化与 SIM-01 自建仿真仍待实施。 |
+| TRT2-06 / EVAL-01 / SIM-01 | TRT2-06 已实现 pinned host buffer（result_age P50 -10.1%、infer P50 -11.1%），单帧同步未启用多 stream；EVAL-01 已实现 gates 6/3/3；SIM-01 自建仿真仍待。见 docs/performance.md。 |
 
 ## 关键输入与验收证据（相对于应用根目录）
 
@@ -31,6 +31,7 @@
 - artifacts/replay/mot-v1/ 有 fixture.avi、first/frames.jsonl、first/overlay.mp4、selection-demo/、synthetic-metrics.json。夹具由 200 张采集截图按 25 FPS 循环生成，适用于工程回归。跨帧真值指标来自另一条 36 帧合成序列：HOTA 0.9370、IDF1 0.9714、IDSW 0。
 - 源码入口 apps/trt_infer/replay.cpp、src/tracking/tracker.cpp、configs/tracker.yml、configs/replay.yml。构建与运行命令见 docs/image-replay.md，跟踪测试与复核操作见 docs/mot-replay.md。按前者设置 OpenCV/CUDA/TRT 的 PATH 后执行 cmake --build --preset windows-sdk 和 ctest --preset windows-sdk；启用 OpenCV 的 windows-sdk 最近一次验收为 3/3。完整构建（含 vision_core/GTest）用 windows-full，无 TRT 的 CPU 全量测试用 windows-cpu；两者都需要追加 -DOpenCV_DIR=F:/opencv/opencv/build，CPU CTest 最近一次为 20/20。
 - 统一评估入口 tools/eval_report.py：只读聚合检测/Engine/MOT/回放/测试证据，输出 report.json/md/html，支持 --strict；当前 gates 6 pass/3 partial/3 missing。使用见 docs/eval-report.md，证据在 artifacts/eval-report/。
+- GPU 性能入口 tools/benchmark_replay.py：同机重复回放并汇总 P50/P95/P99；TRT2-06 前后对比见 docs/performance.md，before/after 二进制与 benchmark.json 在 artifacts/bench/。
 
 ## TRACK-02 交付要求（2026-11-07 已完成）
 

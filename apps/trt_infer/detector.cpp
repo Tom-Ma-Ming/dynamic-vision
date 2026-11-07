@@ -27,6 +27,16 @@ struct Buffer {
     Buffer& operator=(const Buffer&) = delete;
 };
 
+struct HostBuffer {
+    float* ptr{};
+    explicit HostBuffer(size_t bytes) {
+        check(cudaHostAlloc(reinterpret_cast<void**>(&ptr), bytes, cudaHostAllocDefault));
+    }
+    ~HostBuffer() { cudaFreeHost(ptr); }
+    HostBuffer(const HostBuffer&) = delete;
+    HostBuffer& operator=(const HostBuffer&) = delete;
+};
+
 struct Stream {
     cudaStream_t handle{};
     Stream() { check(cudaStreamCreate(&handle)); }
@@ -46,13 +56,19 @@ void requireTensor(const ICudaEngine& engine, const char* name, TensorIOMode mod
 }
 
 #include "detector.hpp"
+constexpr size_t kInputBytes = Detector::kInputFloats * sizeof(float);
+constexpr size_t kOutputBytes = Detector::kOutputFloats * sizeof(float);
+
 struct Detector::State {
     Logger logger;
     std::unique_ptr<IRuntime> runtime;
     std::unique_ptr<ICudaEngine> engine;
     std::unique_ptr<IExecutionContext> ctx;
-    Buffer in{3*320*320*sizeof(float)}, out{6*2100*sizeof(float)};
+    Buffer in{kInputBytes};
+    Buffer out{kOutputBytes};
     Stream stream;
+    HostBuffer hostIn{kInputBytes};
+    HostBuffer hostOut{kOutputBytes};
     explicit State(const char* enginePath) {
         if (getInferLibVersion() != NV_TENSORRT_VERSION) throw std::runtime_error("TensorRT DLL mismatch");
         auto plan = readFile(enginePath);
@@ -71,12 +87,16 @@ struct Detector::State {
 };
 Detector::Detector(const char* path) : state(std::make_unique<State>(path)) {}
 Detector::~Detector() = default;
-std::vector<float> Detector::infer(const void* input) {
+float* Detector::input() {
+    return state->hostIn.ptr;
+}
+const float* Detector::infer() {
     auto& s = *state;
-    std::vector<float> output(6*2100);
-    check(cudaMemcpyAsync(s.in.ptr, input, 3*320*320*sizeof(float), cudaMemcpyHostToDevice, s.stream.handle));
+    check(cudaMemcpyAsync(s.in.ptr, s.hostIn.ptr, kInputBytes,
+                          cudaMemcpyHostToDevice, s.stream.handle));
     if (!s.ctx->enqueueV3(s.stream.handle)) throw std::runtime_error("enqueueV3 failed");
-    check(cudaMemcpyAsync(output.data(), s.out.ptr, output.size()*sizeof(float), cudaMemcpyDeviceToHost, s.stream.handle));
+    check(cudaMemcpyAsync(s.hostOut.ptr, s.out.ptr, kOutputBytes,
+                          cudaMemcpyDeviceToHost, s.stream.handle));
     check(cudaStreamSynchronize(s.stream.handle));
-    return output;
+    return s.hostOut.ptr;
 }

@@ -33,3 +33,5 @@
 - person Box-R 0.7119（目标 0.95）；合成 MOT HOTA 0.9370、IDF1 0.9714、IDSW 0。
 - T03、T06、T07、T08、T10、T11 通过；T01/T02/T05 部分；T04 负样本、T09 急停/蹲下、T12 仿真缺失。
 - 证据目录：`artifacts/eval-report/`（artifacts 被 Git 忽略）。
+
+性能前后对比见 docs/performance.md；EVAL-01 当前不把 benchmark 混入检测/MOT 指标，避免把链路延迟当作模型精度。

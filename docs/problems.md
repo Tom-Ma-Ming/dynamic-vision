@@ -8,3 +8,4 @@ person 召回目标 95% 尚未达到。固定 NMS 0.45、置信度 0.25、IoU 0.
 2026-11-07：指标口径并存：baseline.json 的 person R=0.712 为 Ultralytics val 口径，person-diagnosis.json 在 conf 0.25/IoU 0.5 下为 0.746（44 TP / 15 FN / 21 FP）；引用时需注明口径。远程 GitHub Actions 尚未实际运行。
 2026-11-07：realtime 25 FPS 正常负载当前 0 丢帧；500 FPS 过载夹具出现 750 次替换（推理约 4-7 ms，帧间隔 2 ms），说明 latest 队列能防止积压，但更高帧率、真实相机和长时资源趋势仍未验证；blocking 模式 queue_wait 包含等待当前推理的时间，不能当作端到端采集延迟。
 2026-11-07：EVAL-01 报告显示 gates 6 pass/3 partial/3 missing；T04 负样本、T09 急停/蹲下、T12 仿真仍缺证据；person Box-R 0.7119 未达 0.95；MOT 只有 36 帧合成序列，实景身份真值和场景分层仍缺。
+2026-11-07：TRT2-06 收益主要在 result_age/infer P50（约 10%/11%）；P99 仍受偶发调度尖峰影响；单帧同步未利用多 stream，长时、更高帧率和真实相机仍未验证。

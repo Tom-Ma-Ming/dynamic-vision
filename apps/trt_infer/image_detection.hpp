@@ -4,6 +4,7 @@
 #include <algorithm>
 #include <cmath>
 #include <sstream>
+#include <vector>
 
 struct Transform {
     int width, height, left, top;
@@ -32,12 +33,12 @@ inline std::vector<Detection> detect(Detector& detector, const cv::Mat& frame,
     cv::cvtColor(pixels,pixels,cv::COLOR_BGR2RGB);
     cv::Mat floats;
     pixels.convertTo(floats,CV_32F,1./255.);
-    std::vector<float> input(3*320*320);
+    float* input=detector.input();
     cv::Mat planes[3];
     for (int c=0;c<3;++c)
-        planes[c]=cv::Mat(320,320,CV_32F,input.data()+c*320*320);
+        planes[c]=cv::Mat(320,320,CV_32F,input+c*320*320);
     cv::split(floats,planes);
-    auto raw=detector.infer(input.data());
+    const float* raw=detector.infer();
     constexpr int n=2100;
     std::vector<Detection> candidates, kept;
     for(int i=0;i<n;++i) {

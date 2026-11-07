@@ -8,3 +8,4 @@ TensorRT 8.6.1.6 本机引擎关闭 TF32，工作区 512 MiB。固定输入输�
 2026-11-07：windows-sdk 保留 probe+TRT 应用构建；windows-full 构建 vision_core/GTest；windows-cpu 构建无 TRT 的 CPU 全量测试。MSVC 统一 /utf-8；PicoSHA2 使用上游 target，不重复包装。总设计副本入库 docs/FPS_Vision_Tracking_TensorRT_Official_v2.0.md。
 2026-11-07：TRACK-02 采用 blocking 默认、latest 显式 realtime；FramePacket 同时携带媒体 PTS 与 steady_clock 采集/入队时刻；观测年龄定义为 publish-capture，不含叠加写入；queue_capacity 仅允许 1/2，realtime_pace 必须配 latest；队列测试进入 vision_core/GTest，CPU 预设可独立运行。
 2026-11-07：EVAL-01 报告只读聚合 artifacts，不重跑训练/构建/CTest；缺失分层标 missing/unknown；--strict 只要求必需证据存在，不设精度门槛；实景 MOT、场景分层、负样本不足明确列为缺口，不用合成指标替代实景准确率。
+2026-11-07：TRT2-06 使用 pinned host 输入/输出 + 单条 CUDA stream；单帧同步路径不启用多 stream；输出指针有效期到下一次 infer；benchmark 取 3 轮中位数，mot_ms 的 0.01ms 量级差异视为噪声。
