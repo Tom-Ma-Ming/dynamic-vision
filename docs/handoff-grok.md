@@ -1,6 +1,6 @@
 # Grok 工程交接 · 2026-11-07
 
-> 2026-11-07 接手复核更新：工作树已由检查点提交 `900c440` 入库；总设计已复制到仓库 `docs/FPS_Vision_Tracking_TensorRT_Official_v2.0.md`；新增 `windows-full` / `windows-cpu` 构建入口；TRACK-02 的 OpenSpec 已写在 `openspec/changes/track02-bounded-queue/`，实现尚未开始。复核与整改证据见 `docs/review-remediation.md`。
+> 2026-11-07 接手复核更新：工作树已由检查点提交 `900c440` 入库；总设计已复制到仓库 `docs/FPS_Vision_Tracking_TensorRT_Official_v2.0.md`；新增 `windows-full` / `windows-cpu` 构建入口；TRACK-02 已实现并通过 CPU/GPU/1000 帧验收，OpenSpec 与证据见 `openspec/changes/track02-bounded-queue/` 和 `docs/review-remediation.md`。
 
 ## 从这里开始
 
@@ -13,13 +13,13 @@
 
 | 任务 | 当前交付与余项 |
 |---|---|
-| TRT2-00 / 01 | 本机探针、Windows x64 Release 预设、CTest 和 CI 配置已落地。环境见 docs/environment-lock.md。CI 已配置 Windows probe 与 Ubuntu CPU 两个 job；本机等价验证 CPU 4/4、windows-sdk 3/3，远程 Actions 尚待实际运行。 |
+| TRT2-00 / 01 | 本机探针、Windows x64 Release 预设、CTest 和 CI 配置已落地。环境见 docs/environment-lock.md。CI 已配置 Windows probe 与 Ubuntu CPU 两个 job；本机验证 CPU 20/20、windows-sdk 3/3，远程 Actions 尚待实际运行。 |
 | DATA-01 / 02 | 已完成本批截图导入、人工头身复核、独立录制验证划分与 SHA 去重。通用全帧/ROI 迁移、完整场次元数据、多场景测试集及负样本仍待补。 |
 | MODEL-01 | YOLO11n 320 FP32 基线、最佳权重、ONNX 契约和参考输出已验证。person 召回 95% 属于用户明确延后的优化工作。 |
 | TRT2-02 / 03 | 本机引擎构建、摘要清单、C++ RAII 加载、固定张量契约与单图推理已跑通。更换 GPU/SDK 后需要重建；本机部署基线是 8.6.1.6。 |
 | TRT2-04 / 05 | 图片 letterbox、解码、逐类 NMS、坐标还原以及顺序视频回放已完成实图对照和合成录像回归。真实录像与长时资源趋势待测。 |
 | TRACK-01 / 03；MOT-01～07 | 已有原图坐标、时间戳、CV Kalman、匈牙利关联、头身合并、生命周期、独立选择、UI、JSONL、合成指标。证据覆盖交叉、遮挡、失效、乱序和重复回放。真实身份标注录像、急停/蹲下/镜头快速旋转的分层验收仍待补。 |
-| **TRACK-02** | **OpenSpec 已写，待实现。现有 replay.cpp 同步解码→检测→跟踪；跟踪器已有过期结果拒绝逻辑，采集/推理解耦、有界队列、丢帧计数与观测年龄分位数尚待实现。** |
+| **TRACK-02** | **已实现。replay 改为有界队列的生产者/消费者流水线；blocking 默认不丢帧，realtime（latest + 媒体节奏）丢旧待处理帧。CPU CTest 20/20，windows-sdk 3/3；blocking 1000 帧与既有轨迹逐字段一致；realtime 25 FPS 1000 采集/1000 处理/0 替换，500 FPS 过载 1000 采集/250 处理/750 替换。证据 artifacts/track02/verification.md。** |
 | TRACK-04 / MOT-08 | IMM、镜头补偿、低置信度二次关联或 ReID 为后续实验，需基线与消融。 |
 | TRT2-06 / EVAL-01 / SIM-01 | GPU 性能优化、统一分层评估报告与自建仿真闭环仍待实施。已有局部脚本与报告可复用。 |
 
@@ -29,9 +29,11 @@
 - artifacts/runs/yolo11n-v002-320/ 包含 baseline.json、person-diagnosis.json、weights/best.pt、weights/best.onnx、weights/onnx-contract.json、weights/onnx-reference.npz。验证集只有一个场次，全部有人。
 - artifacts/engines/yolo11n-v002-fp32/ 有 best-fp32.engine、manifest.json、verification.json、image-check.json。输入 FP32 RGB 1×3×320×320；输出 1×6×2100；外部逐类 NMS。
 - artifacts/replay/mot-v1/ 有 fixture.avi、first/frames.jsonl、first/overlay.mp4、selection-demo/、synthetic-metrics.json。夹具由 200 张采集截图按 25 FPS 循环生成，适用于工程回归。跨帧真值指标来自另一条 36 帧合成序列：HOTA 0.9370、IDF1 0.9714、IDSW 0。
-- 源码入口 apps/trt_infer/replay.cpp、src/tracking/tracker.cpp、configs/tracker.yml。构建与运行命令见 docs/image-replay.md，跟踪测试与复核操作见 docs/mot-replay.md。按前者设置 OpenCV/CUDA/TRT 的 PATH 后执行 cmake --build --preset windows-sdk 和 ctest --preset windows-sdk；启用 OpenCV 的 windows-sdk 最近一次验收为 3/3。完整构建（含 vision_core/GTest）用 windows-full，无 TRT 的 CPU 全量测试用 windows-cpu；两者都需要追加 -DOpenCV_DIR=F:/opencv/opencv/build。
+- 源码入口 apps/trt_infer/replay.cpp、src/tracking/tracker.cpp、configs/tracker.yml、configs/replay.yml。构建与运行命令见 docs/image-replay.md，跟踪测试与复核操作见 docs/mot-replay.md。按前者设置 OpenCV/CUDA/TRT 的 PATH 后执行 cmake --build --preset windows-sdk 和 ctest --preset windows-sdk；启用 OpenCV 的 windows-sdk 最近一次验收为 3/3。完整构建（含 vision_core/GTest）用 windows-full，无 TRT 的 CPU 全量测试用 windows-cpu；两者都需要追加 -DOpenCV_DIR=F:/opencv/opencv/build，CPU CTest 最近一次为 20/20。
 
-## 下一次迭代的交付要求（TRACK-02）
+## TRACK-02 交付要求（2026-11-07 已完成）
+
+> 完成情况：Q01-Q06 全部完成；CPU CTest 20/20、windows-sdk 3/3、pytest 5/5；blocking 1000 帧稳定字段与既有证据一致；realtime 25 FPS 1000/1000/0，500 FPS 过载 1000/250/750。证据见 artifacts/track02/verification.md。
 
 1. 先写 OpenSpec。保留顺序、逐帧、可复现的离线评估模式，新增可选实时节奏回放模式。
 2. 用有界队列交付帧 ID、图像所有权、媒体时间和采集单调时钟时间。队列满时仅替换尚未消费的旧帧。按顺序关闭生产与消费，覆盖输入结束和推理异常。

@@ -1,0 +1,5 @@
+%YAML:1.0
+# Realtime-paced replay: keep the newest pending frame when the consumer falls behind.
+queue_capacity: 1
+queue_mode: "latest"
+realtime_pace: 1

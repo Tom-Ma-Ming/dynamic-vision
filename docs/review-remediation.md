@@ -17,9 +17,9 @@
 
 ## 实测证据
 
-- windows-cpu 等价配置（out/windows-cpu-review，OpenCV 4.13，无 TRT）：CTest 4/4，0.53s；包含 Smoke.ThirdPartyLinks、mot_synthetic、probe_version、probe_environment。
-- windows-sdk（TRT 8.6.1.6 + OpenCV）：CTest 3/3，1.58s。
-- 1000 帧回放：重建后的 vision_replay 重放 artifacts/replay/mot-v1/fixture.avi，1000 帧；去掉 detect_ms 后 frames.jsonl 与 first/、second/ 既有证据逐字段一致。
+- windows-cpu（OpenCV 4.13，无 TRT）：CTest 20/20，0.33s；windows-full（TRT+OpenCV+vision_core/GTest）：20/20。
+- windows-sdk（TRT 8.6.1.6 + OpenCV）：CTest 3/3，0.16s。
+- 1000 帧回放：重建后的 vision_replay 重放 artifacts/replay/mot-v1/fixture.avi，1000 帧；稳定字段与 first/、second/ 既有证据逐字段一致。
 - Engine 推理：vision_detect 载入 best-fp32.engine，val 首图输出 2 个 person 框。
 - Python：`python -m pytest tests/tools -q` 5 passed。
 - 数据：train 402 图/402 标签（head 418、person 415），val 42 图（各 59）。
@@ -32,5 +32,5 @@
 ## 仍待
 
 - 远程 GitHub Actions 尚未实际运行。
-- TRACK-02 实现未开始；OpenSpec 已写，按 proposal/design/tasks/acceptance 推进。
+- TRACK-02 已实现并验证（CPU 20/20、windows-sdk 3/3、blocking 1000 帧一致；realtime 25 FPS 1000/1000/0，500 FPS 过载 1000/250/750）；证据见 artifacts/track02/verification.md。
 - 真实录像、长时资源趋势、真实身份标注和 person 召回 95% 仍按原交接后置。

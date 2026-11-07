@@ -6,3 +6,4 @@ TensorRT 8.6.1.6 本机引擎关闭 TF32，工作区 512 MiB。固定输入输�
 保留原始 FP32 张量入口，复用同一个 C++ Detector，图片和录像在 OpenCV 可选构建中启用。录像使用媒体 PTS，与单调计时器测得的处理耗时分列。
 采用采集时间轴上的 CV Kalman 与 Joseph 协方差更新。稳定全局一对一分配，按确认/暂失/移除控制生命周期；选择只读快照。
 2026-11-07：windows-sdk 保留 probe+TRT 应用构建；windows-full 构建 vision_core/GTest；windows-cpu 构建无 TRT 的 CPU 全量测试。MSVC 统一 /utf-8；PicoSHA2 使用上游 target，不重复包装。总设计副本入库 docs/FPS_Vision_Tracking_TensorRT_Official_v2.0.md。
+2026-11-07：TRACK-02 采用 blocking 默认、latest 显式 realtime；FramePacket 同时携带媒体 PTS 与 steady_clock 采集/入队时刻；观测年龄定义为 publish-capture，不含叠加写入；queue_capacity 仅允许 1/2，realtime_pace 必须配 latest；队列测试进入 vision_core/GTest，CPU 预设可独立运行。

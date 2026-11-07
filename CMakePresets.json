@@ -21,7 +21,8 @@
       "name": "windows-full",
       "inherits": "windows-sdk",
       "cacheVariables": {
-        "VISION_PROBE_ONLY": "OFF"
+        "VISION_PROBE_ONLY": "OFF",
+        "VISION_WITH_OPENCV": "ON"
       }
     },
     {

@@ -58,7 +58,13 @@ int main(int argc,char** argv) try {
         }
         auto prior=tracker.snapshot();
         require(!tracker.update(34,step*36,{}),"stale frame");
+        const auto afterStaleFrame=tracker.snapshot();
+        require(afterStaleFrame.frame==prior.frame && afterStaleFrame.timestamp==prior.timestamp &&
+                afterStaleFrame.tracks.size()==prior.tracks.size(),"stale frame mutated state");
         require(!tracker.update(36,step*34,{}),"stale time");
+        const auto afterStaleTime=tracker.snapshot();
+        require(afterStaleTime.frame==prior.frame && afterStaleTime.timestamp==prior.timestamp &&
+                afterStaleTime.tracks.size()==prior.tracks.size(),"stale time mutated state");
         auto p=tracker.predictAt(step*37);
         require(p.tracks[0].covariance(0,0)>prior.tracks[0].covariance(0,0),"uncertainty");
         require(tracker.snapshot().timestamp==prior.timestamp,"predict mutated state");

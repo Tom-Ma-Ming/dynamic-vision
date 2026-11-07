@@ -1,0 +1,5 @@
+%YAML:1.0
+# Offline evaluation default: strict order, no dropped frames.
+queue_capacity: 1
+queue_mode: "blocking"
+realtime_pace: 0

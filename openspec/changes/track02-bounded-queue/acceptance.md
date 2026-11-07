@@ -12,4 +12,10 @@
 | 同步固定 1000 帧两轮 | 稳定字段逐帧一致，视频可完整解码 |
 | 实时节奏录像+慢消费者 | 丢帧>0；队列等待/观测年龄 P50/P95/P99 有效、非负 |
 
-预计入口：cmake --preset windows-cpu -DOpenCV_DIR=F:/opencv/opencv/build，然后 cmake --build --preset windows-cpu 与 ctest --preset windows-cpu --output-on-failure；Python 工具测试为 python -m pytest tests/tools -q。队列实现完成时把实际结果与证据路径补入本表；当前待实施。
+预计入口：cmake --preset windows-cpu -DOpenCV_DIR=F:/opencv/opencv/build，然后 cmake --build --preset windows-cpu 与 ctest --preset windows-cpu --output-on-failure；Python 工具测试为 python -m pytest tests/tools -q。
+
+实测（2026-11-07）：
+- CPU CTest 20/20（11 个队列、5 个统计、mot_synthetic、Smoke、2 个 probe）；windows-sdk 3/3；pytest 5/5。
+- blocking 1000 帧：1000/1000，replaced=0；稳定字段与 artifacts/replay/mot-v1/first 逐字段一致；verify_replay 双跑哈希一致。
+- realtime 25 FPS：1000/1000/0（无丢帧）；500 FPS 过载：captured=1000，processed=250，replaced=750，rejected=0，overlay 250 帧；frame_id/capture/publish 单调，queue_wait 与 result_age 非负，守恒 1000=250+750。
+- 详细日志与 summary：artifacts/track02/verification.md。

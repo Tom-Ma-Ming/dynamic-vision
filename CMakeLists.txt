@@ -8,6 +8,7 @@ set(CMAKE_CXX_EXTENSIONS OFF)
 option(VISION_WITH_OPENCV "启用 OpenCV（视频读取与叠加）" OFF)
 option(VISION_WITH_TRT "启用 TensorRT 后端（仅 Windows）" OFF)
 option(VISION_BUILD_TESTS "构建单元测试" ON)
+find_package(Threads REQUIRED)
 
 if(VISION_WITH_TRT AND NOT WIN32)
   message(FATAL_ERROR "VISION_WITH_TRT 只允许在 Windows 上开启")
@@ -56,7 +57,7 @@ set(VISION_CORE_SOURCES src/core/Placeholder.cpp)
 add_library(vision_core STATIC ${VISION_CORE_SOURCES})
 target_include_directories(vision_core PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/include)
 target_link_libraries(vision_core PUBLIC
-  yaml-cpp::yaml-cpp nlohmann_json::nlohmann_json picosha2)
+  yaml-cpp::yaml-cpp nlohmann_json::nlohmann_json picosha2 Threads::Threads)
 if(VISION_WITH_OPENCV)
   target_link_libraries(vision_core PUBLIC ${VISION_OPENCV_TARGETS})
   target_compile_definitions(vision_core PUBLIC VISION_WITH_OPENCV=1)
@@ -66,7 +67,10 @@ if(VISION_BUILD_TESTS)
   enable_testing()
   include(GoogleTest)
   # 后续任务在 VISION_TEST_SOURCES 中追加测试文件。
-  set(VISION_TEST_SOURCES tests/unit/test_smoke.cpp)
+  set(VISION_TEST_SOURCES
+    tests/unit/test_smoke.cpp
+    tests/unit/test_queue.cpp
+    tests/unit/test_stats.cpp)
   add_executable(vision_tests ${VISION_TEST_SOURCES})
   target_link_libraries(vision_tests PRIVATE vision_core GTest::gtest_main)
   gtest_discover_tests(vision_tests)

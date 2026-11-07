@@ -13,10 +13,13 @@ if(VISION_WITH_OPENCV)
 endif()
 if(VISION_WITH_OPENCV)
   add_executable(vision_replay replay.cpp)
-  target_link_libraries(vision_replay PRIVATE vision_mot)
-  add_custom_command(TARGET vision_replay POST_BUILD COMMAND ${CMAKE_COMMAND} -E copy_if_different
-    ${PROJECT_SOURCE_DIR}/configs/tracker.yml $<TARGET_FILE_DIR:vision_replay>/tracker.yml)
-  target_link_libraries(vision_replay PRIVATE trt_detector ${OpenCV_LIBS})
+  target_include_directories(vision_replay PRIVATE ${PROJECT_SOURCE_DIR}/include)
+  target_link_libraries(vision_replay PRIVATE
+    vision_mot trt_detector ${OpenCV_LIBS} Threads::Threads)
+  foreach(config_file tracker.yml replay.yml replay-realtime.yml)
+    add_custom_command(TARGET vision_replay POST_BUILD COMMAND ${CMAKE_COMMAND} -E copy_if_different
+      ${PROJECT_SOURCE_DIR}/configs/${config_file} $<TARGET_FILE_DIR:vision_replay>/${config_file})
+  endforeach()
   target_compile_options(vision_replay PRIVATE /utf-8)
   target_compile_options(vision_detect PRIVATE /utf-8)
 endif()

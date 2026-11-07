@@ -1,6 +1,6 @@
 # 多目标离线回放
 
-构建沿用 image-replay.md 中的 windows-sdk 与 OpenCV 选项。vision_replay 默认读取可执行文件旁的 tracker.yml，也可以在输出目录参数后传入配置文件路径。配置中的观测噪声、运动噪声、门控、最小确认次数和失效时间属于工程初值。
+构建沿用 image-replay.md 中的 windows-sdk 与 OpenCV 选项。vision_replay 默认读取可执行文件旁的 tracker.yml 和 replay.yml；tracker 配置可作为第 4 个位置参数，回放队列配置用 --config 指定，详见 image-replay.md。配置中的观测噪声、运动噪声、门控、最小确认次数和失效时间属于工程初值。
 
 在项目根目录打开交互复核工具：
 
