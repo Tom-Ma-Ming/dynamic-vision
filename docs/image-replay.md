@@ -29,3 +29,5 @@ frames.jsonl 包含从 0 开始的帧号、媒体时间戳（纳秒）、时间�
 summary.json 包含 frames、captured、processed、replaced、rejected、pending、stale、failed、capacity、mode、paced、peak，以及 queue_wait_ms、infer_ms、mot_ms、result_age_ms 四组 P50/P95/P99/max/n；旧字段 detect_p50_ms、detect_p95_ms、mot_p50_ms、mot_p95_ms 保留。blocking 模式下 captured = processed，realtime 模式下 captured = processed + replaced（正常结束）。计时从 capture.read 返回后开始，排除视频解码与叠加写入。
 
 回归入口为 tools/verify_image.py、tools/verify_trt.py 和 tools/verify_replay.py，均支持 --help。回放测试将 200 张采集图片按文件名排序，以 25 FPS 循环拼成 1000 帧夹具；它用于验证顺序与可重复性，不能用来估计真实人物运动速度。
+
+2026-11-08：可用 tracker 第 4 个位置参数 configs/tracker-camera.yml 显式启用背景平移补偿；默认关闭。新增 camera_motion 质量/位移记录及 camera_ms，mot_ms 不含它，result_age 包含它。模型仅补偿已观测的背景平移，不处理未来镜头运动或完整旋转/缩放。OpenCV 构建增加 video 模块，实验与限制见 docs/camera-motion-experiment.md。

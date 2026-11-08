@@ -18,6 +18,28 @@ Config Config::load(const std::string& path) {
     c.byteTrack = !f["byte_track"].empty() && static_cast<int>(f["byte_track"]) != 0;
     c.highScore = f["high_score"].empty() ? c.birthScore : get("high_score");
     c.lowScore = f["low_score"].empty() ? 0.1 : get("low_score");
+    c.cameraMotion.enabled=!f["camera_motion_enabled"].empty() && int(f["camera_motion_enabled"])!=0;
+    if(c.cameraMotion.enabled) {
+        auto integer=[&](const char* key) {
+            double value=get(key);
+            if(!std::isfinite(value) || value<1 || value>5000 || std::floor(value)!=value)
+                throw std::runtime_error("Invalid camera integer parameter");
+            return int(value);
+        };
+        c.cameraMotion.maxCorners=integer("camera_max_corners");
+        c.cameraMotion.minInliers=integer("camera_min_inliers");
+        c.cameraMotion.minGridCells=integer("camera_min_grid_cells");
+        c.cameraMotion.maxFbError=get("camera_max_fb_error");
+        c.cameraMotion.residualThreshold=get("camera_residual_threshold");
+        c.cameraMotion.minInlierRatio=get("camera_min_inlier_ratio");
+        c.cameraMotion.minCoverage=get("camera_min_coverage");
+        c.cameraMotion.maxShiftFraction=get("camera_max_shift_fraction");
+        c.cameraMotion.maxGapMs=get("camera_max_gap_ms");
+        c.cameraMotion.foregroundMargin=get("camera_foreground_margin");
+        c.cameraMotion.borderFraction=get("camera_border_fraction");
+        c.cameraMotion.centerRadius=get("camera_center_radius");
+        c.cameraMotion.validate();
+    }
     c.imm.enabled = !f["imm_enabled"].empty() && static_cast<int>(f["imm_enabled"]) != 0;
     if(c.imm.enabled) {
         c.imm.stationaryAcceleration=get("imm_stationary_acceleration");
@@ -174,10 +196,32 @@ static bool assignmentAmbiguous(const std::vector<std::vector<double>>& costs,
         if(i!=row && costs[i][col]<=chosen+margin) return true;
     return false;
 }
-bool Tracker::update(Time frame,Time ts,const std::vector<Detection>& detections) {
+bool Tracker::update(Time frame,Time ts,const std::vector<Detection>& detections,const CameraMotionEstimate* camera) {
     if(frame<=current.frame || ts<=current.timestamp) return false;
-    if(cfg.byteTrack) {
+    const bool compensate=cfg.cameraMotion.enabled && camera && camera->accepted;
+    if(compensate && (camera->from!=current.timestamp || camera->to!=ts || current.timestamp<0 ||
+            !std::isfinite(camera->shift.x) || !std::isfinite(camera->shift.y) ||
+            !std::isfinite(camera->variance) || camera->variance<0))
+        throw std::invalid_argument("Invalid or misaligned camera translation");
+    auto forecast=[&] {
         auto s=predictAt(ts);
+        if(compensate) for(auto& t:s.tracks) {
+            if(t.imm) {
+                // Keep all model means and their uncertainty consistent with the fused state.
+                for(auto& model:t.imm->models) {
+                    model.mean[0]+=camera->shift.x;model.mean[1]+=camera->shift.y;
+                    model.covariance(0,0)+=camera->variance;model.covariance(1,1)+=camera->variance;
+                }
+                auto fused=t.imm->fused();t.x=fused.mean;t.covariance=fused.covariance;
+            } else {
+                t.x[0]+=camera->shift.x;t.x[1]+=camera->shift.y;
+                t.covariance(0,0)+=camera->variance;t.covariance(1,1)+=camera->variance;
+            }
+        }
+        return s;
+    };
+    if(cfg.byteTrack) {
+        auto s=forecast();
         s.removed.clear();
         for(auto& t:current.tracks)
             if((ts-t.lastSeen)*1e-6>cfg.maxLostMs) s.removed.push_back(t.id);
@@ -281,7 +325,7 @@ bool Tracker::update(Time frame,Time ts,const std::vector<Detection>& detections
         s.tracks=std::move(live); s.frame=frame; current=std::move(s);
         return true;
     }
-    auto s=predictAt(ts);
+    auto s=forecast();
     s.removed.clear();
     for(auto& t:current.tracks)
         if((ts-t.lastSeen)*1e-6>cfg.maxLostMs) s.removed.push_back(t.id);

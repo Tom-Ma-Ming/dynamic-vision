@@ -1,6 +1,7 @@
 #pragma once
 #include <opencv2/core.hpp>
 #include "imm.hpp"
+#include "camera_motion.hpp"
 #include <cstdint>
 #include <optional>
 #include <vector>
@@ -13,6 +14,7 @@ struct Config {
     int minHits;
     double maxLostMs, birthScore, sigma, headSigma, accel, initialSpeed, gate, iouWeight, ambiguity;
     ImmConfig imm;
+    CameraMotionConfig cameraMotion;
     bool byteTrack = false;
     double highScore = 0.4;
     double lowScore = 0.1;
@@ -41,7 +43,8 @@ struct Snapshot {
 class Tracker {
 public:
     explicit Tracker(Config config) : cfg(config) {}
-    bool update(Time frame, Time timestamp, const std::vector<Detection>& detections);
+    bool update(Time frame, Time timestamp, const std::vector<Detection>& detections,
+                const CameraMotionEstimate* camera=nullptr);
     Snapshot predictAt(Time timestamp) const;
     const Snapshot& snapshot() const { return current; }
 private:

@@ -171,6 +171,7 @@ int main(int argc, char** argv) try {
 
   const mot::Config tracker_config = mot::Config::load(args->tracker);
   mot::Tracker tracker(tracker_config);
+  mot::CameraMotionEstimator camera_estimator(tracker_config.cameraMotion);
   mot::Selection selection;
   const auto commands = loadSelectionCommands(args->selection);
 
@@ -197,6 +198,7 @@ int main(int argc, char** argv) try {
   std::vector<std::int64_t> queue_wait_ns;
   std::vector<std::int64_t> infer_ns;
   std::vector<std::int64_t> mot_ns;
+  std::vector<std::int64_t> camera_ns;
   std::vector<std::int64_t> result_age_ns;
 
   const auto pacing_start = Clock::now();
@@ -275,9 +277,19 @@ int main(int argc, char** argv) try {
               {detection.cls, detection.score, detection.box});
         }
 
+        mot::CameraMotionEstimate camera;
+        std::int64_t camera_elapsed=0;
+        if(tracker_config.cameraMotion.enabled) {
+          std::vector<cv::Rect2f> foreground;
+          for(const auto& observation:observations) foreground.push_back(observation.box);
+          const auto camera_start=Clock::now();
+          camera=camera_estimator.update(frame,packet->source_ts_ns,foreground);
+          camera_elapsed=std::chrono::duration_cast<std::chrono::nanoseconds>(Clock::now()-camera_start).count();
+        }
         const auto track_start = Clock::now();
         if (!tracker.update(static_cast<mot::Time>(packet->frame_id),
-                            packet->source_ts_ns, observations)) {
+                            packet->source_ts_ns, observations,
+                            tracker_config.cameraMotion.enabled ? &camera : nullptr)) {
           ++stale;
           continue;
         }
@@ -321,6 +333,18 @@ int main(int argc, char** argv) try {
             << ",\"detect_ms\":" << vision::nsToMs(infer)
             << ",\"detections\":" << boxesJson(detections);
         writeTracking(log, snapshot, selection);
+        if(tracker_config.cameraMotion.enabled) {
+          log << ",\"camera_ms\":" << vision::nsToMs(camera_elapsed)
+              << ",\"camera_motion\":{\"accepted\":" << (camera.accepted ? "true" : "false")
+              << ",\"reason\":" << jsonString(camera.reason)
+              << ",\"from_ts_ns\":" << camera.from << ",\"to_ts_ns\":" << camera.to
+              << ",\"dx_px\":" << camera.shift.x << ",\"dy_px\":" << camera.shift.y
+              << ",\"position_variance_px2\":" << camera.variance
+              << ",\"features\":" << camera.features << ",\"inliers\":" << camera.inliers
+              << ",\"inlier_ratio\":" << camera.inlierRatio << ",\"coverage\":" << camera.coverage
+              << ",\"grid_cells\":" << camera.gridCells << "}";
+          camera_ns.push_back(camera_elapsed);
+        }
         log << "}\n";
 
         ++processed;
@@ -426,8 +450,10 @@ int main(int argc, char** argv) try {
           << ",\"mot_p50_ms\":" << vision::nsToMs(mot_summary.p50_ns)
           << ",\"mot_p95_ms\":" << vision::nsToMs(mot_summary.p95_ns)
           << ",\"status\":\"" << status << "\""
-          << ",\"error\":" << (error.empty() ? "null" : jsonString(error))
-          << "}\n";
+          << ",\"error\":" << (error.empty() ? "null" : jsonString(error));
+  if(tracker_config.cameraMotion.enabled)
+    summary << ",\"camera_ms\":" << latencyJson(vision::summarize(camera_ns));
+  summary << "}\n";
   summary.close();
 
   if (producer_error) std::rethrow_exception(producer_error);

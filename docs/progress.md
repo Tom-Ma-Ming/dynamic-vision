@@ -21,3 +21,4 @@ TRT2-04/05：C++ 实图与 ONNX 5 图 13 框通过，最大坐标差 <0.001 px�
 2026-11-07：接入用户 4 段连续录像，320×320/30 FPS，共 21,169 帧；CV/IMM 8 次回放均通过全量完整性和同检测对照。抽样发现背景误检与镜头运动后轨迹漂移，暂不能推导真实身份精度。已生成两个各 90 帧的 X-AnyLabeling 候选框复核包及三栏视频，等待人工身份标注。见 docs/real-recording-intake.md。
 2026-11-08：接收用户 180 帧人工 JSON，PNG 与原视频完全一致；发现 11 处类别/身份/轻微越界问题，已在独立 corrected-candidate 副本修正，原文件保留。副本结构错误 0；新增审计测试 3/3。抽样 person 未覆盖可见腿脚，框范围与身份语义仍待验收，未训练或计算正式 MOT 指标。见 docs/reviewed-label-audit.md。
 2026-11-08：按用户确认读取原 review/clip01、clip02；clip01 的 34 帧框范围已更新，两组结构错误 0。冻结 180 帧并完成带标注质量限制的诊断评分：person P/R=74.37%/88.79%，head=77.22%/53.74%；IMM 两片段收益不一致，保持默认关闭。相关工具 20/20，未训练、未宣称最终真值或整体精度达标。见 docs/reviewed-clip-evaluation.md。
+2026-11-08：完成背景平移补偿第一版，默认关闭；相位初值 + 局部前后向光流及空间共识门控，接入 CV/IMM/ByteTrack。CPU 26/26、SDK 6/6、Python 20/20；开关各双跑 1000 帧，关闭兼容旧基线；两段原录像 10800 帧对照通过。clip02 IDSW 24→15，但 clip01 HOTA 略降、全片门控通过仅约 27%/39%。见 docs/camera-motion-experiment.md，整个计划见 docs/task-roadmap.md。

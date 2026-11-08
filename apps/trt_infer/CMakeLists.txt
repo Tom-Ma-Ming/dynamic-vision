@@ -16,7 +16,7 @@ if(VISION_WITH_OPENCV)
   target_include_directories(vision_replay PRIVATE ${PROJECT_SOURCE_DIR}/include)
   target_link_libraries(vision_replay PRIVATE
     vision_mot trt_detector ${OpenCV_LIBS} Threads::Threads)
-  foreach(config_file tracker.yml tracker-bytetrack.yml tracker-imm.yml replay.yml replay-realtime.yml)
+  foreach(config_file tracker.yml tracker-bytetrack.yml tracker-imm.yml tracker-camera.yml replay.yml replay-realtime.yml)
     add_custom_command(TARGET vision_replay POST_BUILD COMMAND ${CMAKE_COMMAND} -E copy_if_different
       ${PROJECT_SOURCE_DIR}/configs/${config_file} $<TARGET_FILE_DIR:vision_replay>/${config_file})
   endforeach()

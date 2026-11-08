@@ -3,6 +3,7 @@ import argparse
 import hashlib
 from importlib.metadata import version
 import json
+import re
 from pathlib import Path
 import shutil
 
@@ -55,7 +56,7 @@ def aligned_rows(entries,rows):
         yield row
 
 
-def evaluate_clip(folder,replay,output):
+def evaluate_clip(folder,replay,output,method_names=('cv','imm')):
     check=audit(folder)
     if check['structural_errors']:
         raise ValueError(f'{folder}: structural label errors')
@@ -89,17 +90,17 @@ def evaluate_clip(folder,replay,output):
     annotations=[json.loads((target/entry['image']).with_suffix('.json').read_text(encoding='utf-8-sig')) for entry in entries]
     detection={name:dict(tp=0,fp=0,fn=0) for name in ('head','person')}
     methods={};reference=None;inputs={}
-    for method in ('cv','imm'):
+    for method in method_names:
         path=replay/f'{video.stem}-{method}'/'frames.jsonl'
         all_rows=[json.loads(line) for line in path.read_text().splitlines()]
         rows=list(aligned_rows(entries,all_rows))
         stable=[(r['frame_id'],r['source_ts_ns'],r['detections']) for r in rows]
         if reference is not None and reference!=stable:
-            raise ValueError('CV and IMM detections differ')
+            raise ValueError('Compared methods have different detections')
         reference=stable
         mot_rows=[]
         for entry,annotation,row in zip(entries,annotations,rows):
-            if method=='cv':
+            if method==method_names[0]:
                 for cls,name in enumerate(('head','person')):
                     gt=[rectangle(s) for s in annotation['shapes'] if s['label']==name]
                     pred=[d['xyxy'] for d in row['detections'] if d['class_id']==cls and d['score']>=.25]
@@ -122,7 +123,10 @@ def main():
     parser.add_argument('replay',type=Path)
     parser.add_argument('output',type=Path)
     parser.add_argument('--quality-notes',type=Path,required=True,help='Explicit visual acceptance status and unresolved issues')
+    parser.add_argument('--methods',nargs='+',default=['cv','imm'],help='Replay directory suffixes to compare')
     args=parser.parse_args()
+    if len(args.methods)<2 or len(set(args.methods))!=len(args.methods) or any(not re.fullmatch('[a-z0-9_-]+',name) for name in args.methods):
+        raise ValueError('Provide at least two unique simple method names')
     folders=sorted(p for p in args.labels.glob('clip*') if (p/'manifest.json').is_file())
     if not folders:raise ValueError('No reviewed clips')
     quality=json.loads(args.quality_notes.read_text(encoding='utf-8-sig'))
@@ -136,7 +140,7 @@ def main():
                               identity_scope='per clip',tracker_warm_start='state from full source video; score only annotated window',
                               HOTA='TrackEval default IoU thresholds 0.05..0.95',IDF1_IDSW_iou=.5),clips=[])
     for folder in folders:
-        clip=evaluate_clip(folder,args.replay,args.output);report['clips'].append(clip)
+        clip=evaluate_clip(folder,args.replay,args.output,args.methods);report['clips'].append(clip)
         print(json.dumps({k:clip[k] for k in ('clip','frames','detection','tracking')}),flush=True)
     totals={name:rates({key:sum(c['detection'][name][key] for c in report['clips']) for key in ('tp','fp','fn')}) for name in ('head','person')}
     report['detection_micro_totals']=totals

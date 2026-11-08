@@ -1,5 +1,7 @@
 # Grok 工程交接 · 2026-11-07
 
+> 当前总计划见 docs/task-roadmap.md。最新镜头平移实验已完成，默认关闭：CPU 26/26、SDK 6/6、Python 20/20；开关兼容与两段 10800 帧回放通过，诊断片段二 IDSW 24→15，片段一 HOTA 略降，质量覆盖有限。见 docs/camera-motion-experiment.md。下方历史“镜头补偿未实现”已由本条更新为“平移实验完成，复杂运动及最终验收待做”。
+
 > 最新（2026-11-08）：用户实际修改目录是原 review/clip01、clip02，不是 corrected-candidate。最新 180 帧已冻结到 artifacts/real-recordings-v1/evaluation-20261108-v1/scores-final/labels，并完成 provisional 诊断评分；有少量剩余框范围误差，不属于最终真值验收。以 docs/reviewed-clip-evaluation.md 为当前入口，暂不用用户重做整批标注；下一步分析 head 漏匹配、背景误检和镜头运动断轨。默认 CV/模型不变。
 
 > 2026-11-08 标注接收更新：用户完成 180 帧人工 JSON。11 处类别/ID/越界笔误已在独立 corrected-candidate 副本修正；原标注已快照保留。仍存在 person 未覆盖可见腿脚的质量问题，暂不训练或正式评分。下一步入口 docs/reviewed-label-audit.md；不要把“结构检查通过”当作真值验收。
@@ -28,7 +30,7 @@
 | TRT2-04 / 05 | 图片 letterbox、解码、逐类 NMS、坐标还原以及顺序视频回放已完成实图对照和合成录像回归。真实录像与长时资源趋势待测。 |
 | TRACK-01 / 03；MOT-01～07 | 已有原图坐标、时间戳、CV Kalman、匈牙利关联、头身合并、生命周期、独立选择、UI、JSONL、合成指标。证据覆盖交叉、遮挡、失效、乱序和重复回放。真实身份标注录像、急停/蹲下/镜头快速旋转的分层验收仍待补。 |
 | **TRACK-02** | **已实现。replay 改为有界队列的生产者/消费者流水线；blocking 默认不丢帧，realtime（latest + 媒体节奏）丢旧待处理帧。CPU CTest 20/20，windows-sdk 3/3；blocking 1000 帧与既有轨迹逐字段一致；realtime 25 FPS 1000 采集/1000 处理/0 替换，500 FPS 过载 1000 采集/250 处理/750 替换。证据 artifacts/track02/verification.md。** |
-| TRACK-04 / MOT-08 | ByteTrack 与 IMM 均已实现为默认关闭的实验配置。IMM 三种子、两种 CV 对照和开关兼容回归通过；小目标仍退化，真实身份指标待测。镜头补偿、ReID 尚未实现。见 docs/imm-experiment.md。 |
+| TRACK-04 / MOT-08 | ByteTrack、IMM、背景平移补偿均已实现为默认关闭的实验配置；已有合成与实景诊断消融，尚无一致收益及最终实景验收。复杂镜头运动与 ReID 待做。见 docs/imm-experiment.md、docs/camera-motion-experiment.md。 |
 | TRT2-06 / EVAL-01 / SIM-01 | pinned host buffer、统一评估聚合和二维模拟器已实现。SIM 评分已修复为完整窗口；旧 10/1/1 结论撤回，当前 IMM 严格结果每组 1/10/1。聚合旧 artifacts 的报告不能证明最新阶段精度。见 docs/review-fixes.md、docs/sim-control-baseline.md、docs/imm-experiment.md。 |
 
 ## 关键输入与验收证据（相对于应用根目录）

@@ -1,0 +1,24 @@
+%YAML:1.0
+min_hits: 2
+max_lost_ms: 500
+birth_score: 0.4
+measurement_sigma: 3.
+head_sigma: 6.
+acceleration_sigma: 180.
+initial_speed_sigma: 120.
+mahalanobis_gate: 12.
+iou_weight: 0.4
+ambiguity_margin: 0.04
+camera_motion_enabled: 1
+camera_max_corners: 300
+camera_min_inliers: 20
+camera_min_grid_cells: 4
+camera_max_fb_error: 1.5
+camera_residual_threshold: 2.
+camera_min_inlier_ratio: 0.65
+camera_min_coverage: 0.15
+camera_max_shift_fraction: 0.25
+camera_max_gap_ms: 200.
+camera_foreground_margin: 8.
+camera_border_fraction: 0.05
+camera_center_radius: 12.

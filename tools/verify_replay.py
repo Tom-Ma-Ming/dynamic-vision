@@ -50,7 +50,7 @@ def main():
 
         # Stable semantic contract; wall-clock measurements are intentionally excluded.
         fields = ("frame_id", "source_ts_ns", "timestamp_source", "detections",
-                  "tracks", "removed_ids", "selection")
+                  "tracks", "removed_ids", "selection", "camera_motion")
         stable = [{key: row[key] for key in fields if key in row} for row in rows]
         if args.reference_frames:
             reference=[json.loads(line) for line in args.reference_frames.read_text().splitlines()]
