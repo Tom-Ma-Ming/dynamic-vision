@@ -9,7 +9,7 @@
 #include <chrono>
 
 int main(int argc,char** argv) try {
-  if(argc!=6 && (argc<10 || argc>14)) throw std::runtime_error("usage: vision_sim_image engine sprite background tracker new-output [target-x target-y target-width target-height [selected-track-id [units-per-pixel [subpixel-render-0-or-1 [observation-delay-ms]]]]]");
+  if(argc!=6 && (argc<10 || argc>16)) throw std::runtime_error("usage: vision_sim_image engine sprite background tracker new-output [target-x target-y target-width target-height [selected-track-id [units-per-pixel [subpixel-render-0-or-1 [observation-delay-ms [measured-service-0-or-1 [observation-jitter-ms]]]]]]]");
   const std::filesystem::path output(argv[5]);
   if(std::filesystem::exists(output)) throw std::runtime_error("Output must be new");
   Detector detector(argv[1]);
@@ -22,10 +22,13 @@ int main(int argc,char** argv) try {
   detections.exceptions(std::ios::badbit|std::ios::failbit);
   cv::VideoWriter video((output/"scene.avi").string(),cv::VideoWriter::fourcc('M','J','P','G'),25,{320,320});
   if(!video.isOpened()) throw std::runtime_error("Cannot open scene video");
+  double last_service_ms=0;
+  if(argc>=15) {const int flag=std::stoi(argv[14]);if(flag!=0 && flag!=1) throw std::invalid_argument("Invalid service flag");if(flag) images.service_time_ms=[&]{return last_service_ms;};}
   images.detect=[&](const cv::Mat& frame,int id,std::int64_t time) {
     const auto begin=std::chrono::steady_clock::now();
     auto boxes=detect(detector,frame,.25f,.45f);
     const double detect_ms=std::chrono::duration<double,std::milli>(std::chrono::steady_clock::now()-begin).count();
+    last_service_ms=detect_ms;
     detections<<"{\"frame\":"<<id<<",\"ts_ns\":"<<time<<",\"detect_ms\":"<<detect_ms<<",\"detections\":"<<boxesJson(boxes)<<"}\n";
     video.write(frame);
     std::vector<mot::Detection> result;
@@ -46,6 +49,7 @@ int main(int argc,char** argv) try {
   if(argc>=12) config.actuator_units_per_px=std::stod(argv[11]);
   if(argc>=13) {const int flag=std::stoi(argv[12]);if(flag!=0 && flag!=1) throw std::invalid_argument("Invalid subpixel flag");config.subpixel_render=flag!=0;}
   if(argc>=14) config.observation_delay_ms=std::stod(argv[13]);
+  if(argc>=16) config.observation_jitter_ms=std::stod(argv[15]);
   config.view_feedback=true;config.encoder_compensation=true;config.pid_kp=2;
   auto result=sim::Simulator(config,mot::Config::load(argv[4]),images).run();
   std::ofstream frames(output/"feedback.jsonl");frames.exceptions(std::ios::badbit|std::ios::failbit);
@@ -64,11 +68,16 @@ int main(int argc,char** argv) try {
     commands<<"{\"kind\":\""<<e.kind<<"\",\"id\":"<<e.id<<",\"frame_id\":"<<e.frame_id
       <<",\"track_id\":"<<e.track_id<<",\"timestamp\":"<<e.timestamp<<",\"generated\":"<<e.generated
       <<",\"arrival\":"<<e.arrival<<",\"expires\":"<<e.expires<<",\"dx\":"<<e.dx<<",\"dy\":"<<e.dy<<"}\n";
+  std::ofstream observations(output/"observations.jsonl");observations.exceptions(std::ios::badbit|std::ios::failbit);
+  for(const auto& e:result.observations) observations<<"{\"frame\":"<<e.frame<<",\"captured\":"<<e.captured
+    <<",\"ready\":"<<e.ready<<",\"released\":"<<e.released<<",\"service_ms\":"<<e.service_ms
+    <<",\"status\":\""<<e.status<<"\"}\n";
   std::ofstream summary(output/"summary.json");summary.exceptions(std::ios::badbit|std::ios::failbit);
   summary<<"{\"result\":\""<<sim::name(result.result)<<"\",\"terminal_frame\":"<<result.terminal_frame
     <<",\"mae_px\":"<<result.metrics.mae_px<<",\"track_coverage\":"<<result.metrics.track_coverage
     <<",\"selected_track_id\":"<<config.selected_track_id<<",\"acquire_single_confirmed\":"<<(config.acquire_single_confirmed?"true":"false")
     <<",\"observation_delay_ms\":"<<config.observation_delay_ms
+    <<",\"measured_service\":"<<(images.service_time_ms?"true":"false")<<",\"observation_jitter_ms\":"<<config.observation_jitter_ms
     <<",\"units_per_px\":"<<config.actuator_units_per_px<<",\"subpixel_render\":"<<(config.subpixel_render?"true":"false")
     <<",\"clock\":\"fixed_simulation_step_not_wall_time\",\"encoder_feedback\":true,\"gates\":{";
   bool first=true;

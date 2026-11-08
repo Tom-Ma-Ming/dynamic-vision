@@ -135,6 +135,19 @@ int main(int argc, char** argv) try {
   auto stale_result=Simulator(expired,tracker).run();
   require(stale_result.commands.empty(),"stale observations cannot create incremental commands");
   for(const auto& f:stale_result.frames) require(f.aim_x==expired.width*.5f,"stale observations cannot move actuator");
+  auto reordered=feedback;reordered.observation_delay_ms=80;reordered.observation_jitter_ms=80;
+  auto reordered_result=Simulator(reordered,tracker).run();
+  int late=0;std::int64_t last_capture=-1;
+  for(const auto& e:reordered_result.observations) {
+    if(e.status=="stale") ++late;
+    if(e.status=="published") require(e.released>=e.ready && e.ready>=e.captured,"publication causality");
+  }
+  for(const auto& f:reordered_result.frames) {require(f.observation_ts_ns>=last_capture,"late results cannot rewind state");last_capture=f.observation_ts_ns;}
+  require(late>0,"jitter fixture exercises stale delivery");
+  auto overload=constant;overload.inference_service_ms=100;overload.observation_capacity=2;
+  auto overloaded=Simulator(overload,tracker).run();int overflow=0,pending=0;
+  for(const auto& e:overloaded.observations) {overflow+=e.status=="overflow";pending+=e.status=="pending";}
+  require(overflow>0 && pending<=2,"bounded result buffer under service overload");
   const auto repeated = Simulator(constant, tracker).run();
   require(repeated.result == success.result, "determinism: result");
   require(repeated.terminal_frame == success.terminal_frame, "determinism: terminal frame");

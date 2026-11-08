@@ -29,7 +29,8 @@ struct ScenarioConfig {
   double pid_kp=8, pid_ki=0, pid_kd=0;
   double actuator_units_per_px=1;
   double delay_jitter_ms=0;
-  double observation_delay_ms=0;
+  double observation_delay_ms=0, observation_jitter_ms=0, inference_service_ms=0;
+  int observation_capacity=256;
   double dt_s = 0.04;
   int width = 640;
   int height = 480;
@@ -122,6 +123,10 @@ struct CommandEvent {
   double dx=0,dy=0;
 };
 
+struct ObservationEvent {
+  int frame;std::int64_t captured,ready,released=-1;
+  double service_ms;std::string status="pending";
+};
 struct ScenarioResult {
   std::string scene_id;
   Motion motion = Motion::Constant;
@@ -131,10 +136,12 @@ struct ScenarioResult {
   Metrics metrics;
   std::vector<FrameRecord> frames;
   std::vector<CommandEvent> commands;
+  std::vector<ObservationEvent> observations;
 };
 
 struct ImageObservation {
   cv::Mat sprite, background;
+  std::function<double()> service_time_ms; // optional measured sample after detect
   cv::Rect2f sprite_target; // annotated target inside context image; empty means whole sprite
   std::function<std::vector<mot::Detection>(const cv::Mat&,int,std::int64_t)> detect;
 };

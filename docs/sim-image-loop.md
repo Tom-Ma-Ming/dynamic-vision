@@ -67,3 +67,13 @@ vision_sim_image 可在 selected-track-id 后追加 units-per-pixel 与 subpixel
 vision_sim_image 可在 subpixel-render 后追加 observation-delay-ms。feedback 增加 observation_frame/observation_ts_ns，-1表示尚无已发布结果。图像检测仍同步计算，配置延迟是模拟发布安排；真实 detect_ms 单独测量，不代表全部耗时已进入模拟时钟。
 
 CPU27/27；固定80ms测试验证前两帧不可见结果、后续来源帧为当前帧减2，时间戳不重写；40ms有效期面对80ms延迟不产生增量控制。图像四组 artifacts/sim/observation-delay-v1：0/40/80ms MAE7.690/8.157/8.585，均FAILED；240ms为UNKNOWN、93 stale、零控制命令。零延迟逐字段等于旧图像基线。尚缺真实推理服务时钟、可变观察延迟、丢弃计数和长时队列压力验证，不据此声明完整实时链路验收。
+
+## 变化发布延迟与服务时间
+
+新增 observation_jitter_ms、inference_service_ms 和 observation_capacity（默认256，范围1～10000）。独立随机流模拟发布抖动；服务时间在单服务者时间轴累积，ready=服务完成+非负发布延迟。结果按ready交付，采集时间不晚于已处理状态的结果标为stale并丢弃，状态不回退；剩余结果超容量时丢弃最旧采集项。该容量约束是结果缓冲区，不是完整真实推理输入队列，已经计入的服务工作不会因结果丢弃而撤销。
+
+镜头反馈改为累计已应用增量，在实际发布时计算上次已接受采集到本次采集的差值，因此乱序/丢弃不会破坏补偿区间。控制再补偿最新接受采集到当前时刻的增量。
+
+ImageObservation 可提供刚结束检测的 service_time_ms 回调。图像程序可在 observation-delay-ms 后追加 measured-service（0/1），再追加 observation-jitter-ms。实测推理时长被送入服务时间模型；这不是异步真实运行时钟，也不包括渲染、视频写入和操作反馈的全部壁钟耗时。实测模式受调度影响，不宣称字节可重复。observations.jsonl 逐帧记录capture/ready/released、service_ms及published/stale/overflow/pending。
+
+CPU27/27，覆盖乱序不回退、发布因果、过载结果缓冲容量。observed-service-v1 用80ms基础发布延迟、±80ms抖动和实际推理耗时：100结果=61 published+35 stale+4 pending，因果/单调性审计通过；最大单次服务38.5294ms，MAE8.99388、FAILED。仅是模型驱动诊断，不是全链路实时验收。

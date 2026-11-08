@@ -27,7 +27,7 @@ float clampf(float value, float low, float high) {
 }
 
 bool validate(const ScenarioConfig& config) {
-  return std::isfinite(config.observation_delay_ms) && config.observation_delay_ms>=0 && config.observation_delay_ms<=10000 && (!config.feedback_prediction || config.encoder_compensation) && (!config.encoder_compensation || config.view_feedback) && (!config.view_feedback || config.incremental_control) && std::isfinite(config.actuator_units_per_px) && config.actuator_units_per_px>0 &&
+  return config.observation_capacity>0 && config.observation_capacity<=10000 && std::isfinite(config.observation_jitter_ms) && config.observation_jitter_ms>=0 && config.observation_jitter_ms<=10000 && std::isfinite(config.inference_service_ms) && config.inference_service_ms>=0 && config.inference_service_ms<=10000 && std::isfinite(config.observation_delay_ms) && config.observation_delay_ms>=0 && config.observation_delay_ms<=10000 && (!config.feedback_prediction || config.encoder_compensation) && (!config.encoder_compensation || config.view_feedback) && (!config.view_feedback || config.incremental_control) && std::isfinite(config.actuator_units_per_px) && config.actuator_units_per_px>0 &&
          std::isfinite(config.delay_jitter_ms) && config.delay_jitter_ms>=0 && config.delay_jitter_ms<=1000 &&
          config.selected_track_id > 0 && std::isfinite(config.command_horizon_s) &&
          config.command_horizon_s >= 0 && config.noise_px >= 0 && config.frames > 0 && config.dt_s > 0 && config.width > 0 &&
@@ -148,14 +148,15 @@ ScenarioResult Simulator::run() {
   std::vector<IncrementCommand> transit;
   std::mt19937 delay_rng(config_.seed+100003);
   std::uniform_real_distribution<double> jitter(-config_.delay_jitter_ms,config_.delay_jitter_ms);
-  double measured_dx=0, measured_dy=0;
+  std::mt19937 observation_rng(config_.seed+200003);
+  std::uniform_real_distribution<double> observation_jitter(-config_.observation_jitter_ms,config_.observation_jitter_ms);
+  SimTime service_finished=0;
   double encoder_x=0,encoder_y=0,observed_encoder_x=0,observed_encoder_y=0;
   struct PendingObservation {
     int frame;SimTime captured,ready;std::vector<mot::Detection> detections;
-    mot::CameraMotionEstimate motion;double encoder_x,encoder_y;
+    double encoder_x,encoder_y;
   };
   std::deque<PendingObservation> observations;
-  SimTime previous_capture=-1;
   int observation_frame=-1;
   CommandFeedback feedback(config_.actuator_delay_frames*config_.dt_s);
   IncrementCommand active_command;
@@ -176,8 +177,6 @@ ScenarioResult Simulator::run() {
     if(config_.view_feedback) {
       encoder_x+=delta.dx/config_.actuator_units_per_px;
       encoder_y+=delta.dy/config_.actuator_units_per_px;
-      measured_dx+=delta.dx/config_.actuator_units_per_px;
-      measured_dy+=delta.dy/config_.actuator_units_per_px;
       camera_x+=float(delta.dx/config_.actuator_units_per_px);
       camera_y+=float(delta.dy/config_.actuator_units_per_px);
     } else {
@@ -335,25 +334,35 @@ ScenarioResult Simulator::run() {
     }
 
     total_detections += static_cast<int>(detections.size());
-    mot::CameraMotionEstimate measured_motion;
-    measured_motion.from=previous_capture;
-    previous_capture=ts_ns;
-    measured_motion.to=ts_ns;
-    measured_motion.accepted=config_.encoder_compensation && measured_motion.from>=0;
-    measured_motion.shift={-measured_dx,-measured_dy};
-    measured_motion.variance=.25;
-    measured_motion.reason="simulated_applied_encoder";
-    measured_dx=measured_dy=0;
-    observations.push_back({frame,ts_ns,ts_ns+std::llround(config_.observation_delay_ms*1e6),
-                            detections,measured_motion,encoder_x,encoder_y});
+    const double service_ms=images_.detect && images_.service_time_ms ? images_.service_time_ms() : config_.inference_service_ms;
+    if(!std::isfinite(service_ms) || service_ms<0 || service_ms>10000) throw std::runtime_error("Invalid service duration");
+    service_finished=std::max(ts_ns,service_finished)+std::llround(service_ms*1e6);
+    const auto ready=service_finished+std::llround(std::max(0.0,config_.observation_delay_ms+observation_jitter(observation_rng))*1e6);
+    output.observations.push_back({frame,ts_ns,ready,-1,service_ms,"pending"});
+    observations.push_back({frame,ts_ns,ready,detections,encoder_x,encoder_y});
+    std::stable_sort(observations.begin(),observations.end(),[](const auto& a,const auto& b){return a.ready<b.ready;});
     while(!observations.empty() && observations.front().ready<=ts_ns) {
       const auto& observation=observations.front();
+      auto& trace=output.observations[observation.frame];trace.released=ts_ns;
+      if(observation.captured<=tracker.snapshot().timestamp) {
+        trace.status="stale";observations.pop_front();continue;
+      }
+      mot::CameraMotionEstimate motion;
+      motion.from=tracker.snapshot().timestamp;motion.to=observation.captured;
+      motion.accepted=config_.encoder_compensation && motion.from>=0;
+      motion.shift={-(observation.encoder_x-observed_encoder_x),-(observation.encoder_y-observed_encoder_y)};
+      motion.variance=.25;motion.reason="simulated_applied_encoder";
       if(!tracker.update(observation.frame,observation.captured,observation.detections,
-                         config_.encoder_compensation ? &observation.motion : nullptr))
-        throw std::runtime_error("Out-of-order published observation");
-      observation_frame=observation.frame;
+                         config_.encoder_compensation ? &motion : nullptr))
+        throw std::runtime_error("Invalid published observation");
+      trace.status="published";observation_frame=observation.frame;
       observed_encoder_x=observation.encoder_x;observed_encoder_y=observation.encoder_y;
       observations.pop_front();
+    }
+    while(observations.size()>size_t(config_.observation_capacity)) {
+      auto oldest=std::min_element(observations.begin(),observations.end(),[](const auto& a,const auto& b){return a.frame<b.frame;});
+      auto& trace=output.observations[oldest->frame];trace.status="overflow";trace.released=ts_ns;
+      observations.erase(oldest);
     }
     const double recent_dx=config_.encoder_compensation ? encoder_x-observed_encoder_x : 0;
     const double recent_dy=config_.encoder_compensation ? encoder_y-observed_encoder_y : 0;

@@ -109,6 +109,9 @@ std::vector<sim::ScenarioConfig> loadScenarios(const std::string& path) {
     config.pid_ki=floatOr(node,"pid_ki",config.pid_ki);
     config.pid_kd=floatOr(node,"pid_kd",config.pid_kd);
     config.actuator_units_per_px=floatOr(node,"actuator_units_per_px",config.actuator_units_per_px);
+    config.observation_capacity=intOr(node,"observation_capacity",config.observation_capacity);
+    config.observation_jitter_ms=floatOr(node,"observation_jitter_ms",config.observation_jitter_ms);
+    config.inference_service_ms=floatOr(node,"inference_service_ms",config.inference_service_ms);
     config.observation_delay_ms=floatOr(node,"observation_delay_ms",config.observation_delay_ms);
     config.delay_jitter_ms=floatOr(node,"delay_jitter_ms",config.delay_jitter_ms);
     config.seed = static_cast<std::uint32_t>(intOr(node, "seed", 1));
