@@ -98,6 +98,27 @@ int main(int argc, char** argv) try {
   auto encoded=Simulator(feedback,tracker).run();
   require(encoded.metrics.track_coverage>.95,"applied encoder feedback preserves stationary target identity");
   require(encoded.frames.back().error_px<3,"encoder feedback converges stationary target");
+  auto telemetry=feedback;telemetry.encoder_transport=true;
+  const auto zero_telemetry=Simulator(telemetry,tracker).run();
+  require(zero_telemetry.metrics.mae_px==encoded.metrics.mae_px,"zero-delay delivered encoder preserves ideal baseline");
+  telemetry.encoder_delay_ms=80;
+  const auto delayed_encoder=Simulator(telemetry,tracker).run();
+  for(const auto& f:delayed_encoder.frames) {
+    if(f.encoder_sample_ts_ns>=0) require(f.encoder_sample_ts_ns<=f.ts_ns-80000000,"no future encoder telemetry");
+    require(f.encoder_queued<=256,"encoder transport bounded");
+  }
+  telemetry.encoder_drop_rate=1;
+  const auto missing_encoder=Simulator(telemetry,tracker).run();
+  require(missing_encoder.commands.empty() && missing_encoder.cause==Cause::Control,"missing encoder cannot use ideal truth to move");
+  for(const auto& f:missing_encoder.frames) require(!f.encoder_valid,"all lost encoder remains unavailable");
+  telemetry.encoder_drop_rate=0;telemetry.encoder_max_age_ms=40;
+  const auto stale_encoder=Simulator(telemetry,tracker).run();
+  require(stale_encoder.commands.empty(),"encoder older than max age cannot drive control");
+  telemetry.encoder_max_age_ms=200;telemetry.encoder_drop_rate=1;telemetry.encoder_drop_end_frame=20;
+  telemetry.unknown_grace_frames=100;
+  const auto recovered_encoder=Simulator(telemetry,tracker).run();
+  require(recovered_encoder.frames[22].encoder_valid,"new delivered paired encoder can recover after blackout");
+  for(const auto& e:recovered_encoder.commands) if(e.kind=="generated") require(e.frame_id>=22,"no generation before encoder recovery");
   sim::ImageObservation pixels;
   pixels.sprite=cv::Mat(40,20,CV_8UC3,cv::Scalar(0,255,0));
   pixels.background=cv::Mat(480,640,CV_8UC3,cv::Scalar(0,0,0));

@@ -107,6 +107,11 @@ std::vector<sim::ScenarioConfig> loadScenarios(const std::string& path) {
         intOr(node, "unknown_grace_frames", config.unknown_grace_frames);
     config.feedback_prediction=intOr(node,"feedback_prediction",0)!=0;
     config.encoder_compensation=intOr(node,"encoder_compensation",0)!=0;
+    config.encoder_transport=intOr(node,"encoder_transport",0)!=0;
+    config.encoder_delay_ms=doubleOr(node,"encoder_delay_ms",0);
+    config.encoder_drop_rate=doubleOr(node,"encoder_drop_rate",0);
+    config.encoder_max_age_ms=doubleOr(node,"encoder_max_age_ms",200);
+    config.encoder_drop_end_frame=intOr(node,"encoder_drop_end_frame",-1);
     config.view_feedback = intOr(node,"view_feedback",0)!=0;
     config.incremental_control = intOr(node, "incremental_control", 0)!=0;
     config.pid_kp=doubleOr(node,"pid_kp",config.pid_kp);
@@ -161,6 +166,11 @@ void writeFrame(std::ostream& out, const std::string& scene,
       << ",\"ts_ns\":" << frame.ts_ns
       << ",\"estimated_delay_ms\":" << frame.estimated_delay_ms
       << ",\"feedback_dropped\":" << frame.feedback_dropped
+      << ",\"encoder_valid\":" << (frame.encoder_valid?"true":"false")
+      << ",\"encoder_sample_ts_ns\":" << frame.encoder_sample_ts_ns
+      << ",\"encoder_dropped\":" << frame.encoder_dropped
+      << ",\"encoder_overflow\":" << frame.encoder_overflow
+      << ",\"encoder_queued\":" << frame.encoder_queued
       << ",\"feedback_pending\":" << frame.feedback_pending
       << ",\"feedback_fault\":" << (frame.feedback_fault?"true":"false")
       << ",\"feedback_resynced\":" << (frame.feedback_resynced?"true":"false")
@@ -324,6 +334,11 @@ int main(int argc, char** argv) try {
             << ",\"incremental_control\":" << (scenarios[i].incremental_control ? "true" : "false")
             << ",\"view_feedback\":" << (scenarios[i].view_feedback ? "true" : "false")
             << ",\"encoder_compensation\":" << (scenarios[i].encoder_compensation ? "true" : "false")
+            << ",\"encoder_transport\":" << (scenarios[i].encoder_transport?"true":"false")
+            << ",\"encoder_delay_ms\":" << scenarios[i].encoder_delay_ms
+            << ",\"encoder_drop_rate\":" << scenarios[i].encoder_drop_rate
+            << ",\"encoder_max_age_ms\":" << scenarios[i].encoder_max_age_ms
+            << ",\"encoder_drop_end_frame\":" << scenarios[i].encoder_drop_end_frame
             << ",\"feedback_prediction\":" << (scenarios[i].feedback_prediction ? "true" : "false")
             << ",\"feedback_drop_rate\":" << scenarios[i].feedback_drop_rate
             << ",\"feedback_timeout_ms\":" << scenarios[i].feedback_timeout_ms

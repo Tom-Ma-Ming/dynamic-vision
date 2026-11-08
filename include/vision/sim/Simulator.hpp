@@ -26,6 +26,9 @@ struct ScenarioConfig {
   bool view_feedback = false;
   bool subpixel_render = false;
   bool encoder_compensation = false;
+  bool encoder_transport = false;
+  double encoder_delay_ms=0,encoder_drop_rate=0,encoder_max_age_ms=200;
+  int encoder_drop_end_frame=-1;
   bool feedback_prediction = false;
   double pid_kp=8, pid_ki=0, pid_kd=0;
   double actuator_units_per_px=1;
@@ -77,6 +80,10 @@ struct FrameRecord {
   int observation_frame=-1;
   double estimated_delay_ms=0;
   int feedback_dropped=0;
+  bool encoder_valid=true;
+  std::int64_t encoder_sample_ts_ns=-1;
+  int encoder_dropped=0,encoder_overflow=0;
+  std::size_t encoder_queued=0;
   bool feedback_fault=false;
   bool feedback_resynced=false;
   int feedback_sync_attempts=0;

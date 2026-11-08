@@ -2,6 +2,7 @@
 #include "vision/sim/FeedbackReceiver.hpp"
 #include "vision/sim/FeedbackChannel.hpp"
 #include "vision/sim/StopConfirmation.hpp"
+#include "vision/sim/EncoderFeedback.hpp"
 #include <iostream>
 #include <limits>
 static void require(bool ok) { if(!ok) throw std::runtime_error("control contract failed"); }
@@ -93,6 +94,17 @@ int main() try {
   channel.newEpoch(160);channel.deliver(250);
   require(channel.ignored()==1 && channel.outstanding()==0);
   sim::StopConfirmation stop;
+  sim::EncoderFeedback encoder(10,20,2);
+  encoder.publish({0,1,2},false);encoder.advance(9);
+  require(!encoder.latest() && !encoder.at(0));
+  encoder.advance(10);require(encoder.latest()->x==1 && encoder.at(0)->y==2);
+  encoder.publish({10,3,4},true);encoder.advance(21);
+  require(!encoder.latest() && encoder.dropped()==1 && !encoder.at(10));
+  encoder.publish({22,5,6},false);encoder.publish({23,7,8},false);encoder.publish({24,9,10},false);
+  require(encoder.queued()==2 && encoder.overflow()==1);
+  encoder.advance(34);require(!encoder.at(22) && encoder.latest()->captured==24);
+  bool reversed=false;try {encoder.advance(33);} catch(const std::invalid_argument&) {reversed=true;}
+  require(reversed);
   auto nonce=stop.request(2,100,50);
   sim::StopSnapshot stopped{2,nonce,110,true};
   require(!stop.accept(stopped,109,2,true)); // future report
