@@ -9,4 +9,4 @@
 - [ ] 延迟控制精度：80ms延迟和恢复场景仍FAILED/timeout，最终误差2px/3px，未达原稳定门槛。
 - [ ] 实际异步时钟、设备encoder及乱序/抖动。
 
-入口configs/sim-encoder-feedback.yml；证据artifacts/sim/encoder-transport-v1及encoder-transport-repeat-v1。全丢/过期均UNKNOWN/control，不能把传输契约测试通过当作控制任务成功。
+入口configs/sim-encoder-transport.yml；证据artifacts/sim/encoder-transport-v1及encoder-transport-repeat-v1。全丢/过期均UNKNOWN/control，不能把传输契约测试通过当作控制任务成功。
