@@ -122,6 +122,7 @@ std::vector<sim::ScenarioConfig> loadScenarios(const std::string& path) {
     config.feedback_resync_frame=intOr(node,"feedback_resync_frame",config.feedback_resync_frame);
     config.feedback_transport=intOr(node,"feedback_transport",0)!=0;
     config.feedback_delay_ms=doubleOr(node,"feedback_delay_ms",0);
+    config.stop_request_delay_ms=doubleOr(node,"stop_request_delay_ms",0);
     config.feedback_jitter_ms=doubleOr(node,"feedback_jitter_ms",0);
     config.feedback_capacity=intOr(node,"feedback_capacity",config.feedback_capacity);
     config.observation_capacity=intOr(node,"observation_capacity",config.observation_capacity);
@@ -329,6 +330,7 @@ int main(int argc, char** argv) try {
             << ",\"feedback_drop_end_frame\":" << scenarios[i].feedback_drop_end_frame
             << ",\"feedback_resync_frame\":" << scenarios[i].feedback_resync_frame
             << ",\"feedback_transport\":" << (scenarios[i].feedback_transport?"true":"false")
+            << ",\"stop_request_delay_ms\":" << scenarios[i].stop_request_delay_ms
             << ",\"feedback_delay_ms\":" << scenarios[i].feedback_delay_ms
             << ",\"feedback_jitter_ms\":" << scenarios[i].feedback_jitter_ms
             << ",\"feedback_capacity\":" << scenarios[i].feedback_capacity

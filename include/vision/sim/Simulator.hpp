@@ -38,6 +38,7 @@ struct ScenarioConfig {
   int feedback_drop_end_frame=-1, feedback_resync_frame=-1;
   bool feedback_transport=false;
   double feedback_delay_ms=0,feedback_jitter_ms=0;
+  double stop_request_delay_ms=0; // zero preserves the local immediate-stop model
   int feedback_capacity=256;
   double dt_s = 0.04;
   int width = 640;

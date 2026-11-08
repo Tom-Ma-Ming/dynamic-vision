@@ -125,3 +125,7 @@ FeedbackReceiver已接入默认关闭的feedback_transport；累计快照经有�
 ## 2026-11-08 延迟停止确认与旧回复隔离
 
 feedback_transport下恢复停止确认加入nonce/epoch/期限及回传延迟抖动，单请求/单回复有界，故障期禁止新命令。三场景双跑逐字节一致：80ms确认第32帧恢复并SUCCESS；500ms超时和持续丢失保持UNKNOWN/control。183命令审计通过，CPU34/34通过。正向停止请求仍即时，真实双向设备协议、encoder丢失及异步墙钟仍未完成。规格见openspec/changes/stop-confirmation。
+
+## 2026-11-08 正向停止请求和帧间停止屏障
+
+新增默认0的stop_request_delay_ms，自动停止及显式恢复请求经过正向延迟；故障即时禁发，旧动作直到停止抵达或自身到期。设备停止事件与命令按纳秒排序，同刻停止优先并清除旧在途命令。80ms正向+80ms回传第34帧恢复；三场景双跑1SUCCESS/2UNKNOWN，181命令审计及CPU34/34通过；另有20ms帧间/40ms同刻断言。该屏障仍是仿真模型，实际设备协议、正向随机丢包及异步墙钟待做。

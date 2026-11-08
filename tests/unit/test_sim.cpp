@@ -204,6 +204,33 @@ int main(int argc, char** argv) try {
   require(delayed_resumed.frames[32].feedback_resynced,"stop confirmation waits for response delay");
   for(const auto& e:delayed_resumed.commands)
     if(e.kind=="generated") require(e.frame_id<6 || e.frame_id>=32,"no commands before delayed confirmation");
+  auto roundtrip_stop=delayed_stop;roundtrip_stop.stop_request_delay_ms=80;
+  auto roundtrip=Simulator(roundtrip_stop,tracker).run();
+  for(int i=6;i<34;++i) require(roundtrip.frames[i].feedback_fault,"round trip confirmation must not recover early");
+  require(roundtrip.frames[34].feedback_resynced,"forward and return delays both count");
+  bool residual_motion=false;
+  for(const auto& e:roundtrip.commands) {
+    if(e.kind=="generated") require(e.frame_id<6 || e.frame_id>=34,"fault immediately blocks generation");
+    if(e.kind=="applied" && e.timestamp>240000000 && e.timestamp<=320000000) residual_motion=true;
+    if(e.kind=="applied") require(e.timestamp<=320000000 || e.generated>=1360000000,"device stop barrier prevents old movement");
+  }
+  require(residual_motion,"old command may execute while stop request is in flight");
+  roundtrip_stop.feedback_resync_frame=-1;
+  auto stopped_only=Simulator(roundtrip_stop,tracker).run();
+  require(stopped_only.frames.back().feedback_fault && !stopped_only.frames.back().feedback_resynced,
+          "automatic device stop alone cannot authorize recovery");
+  for(double forward_ms:{20.,40.}) {
+    roundtrip_stop.stop_request_delay_ms=forward_ms;
+    auto barrier=Simulator(roundtrip_stop,tracker).run();
+    const auto barrier_time=240000000+std::llround(forward_ms*1e6);
+    bool pending_cancelled=false;
+    for(const auto& e:barrier.commands) {
+      if(e.kind=="cancelled_in_transit" && e.timestamp==barrier_time) pending_cancelled=true;
+      if(e.kind=="accepted") require(e.timestamp<barrier_time,"stop wins equal-time arrival and invalidates older packets");
+      if(e.kind=="applied") require(e.timestamp<=barrier_time,"subframe stop cannot execute until next frame");
+    }
+    require(pending_cancelled,"stop barrier must cancel pending command at its actual arrival time");
+  }
   delayed_stop.feedback_delay_ms=500;
   auto expired_stop=Simulator(delayed_stop,tracker).run();
   require(!expired_stop.frames.back().feedback_resynced && expired_stop.frames.back().feedback_fault,

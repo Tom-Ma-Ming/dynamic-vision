@@ -28,7 +28,7 @@ float clampf(float value, float low, float high) {
 }
 
 bool validate(const ScenarioConfig& config) {
-  return std::isfinite(config.feedback_delay_ms) && config.feedback_delay_ms>=0 && config.feedback_delay_ms<=10000 && std::isfinite(config.feedback_jitter_ms) && config.feedback_jitter_ms>=0 && config.feedback_jitter_ms<=10000 && config.feedback_capacity>=1 && config.feedback_capacity<=10000 && (!config.feedback_transport || (config.incremental_control && config.feedback_timeout_ms>0)) && config.feedback_drop_end_frame>=-1 && config.feedback_drop_end_frame<config.frames && config.feedback_resync_frame>=-1 && config.feedback_resync_frame<config.frames && (config.feedback_resync_frame<0 || config.feedback_timeout_ms>0) && std::isfinite(config.feedback_drop_rate) && config.feedback_drop_rate>=0 && config.feedback_drop_rate<=1 && std::isfinite(config.feedback_timeout_ms) && config.feedback_timeout_ms>=0 && config.feedback_timeout_ms<=10000 && (config.feedback_drop_rate==0 || config.feedback_timeout_ms>0) && (config.feedback_timeout_ms==0 || (config.feedback_timeout_ms>=.001 && config.incremental_control)) && std::isfinite(config.dispatch_failure_rate) && config.dispatch_failure_rate>=0 && config.dispatch_failure_rate<=1 && config.disconnect_start>=-1 && config.disconnect_frames>=0 && (config.disconnect_start<0 || config.disconnect_start<=config.frames-config.disconnect_frames) && ((config.disconnect_frames==0 && config.dispatch_failure_rate==0) || config.incremental_control) && config.observation_capacity>0 && config.observation_capacity<=10000 && std::isfinite(config.observation_jitter_ms) && config.observation_jitter_ms>=0 && config.observation_jitter_ms<=10000 && std::isfinite(config.inference_service_ms) && config.inference_service_ms>=0 && config.inference_service_ms<=10000 && std::isfinite(config.observation_delay_ms) && config.observation_delay_ms>=0 && config.observation_delay_ms<=10000 && (!config.feedback_prediction || config.encoder_compensation) && (!config.encoder_compensation || config.view_feedback) && (!config.view_feedback || config.incremental_control) && std::isfinite(config.actuator_units_per_px) && config.actuator_units_per_px>0 &&
+  return std::isfinite(config.stop_request_delay_ms) && config.stop_request_delay_ms>=0 && config.stop_request_delay_ms<=10000 && (config.stop_request_delay_ms==0 || config.feedback_transport) && std::isfinite(config.feedback_delay_ms) && config.feedback_delay_ms>=0 && config.feedback_delay_ms<=10000 && std::isfinite(config.feedback_jitter_ms) && config.feedback_jitter_ms>=0 && config.feedback_jitter_ms<=10000 && config.feedback_capacity>=1 && config.feedback_capacity<=10000 && (!config.feedback_transport || (config.incremental_control && config.feedback_timeout_ms>0)) && config.feedback_drop_end_frame>=-1 && config.feedback_drop_end_frame<config.frames && config.feedback_resync_frame>=-1 && config.feedback_resync_frame<config.frames && (config.feedback_resync_frame<0 || config.feedback_timeout_ms>0) && std::isfinite(config.feedback_drop_rate) && config.feedback_drop_rate>=0 && config.feedback_drop_rate<=1 && std::isfinite(config.feedback_timeout_ms) && config.feedback_timeout_ms>=0 && config.feedback_timeout_ms<=10000 && (config.feedback_drop_rate==0 || config.feedback_timeout_ms>0) && (config.feedback_timeout_ms==0 || (config.feedback_timeout_ms>=.001 && config.incremental_control)) && std::isfinite(config.dispatch_failure_rate) && config.dispatch_failure_rate>=0 && config.dispatch_failure_rate<=1 && config.disconnect_start>=-1 && config.disconnect_frames>=0 && (config.disconnect_start<0 || config.disconnect_start<=config.frames-config.disconnect_frames) && ((config.disconnect_frames==0 && config.dispatch_failure_rate==0) || config.incremental_control) && config.observation_capacity>0 && config.observation_capacity<=10000 && std::isfinite(config.observation_jitter_ms) && config.observation_jitter_ms>=0 && config.observation_jitter_ms<=10000 && std::isfinite(config.inference_service_ms) && config.inference_service_ms>=0 && config.inference_service_ms<=10000 && std::isfinite(config.observation_delay_ms) && config.observation_delay_ms>=0 && config.observation_delay_ms<=10000 && (!config.feedback_prediction || config.encoder_compensation) && (!config.encoder_compensation || config.view_feedback) && (!config.view_feedback || config.incremental_control) && std::isfinite(config.actuator_units_per_px) && config.actuator_units_per_px>0 &&
          std::isfinite(config.delay_jitter_ms) && config.delay_jitter_ms>=0 && config.delay_jitter_ms<=1000 &&
          config.selected_track_id > 0 && std::isfinite(config.command_horizon_s) &&
          config.command_horizon_s >= 0 && config.noise_px >= 0 && config.frames > 0 && config.dt_s > 0 && config.width > 0 &&
@@ -175,7 +175,8 @@ ScenarioResult Simulator::run() {
   int feedback_sync_attempts=0;
   StopConfirmation stop_confirmation;
   StopSnapshot stop_snapshot;
-  SimTime stop_ready=-1;
+  SimTime stop_ready=-1, stop_request_ready=-1;
+  std::uint64_t stop_request_nonce=0, stop_request_epoch=0;
   std::mt19937 stop_rng(config_.seed+600003);
   auto dropFeedback=[&](SimTime time) {
     const bool within_window=config_.feedback_drop_end_frame<0 ||
@@ -215,6 +216,21 @@ ScenarioResult Simulator::run() {
     }
   };
 
+
+  auto stopAt=[&](SimTime time) {
+    apply(time);
+    for(const auto& c:transit) event("cancelled_in_transit",c,time,0,0);
+    if(active_command.id) event("cancelled",active_command,time,0,0);
+    active_command={};transit.clear();actuator.cancel();
+  };
+  auto replyStop=[&](SimTime time,std::uint64_t epoch,std::uint64_t nonce,bool idle) {
+    if(dropFeedback(time)) {++feedback_dropped;return;}
+    stop_snapshot={epoch,nonce,time,idle};
+    const auto j=std::uniform_int_distribution<SimTime>(-std::llround(config_.feedback_jitter_ms*1e6),
+        std::llround(config_.feedback_jitter_ms*1e6))(stop_rng);
+    stop_ready=time+std::max<SimTime>(0,std::llround(config_.feedback_delay_ms*1e6)+j);
+  };
+
   std::uint64_t last_track_id = 0;
   int id_switches = 0;
   int settle_count = 0;
@@ -244,7 +260,18 @@ ScenarioResult Simulator::run() {
     bool dispatch_ok=true;
     if(config_.incremental_control) {
       std::stable_sort(transit.begin(),transit.end(),[](const auto& a,const auto& b){return a.arrival<b.arrival;});
-      while(!transit.empty() && transit.front().arrival<=ts_ns) {
+      while((!transit.empty() && transit.front().arrival<=ts_ns) ||
+            (stop_request_ready>=0 && stop_request_ready<=ts_ns)) {
+        // Stop wins ties and cancels older in-flight commands at the device barrier.
+        if(stop_request_ready>=0 && stop_request_ready<=ts_ns &&
+           (transit.empty() || stop_request_ready<=transit.front().arrival)) {
+          const auto time=stop_request_ready;stop_request_ready=-1;
+          if(connected) {
+            stopAt(time);
+            if(stop_request_nonce) replyStop(time,stop_request_epoch,stop_request_nonce,true);
+          }
+          continue;
+        }
         auto c=transit.front();transit.erase(transit.begin());
         apply(c.arrival);
         if(actuator.submit(c)) {
@@ -259,6 +286,10 @@ ScenarioResult Simulator::run() {
         feedback.overdue(ts_ns,std::llround(config_.feedback_timeout_ms*1e6)));
       if(feedback_overdue || (config_.feedback_transport && feedback_channel.full())) {
         feedback_capacity_fault=config_.feedback_transport && feedback_channel.full();
+        if(!feedback_fault && config_.stop_request_delay_ms>0) {
+          stop_request_ready=ts_ns+std::llround(config_.stop_request_delay_ms*1e6);
+          stop_request_nonce=0; // automatic stop cannot authorize recovery
+        }
         feedback_fault=true;feedback.clear();
         if(config_.feedback_transport) feedback_channel.newEpoch(ts_ns);
       }
@@ -275,17 +306,16 @@ ScenarioResult Simulator::run() {
             confirmed=stop_confirmation.accept(stop_snapshot,ts_ns,feedback_channel.epoch(),idle_snapshot);
             stop_ready=-1;
           }
-          if(!confirmed && !stop_confirmation.pending(ts_ns)) {
+          if(!confirmed && !stop_confirmation.pending(ts_ns) && stop_request_ready<0) {
             ++feedback_sync_attempts;
             const auto nonce=stop_confirmation.request(feedback_channel.epoch(),ts_ns,
                 std::llround(config_.feedback_timeout_ms*1e6));
             stop_ready=-1;
-            if(dropFeedback(ts_ns)) ++feedback_dropped;
-            else {
-              stop_snapshot={feedback_channel.epoch(),nonce,ts_ns,idle_snapshot};
-              const auto j=std::uniform_int_distribution<SimTime>(-std::llround(config_.feedback_jitter_ms*1e6),
-                  std::llround(config_.feedback_jitter_ms*1e6))(stop_rng);
-              stop_ready=ts_ns+std::max<SimTime>(0,std::llround(config_.feedback_delay_ms*1e6)+j);
+            if(config_.stop_request_delay_ms>0) {
+              stop_request_ready=ts_ns+std::llround(config_.stop_request_delay_ms*1e6);
+              stop_request_nonce=nonce;stop_request_epoch=feedback_channel.epoch();
+            } else {
+              replyStop(ts_ns,feedback_channel.epoch(),nonce,idle_snapshot);
               if(stop_ready==ts_ns) {
                 confirmed=stop_confirmation.accept(stop_snapshot,ts_ns,feedback_channel.epoch(),idle_snapshot);
                 stop_ready=-1;
@@ -553,6 +583,9 @@ ScenarioResult Simulator::run() {
           pid_x.reset();pid_y.reset();
         }
         if(std::hypot(ux,uy)>=config_.actuator_max_speed*config_.actuator_units_per_px) ++saturated_frames;
+      } else if(feedback_fault && connected && config_.stop_request_delay_ms>0) {
+        // Block generation immediately; physical stop waits for transport.
+        pid_x.reset();pid_y.reset();
       } else {
         for(const auto& c:transit) event(connected ? "cancelled_in_transit" : "disconnected_in_transit",c,ts_ns,0,0);
         if(active_command.id) event(connected ? "cancelled" : "disconnected",active_command,ts_ns,0,0);
