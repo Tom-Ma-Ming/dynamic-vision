@@ -137,3 +137,7 @@ feedback_transport下恢复停止确认加入nonce/epoch/期限及回传延迟�
 ## 2026-11-08 增益校准、动态反例与评审交接
 
 16项静止校准后选择显式Kp2候选，原四用例2SUCCESS/2UNKNOWN；默认Kp8不改。24项另设动态对照仍3SUCCESS/17FAILED/4UNKNOWN，低增益变向平均误差还回退。动态双跑一致、4140命令审计通过；不以静止成功宣称闭环完成。见encoder-gain-experiment.md。用户提出DeepSeek实现、我方评审的分工建议，已准备handoff-deepseek.md，尚未实际派发外部代理。
+
+## 2026-11-08 动态失败的时间和误差分解
+
+确认constant场景第147帧世界边界反向，随后第153帧不可控、第163帧旧选择ID消失；turn场景也在变向后断轨。新增20px/s不碰边界诊断四项仍FAILED，末40帧始终ID1/ready，平均误差6.2～13.1px，证明还有独立于断轨的持续运动偏差。Kp2稳态误差与比例速度输出、编码器滞后和预测提前量的近似关系吻合；未将此近似真值诊断用于控制。详情encoder-control-diagnosis.md，并已加入DeepSeek交接。
