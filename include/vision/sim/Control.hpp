@@ -88,6 +88,14 @@ class CommandFeedback {
     it->second.x-=dx;it->second.y-=dy;
   }
   void retire(std::uint64_t id) { pending_.erase(id); }
+  bool overdue(SimTime now,SimTime timeout) const {
+    if(now<0 || timeout<=0) throw std::invalid_argument("Invalid feedback deadline");
+    for(const auto& item:pending_)
+      if(now>=item.second.generated && now-item.second.generated>=timeout) return true;
+    return false;
+  }
+  void clear() { pending_.clear(); }
+  std::size_t size() const { return pending_.size(); }
   double delay() const { return delay_; }
   std::pair<double,double> pending() const {
     std::pair<double,double> sum{};

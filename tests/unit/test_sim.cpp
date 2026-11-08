@@ -161,6 +161,29 @@ int main(int argc, char** argv) try {
   auto send_failure=Simulator(failed_send,tracker).run();
   require(send_failure.result==TaskResult::Unknown && send_failure.cause==Cause::Control,"dispatch failure must be attributed to control");
   for(const auto& f:send_failure.frames) require(f.aim_x==failed_send.width*.5f,"failed sends cannot move");
+  auto missing_feedback=incremental;
+  missing_feedback.feedback_drop_rate=1;missing_feedback.feedback_timeout_ms=200;
+  missing_feedback.success_after_frame=40;
+  const auto lost_feedback=Simulator(missing_feedback,tracker).run();
+  require(lost_feedback.result==TaskResult::Unknown && lost_feedback.cause==Cause::Control,"feedback timeout is a control fault");
+  int fault_frame=-1;float stopped_x=0;
+  for(const auto& f:lost_feedback.frames) {
+    if(f.feedback_fault && fault_frame<0) {fault_frame=f.frame;stopped_x=f.aim_x;}
+    if(fault_frame>=0) {
+      require(f.feedback_fault && f.control_gate=="feedback_timeout","feedback fault must latch");
+      require(f.aim_x==stopped_x && f.feedback_pending==0,"timeout cancels motion and bounds ledger");
+    }
+  }
+  require(fault_frame>0 && lost_feedback.frames.back().feedback_dropped>0,"loss must be observable");
+  bool moved_before_fault=false;
+  for(const auto& e:lost_feedback.commands) {
+    if(e.kind=="generated") require(e.frame_id<std::uint64_t(fault_frame),"no new commands after timeout");
+    if(e.kind=="applied") moved_before_fault=true;
+  }
+  require(moved_before_fault,"missing notifications do not undo actual execution");
+  auto reliable=incremental;reliable.feedback_timeout_ms=500;
+  auto reliable_result=Simulator(reliable,tracker).run();
+  for(const auto& f:reliable_result.frames) require(!f.feedback_fault,"reliable notifications avoid timeout");
   const auto repeated = Simulator(constant, tracker).run();
   require(repeated.result == success.result, "determinism: result");
   require(repeated.terminal_frame == success.terminal_frame, "determinism: terminal frame");

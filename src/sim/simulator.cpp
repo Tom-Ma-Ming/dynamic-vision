@@ -27,7 +27,7 @@ float clampf(float value, float low, float high) {
 }
 
 bool validate(const ScenarioConfig& config) {
-  return std::isfinite(config.dispatch_failure_rate) && config.dispatch_failure_rate>=0 && config.dispatch_failure_rate<=1 && config.disconnect_start>=-1 && config.disconnect_frames>=0 && (config.disconnect_start<0 || config.disconnect_start<=config.frames-config.disconnect_frames) && ((config.disconnect_frames==0 && config.dispatch_failure_rate==0) || config.incremental_control) && config.observation_capacity>0 && config.observation_capacity<=10000 && std::isfinite(config.observation_jitter_ms) && config.observation_jitter_ms>=0 && config.observation_jitter_ms<=10000 && std::isfinite(config.inference_service_ms) && config.inference_service_ms>=0 && config.inference_service_ms<=10000 && std::isfinite(config.observation_delay_ms) && config.observation_delay_ms>=0 && config.observation_delay_ms<=10000 && (!config.feedback_prediction || config.encoder_compensation) && (!config.encoder_compensation || config.view_feedback) && (!config.view_feedback || config.incremental_control) && std::isfinite(config.actuator_units_per_px) && config.actuator_units_per_px>0 &&
+  return std::isfinite(config.feedback_drop_rate) && config.feedback_drop_rate>=0 && config.feedback_drop_rate<=1 && std::isfinite(config.feedback_timeout_ms) && config.feedback_timeout_ms>=0 && config.feedback_timeout_ms<=10000 && (config.feedback_drop_rate==0 || config.feedback_timeout_ms>0) && (config.feedback_timeout_ms==0 || (config.feedback_timeout_ms>=.001 && config.incremental_control)) && std::isfinite(config.dispatch_failure_rate) && config.dispatch_failure_rate>=0 && config.dispatch_failure_rate<=1 && config.disconnect_start>=-1 && config.disconnect_frames>=0 && (config.disconnect_start<0 || config.disconnect_start<=config.frames-config.disconnect_frames) && ((config.disconnect_frames==0 && config.dispatch_failure_rate==0) || config.incremental_control) && config.observation_capacity>0 && config.observation_capacity<=10000 && std::isfinite(config.observation_jitter_ms) && config.observation_jitter_ms>=0 && config.observation_jitter_ms<=10000 && std::isfinite(config.inference_service_ms) && config.inference_service_ms>=0 && config.inference_service_ms<=10000 && std::isfinite(config.observation_delay_ms) && config.observation_delay_ms>=0 && config.observation_delay_ms<=10000 && (!config.feedback_prediction || config.encoder_compensation) && (!config.encoder_compensation || config.view_feedback) && (!config.view_feedback || config.incremental_control) && std::isfinite(config.actuator_units_per_px) && config.actuator_units_per_px>0 &&
          std::isfinite(config.delay_jitter_ms) && config.delay_jitter_ms>=0 && config.delay_jitter_ms<=1000 &&
          config.selected_track_id > 0 && std::isfinite(config.command_horizon_s) &&
          config.command_horizon_s >= 0 && config.noise_px >= 0 && config.frames > 0 && config.dt_s > 0 && config.width > 0 &&
@@ -161,10 +161,16 @@ ScenarioResult Simulator::run() {
   std::deque<PendingObservation> observations;
   int observation_frame=-1;
   CommandFeedback feedback(config_.actuator_delay_frames*config_.dt_s);
+  std::mt19937 feedback_rng(config_.seed+400003);
+  int feedback_dropped=0;
+  bool feedback_fault=false;
   IncrementCommand active_command;
   auto event=[&](const char* kind,const IncrementCommand& c,SimTime time,double dx,double dy) {
     const std::string type(kind);
-    if(type=="generated") feedback.issued(c.id,c.generated,dx,dy);
+    const bool remote=type=="accepted" || type=="applied" || type=="expired" || type=="replaced" || type=="rejected";
+    const bool dropped=remote && config_.feedback_drop_rate>0 && failure(feedback_rng)<config_.feedback_drop_rate;
+    if(dropped) ++feedback_dropped;
+    else if(type=="generated") feedback.issued(c.id,c.generated,dx,dy);
     else if(type=="accepted") feedback.acknowledged(c.id,time);
     else if(type=="applied") feedback.applied(c.id,dx,dy);
     else feedback.retire(c.id);
@@ -225,6 +231,9 @@ ScenarioResult Simulator::run() {
         } else event("rejected",c,c.arrival,0,0);
       }
       apply(ts_ns);
+      if(config_.feedback_timeout_ms>0 && feedback.overdue(ts_ns,std::llround(config_.feedback_timeout_ms*1e6))) {
+        feedback_fault=true;feedback.clear();
+      }
     }
 
     if (config_.motion == Motion::Stop && frame >= config_.frames / 3) {
@@ -460,7 +469,7 @@ ScenarioResult Simulator::run() {
       }
     }
     if(config_.incremental_control) {
-      if(controllable && connected) {
+      if(controllable && connected && !feedback_fault) {
         const double delay=std::max(0.0,config_.actuator_delay_frames*config_.dt_s+jitter(delay_rng)*.001);
         const auto arrival=ts_ns+std::llround(delay*1e9);
         const auto pending=config_.feedback_prediction ? feedback.pending() : std::pair<double,double>{};
@@ -506,11 +515,12 @@ ScenarioResult Simulator::run() {
     const float error_px = std::hypot(error_x, error_y);
     const float error_norm = normalizedError(error_x, error_y, config_.target_w, height);
 
-    const bool valid = controllable && connected && dispatch_ok;
+    const bool valid = controllable && connected && dispatch_ok && !feedback_fault;
 
     FrameRecord record;
     record.observation_ts_ns=tracker.snapshot().timestamp;record.observation_frame=observation_frame;
     record.estimated_delay_ms=feedback.delay()*1000;
+    record.feedback_dropped=feedback_dropped;record.feedback_fault=feedback_fault;record.feedback_pending=feedback.size();
     record.frame = frame;
     record.ts_ns = ts_ns;
     record.camera_x=camera_x;record.camera_y=camera_y;
@@ -526,7 +536,7 @@ ScenarioResult Simulator::run() {
     }
     record.track_state = selected ? mot::name(selected->state) : "None";
     record.ambiguous = ambiguous;
-    record.control_gate=!connected ? "actuator_disconnected" : !dispatch_ok ? "dispatch_failed" : !selected ? "no_selected_track" : selected->state!=mot::State::Confirmed ? "not_confirmed" :
+    record.control_gate=feedback_fault ? "feedback_timeout" : !connected ? "actuator_disconnected" : !dispatch_ok ? "dispatch_failed" : !selected ? "no_selected_track" : selected->state!=mot::State::Confirmed ? "not_confirmed" :
       selected->ambiguous ? "ambiguous" :
       age_ms>config_.max_age_ms ? "stale" : covariance_trace>config_.covariance_limit ? "uncertain" : "ready";
     record.est_x = estimate_x;
@@ -579,7 +589,7 @@ ScenarioResult Simulator::run() {
       ++unseen_frames;
       if (unseen_frames >= config_.unknown_grace_frames && output.result == TaskResult::Running) {
         output.result = TaskResult::Unknown;
-        output.cause = (!connected || !dispatch_ok) ? Cause::Control : Cause::Detection;
+        output.cause = (!connected || !dispatch_ok || feedback_fault) ? Cause::Control : Cause::Detection;
         output.terminal_frame = frame;
       }
     } else {

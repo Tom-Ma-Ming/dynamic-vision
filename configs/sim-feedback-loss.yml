@@ -1,0 +1,5 @@
+%YAML:1.0
+scenarios:
+  - {id: "reliable_feedback", motion: "constant", frames: 200, vx: 0., noise_px: 0., incremental_control: 1, acquire_single_confirmed: 1, feedback_timeout_ms: 500., success_after_frame: 40}
+  - {id: "missing_feedback", motion: "constant", frames: 200, vx: 0., noise_px: 0., incremental_control: 1, acquire_single_confirmed: 1, feedback_drop_rate: 1., feedback_timeout_ms: 200., success_after_frame: 40}
+  - {id: "intermittent_feedback", motion: "constant", frames: 200, vx: 0., noise_px: 0., incremental_control: 1, acquire_single_confirmed: 1, feedback_drop_rate: 0.2, feedback_timeout_ms: 500., success_after_frame: 40, seed: 12}

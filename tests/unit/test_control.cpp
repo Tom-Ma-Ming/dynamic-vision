@@ -37,6 +37,11 @@ int main() try {
   require(std::abs(ledger.delay()-.084)<1e-12);
   ledger.applied(1,4,-2);require(ledger.pending().first==6 && ledger.pending().second==-3);
   ledger.retire(1);require(ledger.pending().first==0);
+  ledger.issued(2,100,5,0);
+  require(!ledger.overdue(199,100) && ledger.overdue(200,100));
+  ledger.acknowledged(2,150);
+  require(ledger.overdue(200,100)); // receipt is not execution completion
+  ledger.clear();require(ledger.size()==0 && !ledger.overdue(300,100));
   sim::PidAxis slow(0,1,0,100,100), fast(0,1,0,100,100);
   double s=0,f=0;
   for(int i=0;i<10;++i)s=slow.step(1,.1);
