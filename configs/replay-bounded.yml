@@ -1,0 +1,8 @@
+%YAML:1.0
+# Resource-limited diagnostics, not complete offline scoring evidence.
+queue_capacity: 1
+queue_mode: "latest"
+realtime_pace: 1
+log_chunk_bytes: 10485760
+log_keep_files: 4
+write_overlay: 0

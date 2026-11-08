@@ -26,6 +26,7 @@
 
 #include "vision/core/BoundedQueue.hpp"
 #include "vision/core/LatencyStats.hpp"
+#include "vision/core/FrameLog.hpp"
 
 namespace fs = std::filesystem;
 using Clock = std::chrono::steady_clock;
@@ -181,8 +182,7 @@ int main(int argc, char** argv) try {
   if (!fs::create_directory(output)) {
     throw std::runtime_error("Use a new output directory");
   }
-  std::ofstream log(output / "frames.jsonl");
-  log.exceptions(std::ios::badbit | std::ios::failbit);
+  vision::FrameLog frame_log(output,config.log_chunk_bytes,config.log_keep_files);
 
   vision::BoundedQueue<replay::FramePacket> queue(
       static_cast<std::size_t>(config.queue_capacity), config.queue_mode);
@@ -320,6 +320,7 @@ int main(int argc, char** argv) try {
         const std::int64_t result_age =
             publish_ns - packet->capture_steady_ns;
 
+        std::ostringstream log;
         log << "{\"frame_id\":" << packet->frame_id
             << ",\"source_ts_ns\":" << packet->source_ts_ns
             << ",\"timestamp_source\":\""
@@ -346,6 +347,7 @@ int main(int argc, char** argv) try {
           camera_ns.add(camera_elapsed);
         }
         log << "}\n";
+        frame_log.append(log.str());
 
         ++processed;
         queue_wait_ns.add(queue_wait);
@@ -353,6 +355,7 @@ int main(int argc, char** argv) try {
         mot_ns.add(mot);
         result_age_ns.add(result_age);
 
+        if (!config.write_overlay) continue;
         if (!writer_open) {
           if (fs::is_directory(output / "overlay.mp4"))
             throw std::runtime_error("Cannot open overlay writer");
@@ -393,6 +396,7 @@ int main(int argc, char** argv) try {
         writer.write(frame);
       }
       if (writer_open) writer.release();
+      frame_log.close();
     } catch (...) {
       consumer_error = std::current_exception();
       ++failed;
@@ -412,8 +416,6 @@ int main(int argc, char** argv) try {
   producer_thread.join();
   consumer_thread.join();
   queue.close();
-  log.exceptions(std::ios::goodbit);
-  log.close();
 
   const auto queue_wait_summary = queue_wait_ns.summary();
   const auto infer_summary = infer_ns.summary();
@@ -457,6 +459,19 @@ int main(int argc, char** argv) try {
           << ",\"error\":" << (error.empty() ? "null" : jsonString(error));
   if(tracker_config.cameraMotion.enabled)
     summary << ",\"camera_ms\":" << latencyJson(camera_ns.summary());
+  summary << ",\"write_overlay\":" << (config.write_overlay?"true":"false")
+          << ",\"frame_log\":{\"complete\":" << (!has_error && frame_log.retired()==0 && frame_log.total()==processed_count?"true":"false")
+          << ",\"records_written\":" << frame_log.total()
+          << ",\"records_retired\":" << frame_log.retired()
+          << ",\"chunk_bytes\":" << config.log_chunk_bytes
+          << ",\"keep_files\":" << config.log_keep_files << ",\"files\":[";
+  bool first_part=true;
+  for(const auto& part:frame_log.parts()) {
+    if(!first_part) summary << ",";
+    first_part=false;
+    summary << "{\"name\":" << jsonString(part.name) << ",\"records\":" << part.records << "}";
+  }
+  summary << "]}";
   summary << "}\n";
   summary.close();
 

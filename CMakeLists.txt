@@ -91,6 +91,7 @@ if(VISION_BUILD_TESTS)
   set(VISION_TEST_SOURCES
     tests/unit/test_smoke.cpp
     tests/unit/test_queue.cpp
+    tests/unit/test_frame_log.cpp
     tests/unit/test_stats.cpp)
   add_executable(vision_tests ${VISION_TEST_SOURCES})
   add_executable(control_test tests/unit/test_control.cpp)
