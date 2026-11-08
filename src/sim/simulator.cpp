@@ -267,12 +267,28 @@ ScenarioResult Simulator::run() {
       if(!occluded && in_view) {
         const auto anchor=images_.sprite_target;
         const double sx=config_.target_w/anchor.width,sy=height/anchor.height;
+        if(config_.subpixel_render) {
+          const double tx=truth_x-(anchor.x+anchor.width*.5)*sx;
+          const double ty=truth_y-(anchor.y+anchor.height*.5)*sy;
+          const cv::Mat transform=(cv::Mat_<double>(2,3)<<sx,0,tx,0,sy,ty);
+          cv::Mat foreground,alpha;
+          cv::warpAffine(images_.sprite,foreground,transform,raster.size(),cv::INTER_LINEAR,cv::BORDER_CONSTANT);
+          cv::Mat mask(images_.sprite.size(),CV_32F,cv::Scalar(1));
+          cv::warpAffine(mask,alpha,transform,raster.size(),cv::INTER_LINEAR,cv::BORDER_CONSTANT);
+          // foreground already has zero-border interpolation (premultiplied coverage).
+          for(int y=0;y<raster.rows;++y) for(int x=0;x<raster.cols;++x) {
+            const float a=alpha.at<float>(y,x);
+            auto& dst=raster.at<cv::Vec3b>(y,x);const auto src=foreground.at<cv::Vec3b>(y,x);
+            for(int c=0;c<3;++c) dst[c]=cv::saturate_cast<unsigned char>(src[c]+dst[c]*(1-a));
+          }
+        } else {
         cv::Rect destination(cvRound(truth_x-(anchor.x+anchor.width*.5)*sx),
                              cvRound(truth_y-(anchor.y+anchor.height*.5)*sy),
                              std::max(1,cvRound(images_.sprite.cols*sx)),std::max(1,cvRound(images_.sprite.rows*sy)));
         cv::Mat sprite;cv::resize(images_.sprite,sprite,destination.size());
         const cv::Rect visible=destination & cv::Rect(0,0,raster.cols,raster.rows);
         if(visible.area()>0) sprite(cv::Rect(visible.x-destination.x,visible.y-destination.y,visible.width,visible.height)).copyTo(raster(visible));
+        }
       }
       detections=images_.detect(raster,frame,ts_ns);
       detected=!detections.empty();

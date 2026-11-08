@@ -23,6 +23,7 @@ struct ScenarioConfig {
   bool compensate_actuator_delay = false;
   bool incremental_control = false;
   bool view_feedback = false;
+  bool subpixel_render = false;
   bool encoder_compensation = false;
   bool feedback_prediction = false;
   double pid_kp=8, pid_ki=0, pid_kd=0;

@@ -118,6 +118,9 @@ int main(int argc, char** argv) try {
   pixels.sprite=context;pixels.sprite_target={30,20,20,40};image_calls=0;
   auto context_result=Simulator(feedback,tracker,pixels).run();
   require(context_result.frames.back().error_px<3,"context region must not change target truth anchor");
+  feedback.subpixel_render=true;feedback.actuator_units_per_px=4;image_calls=0;
+  auto subpixel_result=Simulator(feedback,tracker,pixels).run();
+  require(subpixel_result.frames.back().error_px<3,"subpixel context renderer maintains body anchor");
   pixels.detect=[](const cv::Mat&,int,std::int64_t){return std::vector<mot::Detection>{};};
   auto empty_images=Simulator(feedback,tracker,pixels).run();
   require(empty_images.metrics.tracked_frames==0,"image backend cannot fall back to truth boxes");

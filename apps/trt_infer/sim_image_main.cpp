@@ -9,7 +9,7 @@
 #include <chrono>
 
 int main(int argc,char** argv) try {
-  if(argc!=6 && argc!=10 && argc!=11) throw std::runtime_error("usage: vision_sim_image engine sprite background tracker new-output [target-x target-y target-width target-height [selected-track-id]]");
+  if(argc!=6 && (argc<10 || argc>13)) throw std::runtime_error("usage: vision_sim_image engine sprite background tracker new-output [target-x target-y target-width target-height [selected-track-id [units-per-pixel [subpixel-render-0-or-1]]]]");
   const std::filesystem::path output(argv[5]);
   if(std::filesystem::exists(output)) throw std::runtime_error("Output must be new");
   Detector detector(argv[1]);
@@ -42,7 +42,9 @@ int main(int argc,char** argv) try {
   }
   config.vx=0;config.frames=100;config.noise_px=0;
   config.acquire_single_confirmed=true;config.incremental_control=true;
-  if(argc==11) {config.acquire_single_confirmed=false;config.selected_track_id=std::stoi(argv[10]);}
+  if(argc>=11) {config.acquire_single_confirmed=false;config.selected_track_id=std::stoi(argv[10]);}
+  if(argc>=12) config.actuator_units_per_px=std::stod(argv[11]);
+  if(argc>=13) {const int flag=std::stoi(argv[12]);if(flag!=0 && flag!=1) throw std::invalid_argument("Invalid subpixel flag");config.subpixel_render=flag!=0;}
   config.view_feedback=true;config.encoder_compensation=true;config.pid_kp=2;
   auto result=sim::Simulator(config,mot::Config::load(argv[4]),images).run();
   std::ofstream frames(output/"feedback.jsonl");frames.exceptions(std::ios::badbit|std::ios::failbit);
@@ -65,6 +67,7 @@ int main(int argc,char** argv) try {
   summary<<"{\"result\":\""<<sim::name(result.result)<<"\",\"terminal_frame\":"<<result.terminal_frame
     <<",\"mae_px\":"<<result.metrics.mae_px<<",\"track_coverage\":"<<result.metrics.track_coverage
     <<",\"selected_track_id\":"<<config.selected_track_id<<",\"acquire_single_confirmed\":"<<(config.acquire_single_confirmed?"true":"false")
+    <<",\"units_per_px\":"<<config.actuator_units_per_px<<",\"subpixel_render\":"<<(config.subpixel_render?"true":"false")
     <<",\"clock\":\"fixed_simulation_step_not_wall_time\",\"encoder_feedback\":true,\"gates\":{";
   bool first=true;
   for(const auto& g:gates) {summary<<(first?"":",")<<"\""<<g.first<<"\":"<<g.second;first=false;}
