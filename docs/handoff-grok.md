@@ -65,4 +65,6 @@
 
 ## 当前本地接续位置（2026-11-08 后续）
 
-主线已进入图像控制工程回路与延迟模型验收，参见 docs/sim-image-loop.md、docs/sim-incremental.md、openspec/changes/sim-actuator/tasks.md。最新CPU27/27、SDK6/6、已入库Python工具22/22；不包含用户未入库的 synth-training-poc 文件。远程CI由用户明确暂缓，本地未配置remote。下一步继续完整调度/故障恢复、多人物/真实录像验证与ReID；检测框偏差及最终数据验收仍是精度缺口。
+主线已进入图像控制工程回路与延迟模型验收，参见 docs/sim-image-loop.md、docs/sim-incremental.md、openspec/changes/sim-actuator/tasks.md。截至资源统计修复，CPU29/29、SDK6/6、已入库Python工具33/33；不包含用户未入库的 synth-training-poc 文件。远程CI由用户明确暂缓，本地未配置remote。下一步继续完整调度/故障恢复、多人物/真实录像验证与ReID；检测框偏差及最终数据验收仍是精度缺口。
+
+2026-11-08 补充：上文“尚未接通渲染到YOLO”是历史阶段描述；当前工程回路已接通，控制精度仍未全部过门槛。新增头部实测时间戳、真实录像歧义消融和固定内存统计，详见task-roadmap.md最新状态。小时级运行是否结束必须查对应进程句柄和completion.json，不能凭启动记录宣称完成。

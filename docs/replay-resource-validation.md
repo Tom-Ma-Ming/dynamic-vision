@@ -19,3 +19,9 @@ Windows监测工具按秒记录子进程working set、private bytes、累计CPU�
 证据 artifacts/replay-soak-v1：真实时间180.52秒，5400帧捕获/处理/视频解码一致，替换、拒绝、失败、积压均为0。精确复算P99：queue0.0671ms、infer13.4296ms、MOT0.0185ms、result-age13.4531ms；在线直方图分位数误差验证通过。result-age是采集完成到结果发布，不能替代包含采集/显示/执行的全链路延迟。
 
 179次进程采样；30～60秒私有内存中位数271.586MiB，150秒后273.113MiB（+1.527MiB）；全程私有内存峰值307.879MiB、工作集峰值159.176MiB。只有三分钟，不能据此证明长期无增长。GPU独立采样见gpu-device.csv，属于整张GTX1060统计，不能当作本进程显存。CPU29/29、SDK6/6通过；监测工具实际运行完成。小时级压力、日志轮转、部署机器验证仍未完成。
+
+## 一小时验收入口
+
+运行前门槛见 openspec/changes/replay-soak/acceptance.md。make_soak_video.py生成20次重复的108000帧输入并保存来源清单；单进程monitor_replay运行结束后执行 `python tools/audit_replay_soak.py 输出目录`，独立检查输入摘要、帧账目、精确延迟、内存窗口和视频解码数量。三分钟基线作为反例送入小时审计器，按预期因时长/帧数/内存窗口不足返回失败；其audit.json不表示此前三分钟基线本身运行失败。
+
+2026-11-08 已启动 artifacts/replay-soak-hour-v1，一小时结果尚未获得。输入 artifacts/replay-soak-input-v1，108000帧/3600秒；运行句柄83707（本会话exec session）。必须重新查询该句柄或实际进程确认状态，不能因本条启动记录宣称运行仍活跃或验收通过。在该进程结束前勿重新构建/覆盖vision_replay.exe；结束后自动执行独立审计。
