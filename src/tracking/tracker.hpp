@@ -15,6 +15,7 @@ struct Config {
     double maxLostMs, birthScore, sigma, headSigma, accel, initialSpeed, gate, iouWeight, ambiguity;
     ImmConfig imm;
     CameraMotionConfig cameraMotion;
+    bool separateHeadAmbiguity = false;
     bool byteTrack = false;
     double highScore = 0.4;
     double lowScore = 0.1;
@@ -29,7 +30,7 @@ struct Track {
     std::optional<ImmState> imm;
     cv::Size2f size;
     cv::Point2f headOffset{};
-    bool body = false, ambiguous = false;
+    bool body = false, ambiguous = false, headAmbiguous = false;
     Time lastSeen;
     int hits = 1;
     double score, cost = -1, innovation = -1;

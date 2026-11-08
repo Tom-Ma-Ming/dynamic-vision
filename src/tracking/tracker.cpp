@@ -15,6 +15,7 @@ Config Config::load(const std::string& path) {
     Config c{int(get("min_hits")),get("max_lost_ms"),get("birth_score"),get("measurement_sigma"),
              get("head_sigma"),get("acceleration_sigma"),get("initial_speed_sigma"),
              get("mahalanobis_gate"),get("iou_weight"),get("ambiguity_margin")};
+    c.separateHeadAmbiguity=!f["separate_head_ambiguity"].empty() && int(f["separate_head_ambiguity"])!=0;
     c.byteTrack = !f["byte_track"].empty() && static_cast<int>(f["byte_track"]) != 0;
     c.highScore = f["high_score"].empty() ? c.birthScore : get("high_score");
     c.lowScore = f["low_score"].empty() ? 0.1 : get("low_score");
@@ -67,8 +68,8 @@ cv::Rect2f Track::box() const {
     return {float(x[0])-size.width/2,float(x[1])-size.height/2,size.width,size.height};
 }
 static cv::Point2f center(cv::Rect2f b) { return (b.tl()+b.br())*.5f; }
-struct Observation { Detection d; std::optional<cv::Point2f> head; bool ambiguous=false; };
-static std::vector<Observation> group(const std::vector<Detection>& detections) {
+struct Observation { Detection d; std::optional<cv::Point2f> head; bool ambiguous=false, headAmbiguous=false; };
+static std::vector<Observation> group(const std::vector<Detection>& detections,bool separate) {
     std::vector<Observation> obs;
     for(const auto& d:detections) if(d.cls==1) obs.push_back({d});
     auto bodies=obs.size();
@@ -88,8 +89,12 @@ static std::vector<Observation> group(const std::vector<Detection>& detections) 
         }
         if(best==bodies) obs.push_back({d,h});
         else {
-            obs[best].ambiguous |= count>1 || obs[best].head.has_value();
-            if(!obs[best].head) obs[best].head=h;
+            if(separate && count==1 && (obs[best].head || obs[best].headAmbiguous)) {
+                obs[best].head.reset();obs[best].headAmbiguous=true;
+            } else {
+                obs[best].ambiguous |= count>1 || obs[best].head.has_value();
+                if(!obs[best].head && !obs[best].headAmbiguous) obs[best].head=h;
+            }
         }
     }
     return obs;
@@ -165,6 +170,7 @@ static Candidate candidate(const Track& t,const Observation& o,const Config& c) 
     double d2=t.imm ? t.imm->gateDistance({anchor.x,anchor.y},var,c.imm.gateProbability) : r.dot(inv*r);
     double common=(t.box() & o.d.box).area();
     double iou=common/(t.box().area()+o.d.box.area()-common);
+    if(c.separateHeadAmbiguity && ((t.body && !body && t.headAmbiguous) || (!t.body && body && o.headAmbiguous))) d2=1e15;
     return {r,inv,var,d2,c.iouWeight*(1-iou)+(1-c.iouWeight)*d2/c.gate};
 }
 static void correct(Track& t,const Candidate& c) {
@@ -225,7 +231,7 @@ bool Tracker::update(Time frame,Time ts,const std::vector<Detection>& detections
         s.removed.clear();
         for(auto& t:current.tracks)
             if((ts-t.lastSeen)*1e-6>cfg.maxLostMs) s.removed.push_back(t.id);
-        auto obs=group(detections);
+        auto obs=group(detections,cfg.separateHeadAmbiguity);
         std::vector<Observation> high,low;
         for(auto& o:obs) {
             if(o.d.score>=cfg.highScore) high.push_back(o);
@@ -246,7 +252,7 @@ bool Tracker::update(Time frame,Time ts,const std::vector<Detection>& detections
                 if(o.head) t.headOffset=*o.head-center(o.d.box);
             }
             t.score=o.d.score; t.cost=c.cost; t.innovation=c.d2;
-            t.ambiguous=o.ambiguous;
+            t.ambiguous=o.ambiguous;t.headAmbiguous=o.headAmbiguous;
             t.lastSeen=ts;
             if(++t.hits>=cfg.minHits) t.state=State::Confirmed;
         };
@@ -315,7 +321,7 @@ bool Tracker::update(Time frame,Time ts,const std::vector<Detection>& detections
             t.id=nextId++; t.size=o.d.box.size(); t.lastSeen=ts; t.score=o.d.score;
             auto p=center(o.d.box); t.x={p.x,p.y,0,0}; t.body=o.d.cls==1;
             t.headOffset=o.head.value_or(cv::Point2f(p.x,o.d.box.y))-p;
-            t.ambiguous=o.ambiguous;
+            t.ambiguous=o.ambiguous;t.headAmbiguous=o.headAmbiguous;
             t.covariance=cv::Matx44d::eye();
             for(int a=0;a<4;++a) t.covariance(a,a)=std::pow(a<2?cfg.headSigma:cfg.initialSpeed,2);
             initializeImm(t,cfg);
@@ -329,7 +335,7 @@ bool Tracker::update(Time frame,Time ts,const std::vector<Detection>& detections
     s.removed.clear();
     for(auto& t:current.tracks)
         if((ts-t.lastSeen)*1e-6>cfg.maxLostMs) s.removed.push_back(t.id);
-    auto obs=group(detections);
+    auto obs=group(detections,cfg.separateHeadAmbiguity);
     size_t n=s.tracks.size(),m=obs.size();
     const double unmatched=double(n)+2, forbidden=unmatched*2;
     std::vector<std::vector<double>> costs(n,std::vector<double>(m+n,forbidden));
@@ -368,7 +374,7 @@ bool Tracker::update(Time frame,Time ts,const std::vector<Detection>& detections
                 if(o.head) t.headOffset=*o.head-center(o.d.box);
             }
             t.score=o.d.score; t.cost=c.cost; t.innovation=c.d2;
-            t.ambiguous=o.ambiguous;
+            t.ambiguous=o.ambiguous;t.headAmbiguous=o.headAmbiguous;
             t.ambiguous |= assignmentAmbiguous(costs,i,j,m,cfg.ambiguity);
             t.lastSeen=ts;
             if(++t.hits>=cfg.minHits) t.state=State::Confirmed;
@@ -381,7 +387,7 @@ bool Tracker::update(Time frame,Time ts,const std::vector<Detection>& detections
         t.id=nextId++; t.size=o.d.box.size(); t.lastSeen=ts; t.score=o.d.score;
         auto p=center(o.d.box); t.x={p.x,p.y,0,0}; t.body=o.d.cls==1;
         t.headOffset=o.head.value_or(cv::Point2f(p.x,o.d.box.y))-p;
-        t.ambiguous=o.ambiguous;
+        t.ambiguous=o.ambiguous;t.headAmbiguous=o.headAmbiguous;
         t.covariance=cv::Matx44d::eye();
         for(int a=0;a<4;++a) t.covariance(a,a)=std::pow(a<2?cfg.headSigma:cfg.initialSpeed,2);
         initializeImm(t,cfg);

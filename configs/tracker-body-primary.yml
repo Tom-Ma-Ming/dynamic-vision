@@ -1,0 +1,19 @@
+%YAML:1.0
+min_hits: 2
+max_lost_ms: 500
+birth_score: 0.4
+measurement_sigma: 3.
+head_sigma: 6.
+acceleration_sigma: 180.
+initial_speed_sigma: 120.
+mahalanobis_gate: 12.
+iou_weight: 0.4
+ambiguity_margin: 0.04
+imm_enabled: 1
+imm_stationary_acceleration: 30.
+imm_maneuver_acceleration: 900.
+imm_stationary_tau: 0.08
+imm_switch_rate: 1.
+imm_gate_probability: 0.05
+
+separate_head_ambiguity: 1

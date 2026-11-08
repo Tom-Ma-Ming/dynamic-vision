@@ -460,6 +460,9 @@ ScenarioResult Simulator::run() {
     }
     record.track_state = selected ? mot::name(selected->state) : "None";
     record.ambiguous = ambiguous;
+    record.control_gate=!selected ? "no_selected_track" : selected->state!=mot::State::Confirmed ? "not_confirmed" :
+      selected->ambiguous ? "ambiguous" : selected->lastSeen!=ts_ns ? "no_current_observation" :
+      age_ms>config_.max_age_ms ? "stale" : covariance_trace>config_.covariance_limit ? "uncertain" : "ready";
     record.est_x = estimate_x;
     record.est_y = estimate_y;
     record.pred_x = predicted_x;

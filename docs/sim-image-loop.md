@@ -16,3 +16,11 @@ out/windows-sdk/apps/trt_infer/Release/vision_sim_image.exe artifacts/engines/yo
 CPU CTest 27/27：像素分割测试通过渲染图像闭环并收敛；空图像检测返回时始终无轨迹，证明没有真值兜底。SDK 新程序构建成功。真实 Engine 100 次调用、100 帧视频完整解码，摄像机偏移改变后续观察；结果 UNKNOWN、MAE=21.9574 px、轨迹覆盖 .99。末帧 camera=(-39,-16)，真实投影=(149,176)；检测存在同一 person 对应两个 head 的候选，需进一步定位歧义门控。证据 artifacts/sim/image-trt-v1/verification.json 与逐帧日志/视频。
 
 完成的是图像→真实检测→跟踪→仿真执行→新图像的首个工程回路。尚缺多场景/多人物素材、真实感背景、推理与反馈延迟事件、完整命令报告、独立真值验收及最终控制成功标准。下一步扩充日志定位 UNKNOWN，处理头身歧义与控制偏差；不将本次集成通过等同整个平台完成。
+
+## 门控诊断与头身歧义实验
+
+补齐 feedback.jsonl 的 control_gate、track_state、covariance_trace 和估计位置；增加 commands.jsonl、summary.json 及真实 detect_ms（不参与模拟时钟）。基线 image-trt-diagnostic-v2：82 ambiguous、17 ready、1 no_selected_track，第 67 帧进入 UNKNOWN。
+
+新增 tracker-body-primary.yml，开启 separate_head_ambiguity（默认关闭）。同一人物多个头候选时，清除头部测量并标记 headAmbiguous，保持明确人物框；跨人物归属歧义仍拦截，冲突头锚点不能参与后续头/身转换。它不是简单忽略所有歧义，也不选分数最高的头冒充确定。
+
+CPU 27/27。图像对照 image-trt-body-primary-v1：99 ready、1 no_selected_track，结果 FAILED、MAE21.9088、覆盖.99；只消除了 UNKNOWN 的原因，尚未解决检测框中心与真实人物区域偏差。下一步需检查预测/目标点的语义以及各类检测误差，多素材测试；不修改真值或放宽阈值以追求通过。

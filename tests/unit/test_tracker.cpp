@@ -81,6 +81,15 @@ int main(int argc,char** argv) try {
     single.update(2,step*2,{head(20),person(20)});
     require(single.snapshot().tracks.size()==1 && single.snapshot().tracks[0].body,"head to body");
 
+    for(bool useByte:{false,true}) {
+      auto bodyCfg=cfg;bodyCfg.separateHeadAmbiguity=true;bodyCfg.byteTrack=useByte;
+      Tracker bodyPrimary(bodyCfg);
+      for(int i=0;i<3;++i) bodyPrimary.update(i,step*i,{person(50),head(50),head(51)});
+      const auto t=bodyPrimary.snapshot().tracks.at(0);
+      require(t.body && !t.ambiguous && t.headAmbiguous,"head conflict must not invalidate unambiguous body");
+      bodyPrimary.update(3,step*3,{head(50)});
+      require(bodyPrimary.snapshot().tracks.at(0).lastSeen==step*2,"conflicted head anchor cannot match head-only detection");
+    }
     auto high=person(100); high.score=.9f;
     auto low=person(100); low.score=.2f;
     Config byteCfg=cfg; byteCfg.byteTrack=true; byteCfg.highScore=.4; byteCfg.lowScore=.1;

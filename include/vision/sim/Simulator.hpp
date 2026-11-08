@@ -73,6 +73,7 @@ struct FrameRecord {
   std::uint64_t track_id = 0;
   std::string track_state;
   bool ambiguous = false;
+  std::string control_gate;
   float est_x = 0;
   float est_y = 0;
   float pred_x = 0;
