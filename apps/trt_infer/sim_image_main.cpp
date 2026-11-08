@@ -74,6 +74,13 @@ int main(int argc,char** argv) try {
     <<",\"status\":\""<<e.status<<"\"}\n";
   std::ofstream summary(output/"summary.json");summary.exceptions(std::ios::badbit|std::ios::failbit);
   summary<<"{\"result\":\""<<sim::name(result.result)<<"\",\"terminal_frame\":"<<result.terminal_frame
+    <<",\"result_semantics\":\"first_terminal_event_latched\""
+    <<",\"success_maintained\":"<<(result.metrics.success_maintained?"true":"false")
+    <<",\"end_stable\":"<<(result.metrics.end_stable?"true":"false")
+    <<",\"post_success_frames\":"<<result.metrics.post_success_frames
+    <<",\"post_success_violations\":"<<result.metrics.post_success_violations
+    <<",\"first_post_success_violation\":"<<result.metrics.first_post_success_violation
+    <<",\"end_stable_frames\":"<<result.metrics.end_stable_frames
     <<",\"mae_px\":"<<result.metrics.mae_px<<",\"track_coverage\":"<<result.metrics.track_coverage
     <<",\"selected_track_id\":"<<config.selected_track_id<<",\"acquire_single_confirmed\":"<<(config.acquire_single_confirmed?"true":"false")
     <<",\"observation_delay_ms\":"<<config.observation_delay_ms

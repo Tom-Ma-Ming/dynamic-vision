@@ -22,4 +22,6 @@ configs/sim-encoder-feedforward-dynamic.yml保留原24项场景，仅开启两�
 
 这个成功数量不足以证明改善：结果一旦达到窗口就锁存SUCCESS，后面仍可能断轨。Kp2的constant分组末段平均误差仍69.85px（原67.58），turn140.40px（原139.41）；Kp8 turn167.22px（原125.80）。因此只确认了不反向匀速下的改善，动态身份保持和后期误差没有解决。默认继续关闭。
 
+后续复跑使用 schema 3 核对了持续稳定：同一 24 项仍是 5/15/4，但 success_maintained 和 end_stable 都是 0。时钟和限制见 encoder-delay-clocks.md。
+
 证据artifacts/sim/encoder-feedforward-ablation-v1、encoder-feedforward-dynamic-v1及encoder-feedforward-dynamic-repeat-v1；后者verification.json有分组误差和二进制摘要。下一步首先区分“曾经成功”和“结束时仍稳定”的验收口径，再处理变向关联和全链路异步时钟，不以锁存成功掩盖后续失败。

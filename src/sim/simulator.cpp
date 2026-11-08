@@ -551,11 +551,15 @@ ScenarioResult Simulator::run() {
 
     float estimate_x = last_est_x;
     float estimate_y = last_est_y;
+    float estimate_vx = 0;
+    float estimate_vy = 0;
     float predicted_x = last_pred_x;
     float predicted_y = last_pred_y;
     if (selected) {
       estimate_x = static_cast<float>(selected->x[0]);
       estimate_y = static_cast<float>(selected->x[1]);
+      estimate_vx = static_cast<float>(selected->x[2]);
+      estimate_vy = static_cast<float>(selected->x[3]);
       predicted_x = estimate_x + static_cast<float>(selected->x[2]) *
                                      config_.command_horizon_s;
       predicted_y = estimate_y + static_cast<float>(selected->x[3]) *
@@ -582,6 +586,7 @@ ScenarioResult Simulator::run() {
                               age_ms <= config_.max_age_ms &&
                               covariance_trace <= config_.covariance_limit;
     std::pair<float,float> target{aim_x,aim_y};
+    double command_lead_ms=-1;
     if (controllable) {
       const float horizon = config_.feedback_prediction ? float(feedbackDelay()) : config_.compensate_actuator_delay
                                 ? config_.actuator_delay_frames * dt
@@ -602,6 +607,7 @@ ScenarioResult Simulator::run() {
       if(controllable && connected && !feedback_fault && encoder_valid) {
         const double delay=std::max(0.0,config_.actuator_delay_frames*config_.dt_s+jitter(delay_rng)*.001);
         const auto arrival=ts_ns+std::llround(delay*1e9);
+        command_lead_ms=(arrival-ts_ns)*1e-6;
         const auto pending=config_.feedback_prediction ? (config_.feedback_transport?feedback_channel.pending():feedback.pending()) : std::pair<double,double>{};
         const double fx=config_.velocity_feedforward ? selected->x[2]*config_.actuator_units_per_px : 0;
         const double fy=config_.velocity_feedforward ? selected->x[3]*config_.actuator_units_per_px : 0;
@@ -653,11 +659,15 @@ ScenarioResult Simulator::run() {
     const bool valid = controllable && connected && dispatch_ok && !feedback_fault && encoder_valid;
 
     FrameRecord record;
+    record.control_valid=valid;
     record.encoder_valid=encoder_valid;
     record.encoder_sample_ts_ns=received_encoder?received_encoder->captured:-1;
     record.encoder_dropped=encoder_channel.dropped();record.encoder_overflow=encoder_channel.overflow();
     record.encoder_queued=encoder_channel.queued();
     record.observation_ts_ns=tracker.snapshot().timestamp;record.observation_frame=observation_frame;
+    record.observation_age_ms=record.observation_ts_ns>=0 ? (ts_ns-record.observation_ts_ns)*1e-6 : -1;
+    record.encoder_age_ms=record.encoder_sample_ts_ns>=0 ? (ts_ns-record.encoder_sample_ts_ns)*1e-6 : -1;
+    record.command_lead_ms=command_lead_ms;
     record.estimated_delay_ms=feedbackDelay()*1000;
     record.feedback_dropped=feedback_dropped;record.feedback_fault=feedback_fault;record.feedback_pending=feedbackSize();
     record.feedback_delivered=feedback_channel.delivered();record.feedback_ignored=feedback_channel.ignored();
@@ -684,6 +694,8 @@ ScenarioResult Simulator::run() {
       age_ms>config_.max_age_ms ? "stale" : covariance_trace>config_.covariance_limit ? "uncertain" : "ready";
     record.est_x = estimate_x;
     record.est_y = estimate_y;
+    record.est_vx = estimate_vx;
+    record.est_vy = estimate_vy;
     record.pred_x = predicted_x;
     record.pred_y = predicted_y;
     record.aim_x = aim_x;
@@ -768,6 +780,17 @@ ScenarioResult Simulator::run() {
   double estimate_sum = 0, prediction_sum = 0;
   int prediction_opportunities = 0;
   for (const auto& record : output.frames) {
+    const bool finite=std::isfinite(record.error_norm);
+    if(record.frame>=config_.success_after_frame && record.control_valid && finite && record.error_norm<config_.epsilon_enter)
+      ++output.metrics.end_stable_frames;
+    else output.metrics.end_stable_frames=0;
+    if(output.result==TaskResult::Success && record.frame>output.terminal_frame) {
+      ++output.metrics.post_success_frames;
+      if(!record.control_valid || !finite || record.error_norm>config_.epsilon_exit) {
+        ++output.metrics.post_success_violations;
+        if(output.metrics.first_post_success_violation<0) output.metrics.first_post_success_violation=record.frame;
+      }
+    }
     if (record.has_track) {
       ++output.metrics.tracked_frames;
       estimate_sum += std::hypot(record.est_x-record.truth_x, record.est_y-record.truth_y);
@@ -785,6 +808,10 @@ ScenarioResult Simulator::run() {
     ++output.metrics.prediction_samples;
   }
   auto& metrics = output.metrics;
+  metrics.end_stable=metrics.end_stable_frames>=config_.settle_frames;
+  // Require observed maintenance evidence, not a success on the final frame.
+  metrics.success_maintained=output.result==TaskResult::Success && metrics.post_success_frames>=config_.settle_frames &&
+      metrics.post_success_violations==0;
   metrics.track_coverage = double(metrics.tracked_frames)/config_.frames;
   if (metrics.tracked_frames) metrics.estimate_mae_px = estimate_sum/metrics.tracked_frames;
   if (metrics.prediction_samples) metrics.prediction_mae_px = prediction_sum/metrics.prediction_samples;

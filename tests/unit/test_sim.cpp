@@ -41,6 +41,19 @@ int main(int argc, char** argv) try {
   require(success.metrics.settling_s >= 0, "success needs settling time");
   require(success.metrics.mae_px > 0, "MAE must be measured");
   require(success.metrics.frames == constant.frames, "success must not truncate scoring window");
+  require(success.metrics.success_maintained && success.metrics.end_stable,"stationary baseline maintains success");
+  auto final_success=constant;final_success.success_after_frame=constant.frames-constant.settle_frames;
+  const auto final_only=Simulator(final_success,tracker).run();
+  require(final_only.result==TaskResult::Success && final_only.metrics.end_stable &&
+          !final_only.metrics.success_maintained && final_only.metrics.post_success_frames==0,
+          "final-frame success is not evidence of subsequent maintenance");
+  auto later_failure=constant;later_failure.incremental_control=true;
+  later_failure.disconnect_start=100;later_failure.disconnect_frames=20;
+  const auto regressed=Simulator(later_failure,tracker).run();
+  require(regressed.result==TaskResult::Success,"preserve first-event result for comparison");
+  require(!regressed.metrics.success_maintained && !regressed.metrics.end_stable &&
+          regressed.metrics.first_post_success_violation==100 && regressed.metrics.post_success_violations==20,
+          "later loss of control must invalidate maintained success even at zero position error");
   double fullError=0;
   for(const auto& frame:success.frames) fullError+=frame.error_px;
   require(std::abs(fullError/constant.frames-success.metrics.mae_px)<1e-6,"score all frames including startup");
@@ -121,6 +134,33 @@ int main(int argc, char** argv) try {
   const auto recovered_encoder=Simulator(telemetry,tracker).run();
   require(recovered_encoder.frames[22].encoder_valid,"new delivered paired encoder can recover after blackout");
   for(const auto& e:recovered_encoder.commands) if(e.kind=="generated") require(e.frame_id>=22,"no generation before encoder recovery");
+  auto clocks=base();
+  clocks.frames=120;clocks.start_x=160;clocks.vx=80;clocks.noise_px=0;
+  clocks.incremental_control=true;clocks.acquire_single_confirmed=true;
+  clocks.view_feedback=true;clocks.encoder_compensation=true;clocks.encoder_transport=true;
+  clocks.encoder_extrapolation=true;clocks.velocity_feedforward=true;
+  clocks.encoder_delay_ms=80;clocks.pid_kp=2;clocks.command_horizon_s=0;
+  clocks.success_after_frame=80;
+  const auto delayed_hold=Simulator(clocks,tracker).run();
+  require(delayed_hold.result==TaskResult::Success && delayed_hold.metrics.success_maintained && delayed_hold.metrics.end_stable,
+          "noise-free delayed constant remains inside the original gate");
+  require(delayed_hold.frames.back().track_id==1,"feedforward must not replace the selected id");
+  bool saw_command=false;
+  for(const auto& frame:delayed_hold.frames) {
+    if(frame.encoder_sample_ts_ns>=0) require(frame.encoder_sample_ts_ns<=frame.ts_ns,"control cannot read a future encoder");
+    if(frame.frame>=4 && frame.control_valid) {
+      require(std::abs(frame.encoder_age_ms-80)<1e-6,"received encoder age equals the transport delay");
+      require(std::abs(frame.observation_age_ms-80)<1e-6,"published vision age matches the paired encoder");
+      require(std::abs(frame.command_lead_ms-80)<1e-6,"forward command lead is the scheduled actuator flight");
+      require(frame.est_vx>40.f,"filter velocity keeps the target rate rather than the residual image rate");
+      saw_command=true;
+    } else if(!frame.control_valid) {
+      require(frame.command_lead_ms<0,"frames without a command do not invent a lead");
+    }
+  }
+  require(saw_command,"delay clocks need a controllable frame");
+  clocks.encoder_drop_rate=1;
+  require(Simulator(clocks,tracker).run().commands.empty(),"feedforward cannot move without a delivered encoder");
   sim::ImageObservation pixels;
   pixels.sprite=cv::Mat(40,20,CV_8UC3,cv::Scalar(0,255,0));
   pixels.background=cv::Mat(480,640,CV_8UC3,cv::Scalar(0,0,0));

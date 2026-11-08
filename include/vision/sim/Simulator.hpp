@@ -75,6 +75,7 @@ struct ScenarioConfig {
 };
 
 struct FrameRecord {
+  bool control_valid=false;
   int frame = 0;
   std::int64_t ts_ns = 0;
   std::int64_t observation_ts_ns=-1;
@@ -83,6 +84,9 @@ struct FrameRecord {
   int feedback_dropped=0;
   bool encoder_valid=true;
   std::int64_t encoder_sample_ts_ns=-1;
+  // Ages are -1 when that clock has no delivered sample. command_lead_ms is -1
+  // on frames that do not generate a command.
+  double observation_age_ms=-1,encoder_age_ms=-1,command_lead_ms=-1;
   int encoder_dropped=0,encoder_overflow=0;
   std::size_t encoder_queued=0;
   bool feedback_fault=false;
@@ -106,6 +110,8 @@ struct FrameRecord {
   std::string control_gate;
   float est_x = 0;
   float est_y = 0;
+  float est_vx = 0;
+  float est_vy = 0;
   float pred_x = 0;
   float pred_y = 0;
   float aim_x = 0;
@@ -119,6 +125,8 @@ struct FrameRecord {
 };
 
 struct Metrics {
+  bool success_maintained=false,end_stable=false;
+  int post_success_frames=0,post_success_violations=0,first_post_success_violation=-1,end_stable_frames=0;
   // Full-window actuator error, including frames without an available track.
   double mae_px = 0;
   int tracked_frames = 0;

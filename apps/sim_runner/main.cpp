@@ -170,6 +170,9 @@ void writeFrame(std::ostream& out, const std::string& scene,
       << ",\"feedback_dropped\":" << frame.feedback_dropped
       << ",\"encoder_valid\":" << (frame.encoder_valid?"true":"false")
       << ",\"encoder_sample_ts_ns\":" << frame.encoder_sample_ts_ns
+      << ",\"observation_age_ms\":" << frame.observation_age_ms
+      << ",\"encoder_age_ms\":" << frame.encoder_age_ms
+      << ",\"command_lead_ms\":" << frame.command_lead_ms
       << ",\"encoder_dropped\":" << frame.encoder_dropped
       << ",\"encoder_overflow\":" << frame.encoder_overflow
       << ",\"encoder_queued\":" << frame.encoder_queued
@@ -192,10 +195,13 @@ void writeFrame(std::ostream& out, const std::string& scene,
       << ",\"has_track\":" << (frame.has_track ? "true" : "false")
       << ",\"track_id\":" << frame.track_id
       << ",\"control_gate\":" << jsonString(frame.control_gate)
+      << ",\"control_valid\":" << (frame.control_valid?"true":"false")
       << ",\"track_state\":" << jsonString(frame.track_state)
       << ",\"ambiguous\":" << (frame.ambiguous ? "true" : "false")
       << ",\"est_x\":" << frame.est_x
       << ",\"est_y\":" << frame.est_y
+      << ",\"est_vx\":" << frame.est_vx
+      << ",\"est_vy\":" << frame.est_vy
       << ",\"pred_x\":" << frame.pred_x
       << ",\"pred_y\":" << frame.pred_y
       << ",\"aim_x\":" << frame.aim_x
@@ -218,6 +224,12 @@ std::string metricJson(const sim::Metrics& metrics) {
   std::ostringstream out;
   out.precision(9);
   out << "{\"mae_px\":" << metrics.mae_px
+      << ",\"success_maintained\":" << (metrics.success_maintained?"true":"false")
+      << ",\"post_success_frames\":" << metrics.post_success_frames
+      << ",\"post_success_violations\":" << metrics.post_success_violations
+      << ",\"first_post_success_violation\":" << metrics.first_post_success_violation
+      << ",\"end_stable\":" << (metrics.end_stable?"true":"false")
+      << ",\"end_stable_frames\":" << metrics.end_stable_frames
       << ",\"control_mae_px\":" << metrics.mae_px
       << ",\"tracked_frames\":" << metrics.tracked_frames
       << ",\"track_coverage\":" << metrics.track_coverage
@@ -321,7 +333,7 @@ int main(int argc, char** argv) try {
   std::ofstream summary(output / "summary.json");
   summary.exceptions(std::ios::badbit | std::ios::failbit);
   summary.precision(9);
-  summary << "{\"schema_version\":2,\"evaluation_window\":\"full_scenario\",\"scenarios\":[";
+  summary << "{\"schema_version\":3,\"evaluation_window\":\"full_scenario\",\"result_semantics\":\"first_terminal_event_latched\",\"scenarios\":[";
   for (std::size_t i = 0; i < results.size(); ++i) {
     const auto& result = results[i];
     if (i) summary << ",";
@@ -359,12 +371,19 @@ int main(int argc, char** argv) try {
             << ",\"pid_kd\":" << scenarios[i].pid_kd
             << ",\"actuator_units_per_px\":" << scenarios[i].actuator_units_per_px
             << ",\"planned_frames\":" << scenarios[i].frames
+            << ",\"success_after_frame\":" << scenarios[i].success_after_frame
+            << ",\"settle_frames\":" << scenarios[i].settle_frames
+            << ",\"epsilon_enter\":" << scenarios[i].epsilon_enter
+            << ",\"epsilon_exit\":" << scenarios[i].epsilon_exit
             << ",\"selected_track_id\":" << scenarios[i].selected_track_id
             << ",\"prediction_horizon_s\":" << scenarios[i].command_horizon_s
             << ",\"terminal_frame\":" << result.terminal_frame
             << ",\"metrics\":" << metricJson(result.metrics) << "}";
   }
-  summary << "],\"aggregate\":{\"success\":" << success
+  int maintained=0,end_stable=0;
+  for(const auto& result:results) {maintained+=result.metrics.success_maintained;end_stable+=result.metrics.end_stable;}
+  summary << "],\"aggregate\":{\"success_maintained\":" << maintained
+          << ",\"end_stable\":" << end_stable << ",\"success\":" << success
           << ",\"failed\":" << failed
           << ",\"unknown\":" << unknown
           << ",\"scenarios\":" << results.size()
@@ -401,6 +420,7 @@ int main(int argc, char** argv) try {
   std::ofstream report(output / "report.md");
   report << "# 自建二维仿真闭环\n\n";
   report << "无游戏/桌面输入；SUCCESS/FAILED/UNKNOWN 来自仿真事件。\n\n";
+  report << "结果为首次终结事件的锁存状态；SUCCESS不代表随后持续保持。持续保持要求成功后至少观察settle_frames帧，期间全部可控且误差不超过epsilon_exit。结束稳定要求最后连续settle_frames帧可控且误差严格小于epsilon_enter。\n\n";
   report << "| 场景 | 运动 | 尺寸桶 | 结果 | 原因 | 稳定(s) | MAE(px) | P95(px) | 遮挡恢复(s) | IDSW |\n";
   report << "|---|---|---|---|---|---|---|---|---|---|\n";
   for (std::size_t i = 0; i < results.size(); ++i) {
@@ -415,6 +435,11 @@ int main(int argc, char** argv) try {
   }
   report << "\nsuccess=" << success << " failed=" << failed << " unknown=" << unknown
          << " / " << results.size() << "\n";
+  report << "\nsuccess_maintained=" << maintained << " end_stable=" << end_stable << "\n\n";
+  report << "| 场景 | 成功后持续保持 | 结束稳定 | 成功后违规帧数 | 首次违规帧 |\n|---|---|---|---|---|\n";
+  for(const auto& r:results) report << "| " << r.scene_id << " | " << r.metrics.success_maintained
+      << " | " << r.metrics.end_stable << " | " << r.metrics.post_success_violations
+      << " | " << r.metrics.first_post_success_violation << " |\n";
   report.close();
 
   std::cout << "scenarios=" << results.size() << " success=" << success
