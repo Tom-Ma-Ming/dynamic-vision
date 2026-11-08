@@ -27,7 +27,7 @@ float clampf(float value, float low, float high) {
 }
 
 bool validate(const ScenarioConfig& config) {
-  return config.observation_capacity>0 && config.observation_capacity<=10000 && std::isfinite(config.observation_jitter_ms) && config.observation_jitter_ms>=0 && config.observation_jitter_ms<=10000 && std::isfinite(config.inference_service_ms) && config.inference_service_ms>=0 && config.inference_service_ms<=10000 && std::isfinite(config.observation_delay_ms) && config.observation_delay_ms>=0 && config.observation_delay_ms<=10000 && (!config.feedback_prediction || config.encoder_compensation) && (!config.encoder_compensation || config.view_feedback) && (!config.view_feedback || config.incremental_control) && std::isfinite(config.actuator_units_per_px) && config.actuator_units_per_px>0 &&
+  return std::isfinite(config.dispatch_failure_rate) && config.dispatch_failure_rate>=0 && config.dispatch_failure_rate<=1 && config.disconnect_start>=-1 && config.disconnect_frames>=0 && (config.disconnect_start<0 || config.disconnect_start<=config.frames-config.disconnect_frames) && ((config.disconnect_frames==0 && config.dispatch_failure_rate==0) || config.incremental_control) && config.observation_capacity>0 && config.observation_capacity<=10000 && std::isfinite(config.observation_jitter_ms) && config.observation_jitter_ms>=0 && config.observation_jitter_ms<=10000 && std::isfinite(config.inference_service_ms) && config.inference_service_ms>=0 && config.inference_service_ms<=10000 && std::isfinite(config.observation_delay_ms) && config.observation_delay_ms>=0 && config.observation_delay_ms<=10000 && (!config.feedback_prediction || config.encoder_compensation) && (!config.encoder_compensation || config.view_feedback) && (!config.view_feedback || config.incremental_control) && std::isfinite(config.actuator_units_per_px) && config.actuator_units_per_px>0 &&
          std::isfinite(config.delay_jitter_ms) && config.delay_jitter_ms>=0 && config.delay_jitter_ms<=1000 &&
          config.selected_track_id > 0 && std::isfinite(config.command_horizon_s) &&
          config.command_horizon_s >= 0 && config.noise_px >= 0 && config.frames > 0 && config.dt_s > 0 && config.width > 0 &&
@@ -146,6 +146,8 @@ ScenarioResult Simulator::run() {
   PidAxis pid_x(config_.pid_kp,config_.pid_ki,config_.pid_kd,100,config_.actuator_max_speed*config_.actuator_units_per_px);
   PidAxis pid_y(config_.pid_kp,config_.pid_ki,config_.pid_kd,100,config_.actuator_max_speed*config_.actuator_units_per_px);
   std::vector<IncrementCommand> transit;
+  std::mt19937 failure_rng(config_.seed+300003);
+  std::uniform_real_distribution<double> failure(0,1);
   std::mt19937 delay_rng(config_.seed+100003);
   std::uniform_real_distribution<double> jitter(-config_.delay_jitter_ms,config_.delay_jitter_ms);
   std::mt19937 observation_rng(config_.seed+200003);
@@ -209,6 +211,9 @@ ScenarioResult Simulator::run() {
     const std::int64_t ts_ns =
         static_cast<std::int64_t>(std::llround(frame * config_.dt_s * 1e9));
 
+    const bool connected=!(config_.disconnect_start>=0 && frame>=config_.disconnect_start &&
+                           frame<config_.disconnect_start+config_.disconnect_frames);
+    bool dispatch_ok=true;
     if(config_.incremental_control) {
       std::stable_sort(transit.begin(),transit.end(),[](const auto& a,const auto& b){return a.arrival<b.arrival;});
       while(!transit.empty() && transit.front().arrival<=ts_ns) {
@@ -455,7 +460,7 @@ ScenarioResult Simulator::run() {
       }
     }
     if(config_.incremental_control) {
-      if(controllable) {
+      if(controllable && connected) {
         const double delay=std::max(0.0,config_.actuator_delay_frames*config_.dt_s+jitter(delay_rng)*.001);
         const auto arrival=ts_ns+std::llround(delay*1e9);
         const auto pending=config_.feedback_prediction ? feedback.pending() : std::pair<double,double>{};
@@ -464,10 +469,14 @@ ScenarioResult Simulator::run() {
         transit.push_back({std::uint64_t(frame+1),std::uint64_t(frame),selected->id,
                           ts_ns,arrival,arrival+std::llround(2*config_.dt_s*1e9),ux*config_.dt_s,uy*config_.dt_s});
         event("generated",transit.back(),ts_ns,ux*config_.dt_s,uy*config_.dt_s);
+        if(config_.dispatch_failure_rate>0 && failure(failure_rng)<config_.dispatch_failure_rate) {
+          event("dispatch_failed",transit.back(),ts_ns,0,0);transit.pop_back();dispatch_ok=false;
+          pid_x.reset();pid_y.reset();
+        }
         if(std::hypot(ux,uy)>=config_.actuator_max_speed*config_.actuator_units_per_px) ++saturated_frames;
       } else {
-        for(const auto& c:transit) event("cancelled_in_transit",c,ts_ns,0,0);
-        if(active_command.id) event("cancelled",active_command,ts_ns,0,0);
+        for(const auto& c:transit) event(connected ? "cancelled_in_transit" : "disconnected_in_transit",c,ts_ns,0,0);
+        if(active_command.id) event(connected ? "cancelled" : "disconnected",active_command,ts_ns,0,0);
         active_command={};transit.clear();actuator.cancel();pid_x.reset();pid_y.reset();
       }
     } else {
@@ -497,7 +506,7 @@ ScenarioResult Simulator::run() {
     const float error_px = std::hypot(error_x, error_y);
     const float error_norm = normalizedError(error_x, error_y, config_.target_w, height);
 
-    const bool valid = controllable;
+    const bool valid = controllable && connected && dispatch_ok;
 
     FrameRecord record;
     record.observation_ts_ns=tracker.snapshot().timestamp;record.observation_frame=observation_frame;
@@ -517,7 +526,7 @@ ScenarioResult Simulator::run() {
     }
     record.track_state = selected ? mot::name(selected->state) : "None";
     record.ambiguous = ambiguous;
-    record.control_gate=!selected ? "no_selected_track" : selected->state!=mot::State::Confirmed ? "not_confirmed" :
+    record.control_gate=!connected ? "actuator_disconnected" : !dispatch_ok ? "dispatch_failed" : !selected ? "no_selected_track" : selected->state!=mot::State::Confirmed ? "not_confirmed" :
       selected->ambiguous ? "ambiguous" :
       age_ms>config_.max_age_ms ? "stale" : covariance_trace>config_.covariance_limit ? "uncertain" : "ready";
     record.est_x = estimate_x;
@@ -570,7 +579,7 @@ ScenarioResult Simulator::run() {
       ++unseen_frames;
       if (unseen_frames >= config_.unknown_grace_frames && output.result == TaskResult::Running) {
         output.result = TaskResult::Unknown;
-        output.cause = Cause::Detection;
+        output.cause = (!connected || !dispatch_ok) ? Cause::Control : Cause::Detection;
         output.terminal_frame = frame;
       }
     } else {

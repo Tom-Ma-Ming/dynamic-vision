@@ -31,6 +31,8 @@ struct ScenarioConfig {
   double delay_jitter_ms=0;
   double observation_delay_ms=0, observation_jitter_ms=0, inference_service_ms=0;
   int observation_capacity=256;
+  int disconnect_start=-1, disconnect_frames=0;
+  double dispatch_failure_rate=0;
   double dt_s = 0.04;
   int width = 640;
   int height = 480;

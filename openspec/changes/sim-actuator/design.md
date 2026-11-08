@@ -14,3 +14,5 @@ feedback_prediction 用本端命令和已收到反馈维护账目，EWMA(alpha=.
 观察发布队列使用 capture/ready 两个模拟时刻，tracker按capture更新，控制predictAt(now)。encoder补偿分采集前时段与采集后已应用时段，不重复计算。固定观察延迟0～10000ms，过期观测不得控制。真实推理耗时暂为独立测量，不伪装为模拟时间。
 
 发布抖动可导致乱序，按ready交付，旧capture拒绝；编码器位移使用累计值在实际接受时求差。有界结果缓冲溢出丢最旧capture。单服务者时间轴可用固定服务时长或检测回调返回的实测样本驱动，不能等同真实并发推理输入队列或壁钟运行。
+
+断连按帧边界清理旧命令、PID与量化状态；恢复仅生成新ID。发送失败发生于生成后进入传输队列前，记录dispatch_failed并清账目。故障随机流独立，UNKNOWN归因control。场景时间/控制double配置不再经float中转。

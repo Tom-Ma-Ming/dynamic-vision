@@ -148,6 +148,19 @@ int main(int argc, char** argv) try {
   auto overloaded=Simulator(overload,tracker).run();int overflow=0,pending=0;
   for(const auto& e:overloaded.observations) {overflow+=e.status=="overflow";pending+=e.status=="pending";}
   require(overflow>0 && pending<=2,"bounded result buffer under service overload");
+  auto disconnected=incremental;disconnected.disconnect_start=10;disconnected.disconnect_frames=20;
+  disconnected.success_after_frame=40;
+  auto recovered=Simulator(disconnected,tracker).run();
+  for(int i=11;i<30;++i) require(recovered.frames[i].aim_x==recovered.frames[10].aim_x,"disconnected actuator must not move");
+  for(const auto& e:recovered.commands) {
+    if(e.kind=="generated") require(e.frame_id<10 || e.frame_id>=30,"no generation during disconnect");
+    if(e.kind=="accepted" && e.timestamp>=1200000000) require(e.generated>=1200000000,"reconnect cannot replay old commands");
+  }
+  require(recovered.frames.back().error_px<3,"reconnect recovers stationary control");
+  auto failed_send=incremental;failed_send.dispatch_failure_rate=1;
+  auto send_failure=Simulator(failed_send,tracker).run();
+  require(send_failure.result==TaskResult::Unknown && send_failure.cause==Cause::Control,"dispatch failure must be attributed to control");
+  for(const auto& f:send_failure.frames) require(f.aim_x==failed_send.width*.5f,"failed sends cannot move");
   const auto repeated = Simulator(constant, tracker).run();
   require(repeated.result == success.result, "determinism: result");
   require(repeated.terminal_frame == success.terminal_frame, "determinism: terminal frame");

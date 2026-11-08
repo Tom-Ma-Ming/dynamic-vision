@@ -44,6 +44,10 @@ float floatOr(const cv::FileNode& node, const char* key, float fallback) {
   return node[key].empty() ? fallback : static_cast<float>(node[key]);
 }
 
+double doubleOr(const cv::FileNode& node,const char* key,double fallback) {
+  return node[key].empty() ? fallback : static_cast<double>(node[key]);
+}
+
 std::string stringOr(const cv::FileNode& node, const char* key,
                      const std::string& fallback) {
   return node[key].empty() ? fallback : static_cast<std::string>(node[key]);
@@ -66,7 +70,7 @@ std::vector<sim::ScenarioConfig> loadScenarios(const std::string& path) {
     config.compensate_actuator_delay = intOr(node, "compensate_actuator_delay", 0) != 0;
     config.selected_track_id = intOr(node, "selected_track_id", config.selected_track_id);
     config.frames = intOr(node, "frames", config.frames);
-    config.dt_s = floatOr(node, "dt_s", static_cast<float>(config.dt_s));
+    config.dt_s = doubleOr(node, "dt_s", config.dt_s);
     config.width = intOr(node, "width", config.width);
     config.height = intOr(node, "height", config.height);
     config.target_w = floatOr(node, "target_w", config.target_w);
@@ -105,15 +109,18 @@ std::vector<sim::ScenarioConfig> loadScenarios(const std::string& path) {
     config.encoder_compensation=intOr(node,"encoder_compensation",0)!=0;
     config.view_feedback = intOr(node,"view_feedback",0)!=0;
     config.incremental_control = intOr(node, "incremental_control", 0)!=0;
-    config.pid_kp=floatOr(node,"pid_kp",config.pid_kp);
-    config.pid_ki=floatOr(node,"pid_ki",config.pid_ki);
-    config.pid_kd=floatOr(node,"pid_kd",config.pid_kd);
-    config.actuator_units_per_px=floatOr(node,"actuator_units_per_px",config.actuator_units_per_px);
+    config.pid_kp=doubleOr(node,"pid_kp",config.pid_kp);
+    config.pid_ki=doubleOr(node,"pid_ki",config.pid_ki);
+    config.pid_kd=doubleOr(node,"pid_kd",config.pid_kd);
+    config.actuator_units_per_px=doubleOr(node,"actuator_units_per_px",config.actuator_units_per_px);
+    config.disconnect_start=intOr(node,"disconnect_start",config.disconnect_start);
+    config.disconnect_frames=intOr(node,"disconnect_frames",config.disconnect_frames);
+    config.dispatch_failure_rate=doubleOr(node,"dispatch_failure_rate",config.dispatch_failure_rate);
     config.observation_capacity=intOr(node,"observation_capacity",config.observation_capacity);
-    config.observation_jitter_ms=floatOr(node,"observation_jitter_ms",config.observation_jitter_ms);
-    config.inference_service_ms=floatOr(node,"inference_service_ms",config.inference_service_ms);
-    config.observation_delay_ms=floatOr(node,"observation_delay_ms",config.observation_delay_ms);
-    config.delay_jitter_ms=floatOr(node,"delay_jitter_ms",config.delay_jitter_ms);
+    config.observation_jitter_ms=doubleOr(node,"observation_jitter_ms",config.observation_jitter_ms);
+    config.inference_service_ms=doubleOr(node,"inference_service_ms",config.inference_service_ms);
+    config.observation_delay_ms=doubleOr(node,"observation_delay_ms",config.observation_delay_ms);
+    config.delay_jitter_ms=doubleOr(node,"delay_jitter_ms",config.delay_jitter_ms);
     config.seed = static_cast<std::uint32_t>(intOr(node, "seed", 1));
     result.push_back(config);
   }
@@ -152,6 +159,7 @@ void writeFrame(std::ostream& out, const std::string& scene,
       << ",\"observed\":" << (frame.observed ? "true" : "false")
       << ",\"has_track\":" << (frame.has_track ? "true" : "false")
       << ",\"track_id\":" << frame.track_id
+      << ",\"control_gate\":" << jsonString(frame.control_gate)
       << ",\"track_state\":" << jsonString(frame.track_state)
       << ",\"ambiguous\":" << (frame.ambiguous ? "true" : "false")
       << ",\"est_x\":" << frame.est_x
