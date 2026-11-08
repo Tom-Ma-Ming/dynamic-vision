@@ -1,0 +1,6 @@
+%YAML:1.0
+scenarios:
+  - {id: "encoder_delayed", motion: "constant", frames: 200, vx: 0., noise_px: 0., incremental_control: 1, acquire_single_confirmed: 1, view_feedback: 1, encoder_compensation: 1, encoder_transport: 1, pid_kp: 2., encoder_delay_ms: 80., success_after_frame: 50}
+  - {id: "encoder_lost", motion: "constant", frames: 200, vx: 0., noise_px: 0., incremental_control: 1, acquire_single_confirmed: 1, view_feedback: 1, encoder_compensation: 1, encoder_transport: 1, pid_kp: 2., encoder_delay_ms: 80., encoder_drop_rate: 1., success_after_frame: 50}
+  - {id: "encoder_stale", motion: "constant", frames: 200, vx: 0., noise_px: 0., incremental_control: 1, acquire_single_confirmed: 1, view_feedback: 1, encoder_compensation: 1, encoder_transport: 1, pid_kp: 2., encoder_delay_ms: 80., encoder_max_age_ms: 40., success_after_frame: 50}
+  - {id: "encoder_recovered", motion: "constant", frames: 200, vx: 0., noise_px: 0., incremental_control: 1, acquire_single_confirmed: 1, view_feedback: 1, encoder_compensation: 1, encoder_transport: 1, pid_kp: 2., encoder_delay_ms: 80., encoder_drop_rate: 1., encoder_drop_end_frame: 20, unknown_grace_frames: 100, success_after_frame: 50}

@@ -133,3 +133,7 @@ feedback_transport下恢复停止确认加入nonce/epoch/期限及回传延迟�
 ## 2026-11-08 编码器延迟、丢失与过期
 
 新增encoder_transport默认关闭，有限队列/历史、固定延迟、丢包窗口与年龄门控；视觉必须与收到的同帧编码器配对，缺失记录encoder_missing，补偿不再使用即时真值。全丢和过期时禁发动作，恢复窗口第22帧重新获得有效配对。CPU34/34及最终来源修改后定向2/2通过；四场景双跑一致、374命令审计通过。两个可控80ms延迟场景仍FAILED/timeout（最终2px/3px），全丢和过期UNKNOWN/control。证据artifacts/sim/encoder-transport-v1，规格openspec/changes/encoder-transport。下一步须优化延迟下控制精度和真正异步时钟，不能以契约测试代替控制验收。
+
+## 2026-11-08 增益校准、动态反例与评审交接
+
+16项静止校准后选择显式Kp2候选，原四用例2SUCCESS/2UNKNOWN；默认Kp8不改。24项另设动态对照仍3SUCCESS/17FAILED/4UNKNOWN，低增益变向平均误差还回退。动态双跑一致、4140命令审计通过；不以静止成功宣称闭环完成。见encoder-gain-experiment.md。用户提出DeepSeek实现、我方评审的分工建议，已准备handoff-deepseek.md，尚未实际派发外部代理。
