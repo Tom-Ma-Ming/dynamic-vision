@@ -23,3 +23,5 @@ TRT2-04/05：C++ 实图与 ONNX 5 图 13 框通过，最大坐标差 <0.001 px�
 2026-11-08：按用户确认读取原 review/clip01、clip02；clip01 的 34 帧框范围已更新，两组结构错误 0。冻结 180 帧并完成带标注质量限制的诊断评分：person P/R=74.37%/88.79%，head=77.22%/53.74%；IMM 两片段收益不一致，保持默认关闭。相关工具 20/20，未训练、未宣称最终真值或整体精度达标。见 docs/reviewed-clip-evaluation.md。
 2026-11-08：完成背景平移补偿第一版，默认关闭；相位初值 + 局部前后向光流及空间共识门控，接入 CV/IMM/ByteTrack。CPU 26/26、SDK 6/6、Python 20/20；开关各双跑 1000 帧，关闭兼容旧基线；两段原录像 10800 帧对照通过。clip02 IDSW 24→15，但 clip01 HOTA 略降、全片门控通过仅约 27%/39%。见 docs/camera-motion-experiment.md，整个计划见 docs/task-roadmap.md。
 2026-11-08：按用户指定阅读旧 tensorRT_Pro-main/src/application/auto_ai 全链路，记录类别倒置、旧头部几何、预测时间单位、延迟归属、并发命令及 PID 重置问题；完成仿真接入接口与验收草案，未修改或运行旧项目，未宣称已接通视觉闭环。见 docs/auto-ai-simulation-review.md。
+
+2026-11-08：继续总路线图，建立 sim-actuator OpenSpec 和独立 Control.hpp：完整增量命令、纳秒模拟时钟、延迟/过期/替换/取消、速度限幅与量化、秒制 PID。CPU CTest 27/27；尚未接入 Simulator，下一步做场景集成、动态延迟消融及视觉反馈。模块为单所有者事件循环使用，不是线程安全设备接口；命令替换时清除旧代量化余数，微小持续输入的影响待场景消融。
