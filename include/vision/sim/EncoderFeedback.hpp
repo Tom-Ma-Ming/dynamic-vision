@@ -35,6 +35,19 @@ class EncoderFeedback {
     if(history_.empty() || now_-history_.back().captured>max_age_) return {};
     return history_.back();
   }
+  std::optional<std::pair<double,double>> extrapolatedPosition(double max_speed) const {
+    if(!std::isfinite(max_speed) || max_speed<=0) throw std::invalid_argument("Invalid encoder speed bound");
+    if(!latest() || history_.size()<2) return {};
+    const auto& b=history_.back();const auto& a=history_[history_.size()-2];
+    if(b.captured-a.captured>max_age_) return {};
+    const double dt=(b.captured-a.captured)*1e-9;
+    double vx=(b.x-a.x)/dt,vy=(b.y-a.y)/dt;
+    const double speed=std::hypot(vx,vy);
+    if(!std::isfinite(speed)) return {};
+    if(speed>max_speed) {vx*=max_speed/speed;vy*=max_speed/speed;}
+    const double horizon=(now_-b.captured)*1e-9;
+    return std::pair<double,double>{b.x+vx*horizon,b.y+vy*horizon};
+  }
   std::size_t queued() const {return pending_.size();}
   int dropped() const {return dropped_;}
   int overflow() const {return overflow_;}

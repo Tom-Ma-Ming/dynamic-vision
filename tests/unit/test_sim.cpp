@@ -111,6 +111,8 @@ int main(int argc, char** argv) try {
   const auto missing_encoder=Simulator(telemetry,tracker).run();
   require(missing_encoder.commands.empty() && missing_encoder.cause==Cause::Control,"missing encoder cannot use ideal truth to move");
   for(const auto& f:missing_encoder.frames) require(!f.encoder_valid,"all lost encoder remains unavailable");
+  auto missing_predicted=telemetry;missing_predicted.encoder_extrapolation=true;missing_predicted.velocity_feedforward=true;
+  require(Simulator(missing_predicted,tracker).run().commands.empty(),"prediction cannot bypass missing encoder gate");
   telemetry.encoder_drop_rate=0;telemetry.encoder_max_age_ms=40;
   const auto stale_encoder=Simulator(telemetry,tracker).run();
   require(stale_encoder.commands.empty(),"encoder older than max age cannot drive control");

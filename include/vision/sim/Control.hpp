@@ -119,12 +119,12 @@ class PidAxis {
     if(output_limit==0) throw std::invalid_argument("Zero PID output limit");
   }
   void reset() { integral_=previous_=0; initialized_=false; }
-  double step(double error,double dt) {
-    if(!std::isfinite(error) || !std::isfinite(dt) || dt<=0)
+  double step(double error,double dt,double feedforward=0) {
+    if(!std::isfinite(error) || !std::isfinite(dt) || dt<=0 || !std::isfinite(feedforward))
       throw std::invalid_argument("Invalid PID sample");
     const double integral=std::clamp(integral_+error*dt,-ilim_,ilim_);
     const double derivative=initialized_ ? (error-previous_)/dt : 0;
-    const double raw=kp_*error+ki_*integral+kd_*derivative;
+    const double raw=feedforward+kp_*error+ki_*integral+kd_*derivative;
     if(!std::isfinite(raw)) throw std::invalid_argument("PID overflow");
     // Conditional integration avoids winding up further into saturation.
     if(std::abs(raw)<=olim_ || (raw>olim_ && error<0) || (raw<-olim_ && error>0))

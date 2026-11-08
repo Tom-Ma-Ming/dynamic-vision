@@ -29,6 +29,8 @@ float clampf(float value, float low, float high) {
 }
 
 bool validate(const ScenarioConfig& config) {
+  if((config.encoder_extrapolation && !config.encoder_transport) ||
+     (config.velocity_feedforward && !config.encoder_compensation)) return false;
   if(!std::isfinite(config.encoder_delay_ms) || config.encoder_delay_ms<0 || config.encoder_delay_ms>10000 ||
      !std::isfinite(config.encoder_max_age_ms) || config.encoder_max_age_ms<.001 || config.encoder_max_age_ms>10000 ||
      !std::isfinite(config.encoder_drop_rate) || config.encoder_drop_rate<0 || config.encoder_drop_rate>1 ||
@@ -499,10 +501,13 @@ ScenarioResult Simulator::run() {
       observations.erase(oldest);
     }
     const auto received_encoder=encoder_channel.latest();
+    const auto extrapolated=config_.encoder_extrapolation ?
+        encoder_channel.extrapolatedPosition(config_.actuator_max_speed) : std::optional<std::pair<double,double>>{};
     const bool encoder_valid=!config_.encoder_transport ||
-        (received_encoder && observation_frame>=0 && received_encoder->captured>=tracker.snapshot().timestamp);
-    const double available_x=config_.encoder_transport ? (received_encoder?received_encoder->x:observed_encoder_x) : encoder_x;
-    const double available_y=config_.encoder_transport ? (received_encoder?received_encoder->y:observed_encoder_y) : encoder_y;
+        (received_encoder && observation_frame>=0 && received_encoder->captured>=tracker.snapshot().timestamp &&
+         (!config_.encoder_extrapolation || extrapolated.has_value()));
+    const double available_x=extrapolated ? extrapolated->first : config_.encoder_transport ? (received_encoder?received_encoder->x:observed_encoder_x) : encoder_x;
+    const double available_y=extrapolated ? extrapolated->second : config_.encoder_transport ? (received_encoder?received_encoder->y:observed_encoder_y) : encoder_y;
     const double recent_dx=config_.encoder_compensation && encoder_valid ? available_x-observed_encoder_x : 0;
     const double recent_dy=config_.encoder_compensation && encoder_valid ? available_y-observed_encoder_y : 0;
     auto snapshot=tracker.predictAt(ts_ns);
@@ -598,8 +603,10 @@ ScenarioResult Simulator::run() {
         const double delay=std::max(0.0,config_.actuator_delay_frames*config_.dt_s+jitter(delay_rng)*.001);
         const auto arrival=ts_ns+std::llround(delay*1e9);
         const auto pending=config_.feedback_prediction ? (config_.feedback_transport?feedback_channel.pending():feedback.pending()) : std::pair<double,double>{};
-        const double ux=pid_x.step((target.first-aim_x)*config_.actuator_units_per_px-pending.first,config_.dt_s);
-        const double uy=pid_y.step((target.second-aim_y)*config_.actuator_units_per_px-pending.second,config_.dt_s);
+        const double fx=config_.velocity_feedforward ? selected->x[2]*config_.actuator_units_per_px : 0;
+        const double fy=config_.velocity_feedforward ? selected->x[3]*config_.actuator_units_per_px : 0;
+        const double ux=pid_x.step((target.first-aim_x)*config_.actuator_units_per_px-pending.first,config_.dt_s,fx);
+        const double uy=pid_y.step((target.second-aim_y)*config_.actuator_units_per_px-pending.second,config_.dt_s,fy);
         transit.push_back({std::uint64_t(frame+1),std::uint64_t(frame),selected->id,
                           ts_ns,arrival,arrival+std::llround(2*config_.dt_s*1e9),ux*config_.dt_s,uy*config_.dt_s});
         event("generated",transit.back(),ts_ns,ux*config_.dt_s,uy*config_.dt_s);

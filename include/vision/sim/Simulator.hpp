@@ -27,6 +27,7 @@ struct ScenarioConfig {
   bool subpixel_render = false;
   bool encoder_compensation = false;
   bool encoder_transport = false;
+  bool encoder_extrapolation=false,velocity_feedforward=false;
   double encoder_delay_ms=0,encoder_drop_rate=0,encoder_max_age_ms=200;
   int encoder_drop_end_frame=-1;
   bool feedback_prediction = false;

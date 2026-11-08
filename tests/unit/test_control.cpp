@@ -105,6 +105,20 @@ int main() try {
   encoder.advance(34);require(!encoder.at(22) && encoder.latest()->captured==24);
   bool reversed=false;try {encoder.advance(33);} catch(const std::invalid_argument&) {reversed=true;}
   require(reversed);
+  sim::EncoderFeedback predicted(10,20,4);
+  predicted.publish({0,0,0},false);predicted.advance(10);
+  require(!predicted.extrapolatedPosition(1e9));
+  predicted.publish({10,10,0},false);predicted.advance(20);
+  require(predicted.extrapolatedPosition(1e9)->first==20);
+  require(predicted.extrapolatedPosition(5e8)->first==15);
+  predicted.publish({20,1000,0},false); // not yet received: cannot affect estimate
+  require(predicted.extrapolatedPosition(1e9)->first==20);
+  sim::PidAxis fed(2,1,0,100,10);
+  require(fed.step(3,1,9)==10);
+  require(fed.step(0,1,0)==0); // saturated feedforward must not wind up integral
+  predicted.advance(50);require(!predicted.extrapolatedPosition(1e9));
+  predicted.publish({100,1000,0},false);predicted.advance(110);
+  require(!predicted.extrapolatedPosition(1e9)); // gap between usable samples too large
   auto nonce=stop.request(2,100,50);
   sim::StopSnapshot stopped{2,nonce,110,true};
   require(!stop.accept(stopped,109,2,true)); // future report

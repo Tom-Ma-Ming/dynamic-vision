@@ -108,6 +108,8 @@ std::vector<sim::ScenarioConfig> loadScenarios(const std::string& path) {
     config.feedback_prediction=intOr(node,"feedback_prediction",0)!=0;
     config.encoder_compensation=intOr(node,"encoder_compensation",0)!=0;
     config.encoder_transport=intOr(node,"encoder_transport",0)!=0;
+    config.encoder_extrapolation=intOr(node,"encoder_extrapolation",0)!=0;
+    config.velocity_feedforward=intOr(node,"velocity_feedforward",0)!=0;
     config.encoder_delay_ms=doubleOr(node,"encoder_delay_ms",0);
     config.encoder_drop_rate=doubleOr(node,"encoder_drop_rate",0);
     config.encoder_max_age_ms=doubleOr(node,"encoder_max_age_ms",200);
@@ -335,6 +337,8 @@ int main(int argc, char** argv) try {
             << ",\"view_feedback\":" << (scenarios[i].view_feedback ? "true" : "false")
             << ",\"encoder_compensation\":" << (scenarios[i].encoder_compensation ? "true" : "false")
             << ",\"encoder_transport\":" << (scenarios[i].encoder_transport?"true":"false")
+            << ",\"encoder_extrapolation\":" << (scenarios[i].encoder_extrapolation?"true":"false")
+            << ",\"velocity_feedforward\":" << (scenarios[i].velocity_feedforward?"true":"false")
             << ",\"encoder_delay_ms\":" << scenarios[i].encoder_delay_ms
             << ",\"encoder_drop_rate\":" << scenarios[i].encoder_drop_rate
             << ",\"encoder_max_age_ms\":" << scenarios[i].encoder_max_age_ms

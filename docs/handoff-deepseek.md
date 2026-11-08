@@ -4,6 +4,8 @@
 
 后续诊断补充：encoder-control-diagnosis.md已将失败分为无断轨时的持续运动偏差，以及边界/显式变向后的断轨。constant场景也会边界反弹，不能全部算作永远匀速。新增sim-encoder-straight-diagnosis.yml四用例保持ID1、末段ready仍全部FAILED，应分别定位，不要通过自动切换所选ID掩盖断轨。
 
+后续实现补充：encoder-feedforward-experiment.md已增加默认关闭的编码器因果外推和速度前馈，组合能降低不反向匀速误差，但24项动态集合仍不达标，默认未启用。特别注意SUCCESS为曾经达到窗口后的锁存状态，后续断轨不会撤销；评审不能只看成功数量，须核查末段持续稳定性。接手以最新Git提交为准。
+
 ## 下一项必须解决的工程问题
 
 在现有严格门槛下修复编码器/视觉观测延迟下的控制误差，然后推进真实异步调度。先复现sim-encoder-transport.yml：2FAILED/2UNKNOWN；不要误报整体通过。显式Kp=2能解决静止用例，但动态对照24项仍3SUCCESS/17FAILED/4UNKNOWN，见encoder-gain-experiment.md。应按观测时间、已接收编码器时间、预测时间、正向命令时间逐段定位误差；分清视觉坐标系变化、目标速度和控制器运动。禁止在控制分支直接读取真值位置或尚未交付的编码器累计位移。
