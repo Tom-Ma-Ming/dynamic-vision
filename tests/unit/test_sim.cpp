@@ -73,6 +73,15 @@ int main(int argc, char** argv) try {
     if(!chosen) chosen=frame.track_id;
     require(frame.track_id==chosen,"acquisition must not switch established ID");
   }
+  auto incremental=constant;
+  incremental.incremental_control=true;
+  incremental.frames=200;
+  incremental.delay_jitter_ms=10;
+  auto inc=Simulator(incremental,tracker).run();
+  auto inc2=Simulator(incremental,tracker).run();
+  require(inc.frames.back().error_px<3,"incremental stationary convergence");
+  require(inc.metrics.mae_px==inc2.metrics.mae_px,"jitter must be reproducible");
+  require(inc.frames.front().aim_x==incremental.width*.5f,"no immediate actuation");
   const auto repeated = Simulator(constant, tracker).run();
   require(repeated.result == success.result, "determinism: result");
   require(repeated.terminal_frame == success.terminal_frame, "determinism: terminal frame");

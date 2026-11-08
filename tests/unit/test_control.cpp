@@ -20,6 +20,14 @@ int main() try {
   auto applied=a.advance(120000000); require(applied.command_id==4 && applied.dy==1 && applied.dx==0);
   bool rejected=false;try { a.advance(1); } catch(const std::invalid_argument&) { rejected=true; }
   require(rejected);
+  sim::IncrementActuator small(100);
+  double total=0;
+  for(int i=0;i<4;++i) {
+    auto t=std::int64_t(i)*10000000;
+    require(small.submit({std::uint64_t(i+1),0,1,t,t,t+20000000,.25,0}));
+    total+=small.advance(t+10000000).dx;
+  }
+  require(total==1);
   sim::PidAxis slow(0,1,0,100,100), fast(0,1,0,100,100);
   double s=0,f=0;
   for(int i=0;i<10;++i)s=slow.step(1,.1);

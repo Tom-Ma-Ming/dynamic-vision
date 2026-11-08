@@ -25,10 +25,11 @@ class IncrementActuator {
     if(!std::isfinite(speed) || speed<=0) throw std::invalid_argument("Invalid actuator speed");
   }
   bool submit(const IncrementCommand& c) {
-    if(c.id<=last_id_ || c.generated!=now_ || c.arrival<c.generated ||
+    if(c.id<=last_id_ || c.generated<0 || c.generated>now_ || c.arrival<now_ || c.arrival<c.generated ||
        c.expires<=c.arrival || !std::isfinite(c.dx) || !std::isfinite(c.dy) ||
        !std::isfinite(std::hypot(c.dx,c.dy))) return false;
-    active_=c; last_id_=c.id; carry_x_=carry_y_=0;
+    if(active_ && active_->track_id!=c.track_id) carry_x_=carry_y_=0;
+    active_=c; last_id_=c.id;
     return true;
   }
   void cancel() { active_.reset(); carry_x_=carry_y_=0; }

@@ -101,6 +101,12 @@ std::vector<sim::ScenarioConfig> loadScenarios(const std::string& path) {
         floatOr(node, "command_horizon_s", config.command_horizon_s);
     config.unknown_grace_frames =
         intOr(node, "unknown_grace_frames", config.unknown_grace_frames);
+    config.incremental_control = intOr(node, "incremental_control", 0)!=0;
+    config.pid_kp=floatOr(node,"pid_kp",config.pid_kp);
+    config.pid_ki=floatOr(node,"pid_ki",config.pid_ki);
+    config.pid_kd=floatOr(node,"pid_kd",config.pid_kd);
+    config.actuator_units_per_px=floatOr(node,"actuator_units_per_px",config.actuator_units_per_px);
+    config.delay_jitter_ms=floatOr(node,"delay_jitter_ms",config.delay_jitter_ms);
     config.seed = static_cast<std::uint32_t>(intOr(node, "seed", 1));
     result.push_back(config);
   }

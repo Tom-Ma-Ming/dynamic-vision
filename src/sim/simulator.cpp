@@ -1,4 +1,5 @@
 #include "vision/sim/Simulator.hpp"
+#include "vision/sim/Control.hpp"
 
 #include <algorithm>
 #include <cmath>
@@ -25,7 +26,9 @@ float clampf(float value, float low, float high) {
 }
 
 bool validate(const ScenarioConfig& config) {
-  return config.selected_track_id > 0 && std::isfinite(config.command_horizon_s) &&
+  return std::isfinite(config.actuator_units_per_px) && config.actuator_units_per_px>0 &&
+         std::isfinite(config.delay_jitter_ms) && config.delay_jitter_ms>=0 && config.delay_jitter_ms<=1000 &&
+         config.selected_track_id > 0 && std::isfinite(config.command_horizon_s) &&
          config.command_horizon_s >= 0 && config.noise_px >= 0 && config.frames > 0 && config.dt_s > 0 && config.width > 0 &&
          config.height > 0 && config.target_w > 0 && config.target_h > 0 &&
          config.target_w <= config.width && config.target_h <= config.height &&
@@ -125,6 +128,17 @@ ScenarioResult Simulator::run() {
   float last_pred_x = aim_x;
   float last_pred_y = aim_y;
   std::deque<std::pair<float, float>> command_queue;
+  IncrementActuator actuator(config_.actuator_max_speed*config_.actuator_units_per_px);
+  PidAxis pid_x(config_.pid_kp,config_.pid_ki,config_.pid_kd,100,config_.actuator_max_speed*config_.actuator_units_per_px);
+  PidAxis pid_y(config_.pid_kp,config_.pid_ki,config_.pid_kd,100,config_.actuator_max_speed*config_.actuator_units_per_px);
+  std::vector<IncrementCommand> transit;
+  std::mt19937 delay_rng(config_.seed+100003);
+  std::uniform_real_distribution<double> jitter(-config_.delay_jitter_ms,config_.delay_jitter_ms);
+  auto apply=[&](SimTime t) {
+    auto delta=actuator.advance(t);
+    aim_x+=float(delta.dx/config_.actuator_units_per_px);
+    aim_y+=float(delta.dy/config_.actuator_units_per_px);
+  };
 
   std::uint64_t last_track_id = 0;
   int id_switches = 0;
@@ -149,6 +163,15 @@ ScenarioResult Simulator::run() {
   for (int frame = 0; frame < config_.frames; ++frame) {
     const std::int64_t ts_ns =
         static_cast<std::int64_t>(std::llround(frame * config_.dt_s * 1e9));
+
+    if(config_.incremental_control) {
+      std::stable_sort(transit.begin(),transit.end(),[](const auto& a,const auto& b){return a.arrival<b.arrival;});
+      while(!transit.empty() && transit.front().arrival<=ts_ns) {
+        auto c=transit.front();transit.erase(transit.begin());
+        apply(c.arrival);actuator.submit(c);
+      }
+      apply(ts_ns);
+    }
 
     if (config_.motion == Motion::Stop && frame >= config_.frames / 3) {
       vx = 0;
@@ -317,6 +340,18 @@ ScenarioResult Simulator::run() {
         }
       }
     }
+    if(config_.incremental_control) {
+      if(controllable) {
+        const double delay=std::max(0.0,config_.actuator_delay_frames*config_.dt_s+jitter(delay_rng)*.001);
+        const auto arrival=ts_ns+std::llround(delay*1e9);
+        const double ux=pid_x.step((target.first-aim_x)*config_.actuator_units_per_px,config_.dt_s);
+        const double uy=pid_y.step((target.second-aim_y)*config_.actuator_units_per_px,config_.dt_s);
+        transit.push_back({std::uint64_t(frame+1),std::uint64_t(frame),selected->id,
+                          ts_ns,arrival,arrival+std::llround(2*config_.dt_s*1e9),ux*config_.dt_s,uy*config_.dt_s});
+      } else {
+        transit.clear();actuator.cancel();pid_x.reset();pid_y.reset();
+      }
+    } else {
     command_queue.push_back(target);
     std::pair<float,float> command{aim_x,aim_y};
     if (command_queue.size() > static_cast<size_t>(config_.actuator_delay_frames)) {
@@ -334,6 +369,8 @@ ScenarioResult Simulator::run() {
     } else {
       aim_x = command.first;
       aim_y = command.second;
+    }
+
     }
 
     const float error_x = aim_x - truth_x;
