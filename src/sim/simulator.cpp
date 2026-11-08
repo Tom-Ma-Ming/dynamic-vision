@@ -100,6 +100,13 @@ Simulator::Simulator(ScenarioConfig config, mot::Config tracker, ImageObservatio
   if(images_.detect && (images_.sprite.empty() || images_.background.empty() ||
       images_.sprite.type()!=CV_8UC3 || images_.background.type()!=CV_8UC3))
     throw std::invalid_argument("Image observation requires BGR sprite and background");
+  if(images_.detect) {
+    if(images_.sprite_target==cv::Rect2f{}) images_.sprite_target={0,0,float(images_.sprite.cols),float(images_.sprite.rows)};
+    const auto b=images_.sprite_target;
+    if(!std::isfinite(b.x) || !std::isfinite(b.y) || !std::isfinite(b.width) || !std::isfinite(b.height) ||
+       b.width<=0 || b.height<=0 || b.x<0 || b.y<0 || b.br().x>images_.sprite.cols || b.br().y>images_.sprite.rows)
+      throw std::invalid_argument("Invalid sprite target region");
+  }
   images_.sprite=images_.sprite.clone();images_.background=images_.background.clone();
   if (!validate(config_)) {
     throw std::invalid_argument("Invalid simulation scenario configuration");
@@ -258,8 +265,11 @@ ScenarioResult Simulator::run() {
       const cv::Mat affine=(cv::Mat_<double>(2,3)<<1,0,-camera_x,0,1,-camera_y);
       cv::warpAffine(background,raster,affine,background.size(),cv::INTER_LINEAR,cv::BORDER_WRAP);
       if(!occluded && in_view) {
-        cv::Rect destination(cvRound(truth_x-config_.target_w*.5f),cvRound(truth_y-height*.5f),
-                             std::max(1,cvRound(config_.target_w)),std::max(1,cvRound(height)));
+        const auto anchor=images_.sprite_target;
+        const double sx=config_.target_w/anchor.width,sy=height/anchor.height;
+        cv::Rect destination(cvRound(truth_x-(anchor.x+anchor.width*.5)*sx),
+                             cvRound(truth_y-(anchor.y+anchor.height*.5)*sy),
+                             std::max(1,cvRound(images_.sprite.cols*sx)),std::max(1,cvRound(images_.sprite.rows*sy)));
         cv::Mat sprite;cv::resize(images_.sprite,sprite,destination.size());
         const cv::Rect visible=destination & cv::Rect(0,0,raster.cols,raster.rows);
         if(visible.area()>0) sprite(cv::Rect(visible.x-destination.x,visible.y-destination.y,visible.width,visible.height)).copyTo(raster(visible));

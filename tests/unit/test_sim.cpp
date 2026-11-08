@@ -113,6 +113,11 @@ int main(int argc, char** argv) try {
   auto image_result=Simulator(feedback,tracker,pixels).run();
   require(image_calls==feedback.frames,"all frames use rendered observation");
   require(image_result.frames.back().error_px<3,"pixel-derived observations close the loop");
+  cv::Mat context(100,100,CV_8UC3,cv::Scalar(0,0,0));
+  cv::rectangle(context,cv::Rect(30,20,20,40),cv::Scalar(0,255,0),cv::FILLED);
+  pixels.sprite=context;pixels.sprite_target={30,20,20,40};image_calls=0;
+  auto context_result=Simulator(feedback,tracker,pixels).run();
+  require(context_result.frames.back().error_px<3,"context region must not change target truth anchor");
   pixels.detect=[](const cv::Mat&,int,std::int64_t){return std::vector<mot::Detection>{};};
   auto empty_images=Simulator(feedback,tracker,pixels).run();
   require(empty_images.metrics.tracked_frames==0,"image backend cannot fall back to truth boxes");

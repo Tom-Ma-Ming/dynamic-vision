@@ -9,13 +9,14 @@
 #include <chrono>
 
 int main(int argc,char** argv) try {
-  if(argc!=6) throw std::runtime_error("usage: vision_sim_image engine sprite background tracker new-output");
+  if(argc!=6 && argc!=10 && argc!=11) throw std::runtime_error("usage: vision_sim_image engine sprite background tracker new-output [target-x target-y target-width target-height [selected-track-id]]");
   const std::filesystem::path output(argv[5]);
   if(std::filesystem::exists(output)) throw std::runtime_error("Output must be new");
   Detector detector(argv[1]);
   sim::ImageObservation images;
   images.sprite=cv::imread(argv[2]);images.background=cv::imread(argv[3]);
   if(images.sprite.empty() || images.background.empty()) throw std::runtime_error("Missing scene images");
+  if(argc>=10) images.sprite_target={std::stof(argv[6]),std::stof(argv[7]),std::stof(argv[8]),std::stof(argv[9])};
   std::filesystem::create_directories(output);
   std::ofstream detections(output/"detections.jsonl");
   detections.exceptions(std::ios::badbit|std::ios::failbit);
@@ -33,9 +34,15 @@ int main(int argc,char** argv) try {
   };
   sim::ScenarioConfig config;
   config.width=config.height=320;config.start_x=110;config.start_y=160;
-  config.target_w=images.sprite.cols;config.target_h=images.sprite.rows;
+  config.target_w=argc>=10 ? images.sprite_target.width : float(images.sprite.cols);
+  config.target_h=argc>=10 ? images.sprite_target.height : float(images.sprite.rows);
+  if(argc>=10) {
+    config.start_x=images.sprite_target.x+images.sprite_target.width*.5f;
+    config.start_y=images.sprite_target.y+images.sprite_target.height*.5f;
+  }
   config.vx=0;config.frames=100;config.noise_px=0;
   config.acquire_single_confirmed=true;config.incremental_control=true;
+  if(argc==11) {config.acquire_single_confirmed=false;config.selected_track_id=std::stoi(argv[10]);}
   config.view_feedback=true;config.encoder_compensation=true;config.pid_kp=2;
   auto result=sim::Simulator(config,mot::Config::load(argv[4]),images).run();
   std::ofstream frames(output/"feedback.jsonl");frames.exceptions(std::ios::badbit|std::ios::failbit);
@@ -57,6 +64,7 @@ int main(int argc,char** argv) try {
   std::ofstream summary(output/"summary.json");summary.exceptions(std::ios::badbit|std::ios::failbit);
   summary<<"{\"result\":\""<<sim::name(result.result)<<"\",\"terminal_frame\":"<<result.terminal_frame
     <<",\"mae_px\":"<<result.metrics.mae_px<<",\"track_coverage\":"<<result.metrics.track_coverage
+    <<",\"selected_track_id\":"<<config.selected_track_id<<",\"acquire_single_confirmed\":"<<(config.acquire_single_confirmed?"true":"false")
     <<",\"clock\":\"fixed_simulation_step_not_wall_time\",\"encoder_feedback\":true,\"gates\":{";
   bool first=true;
   for(const auto& g:gates) {summary<<(first?"":",")<<"\""<<g.first<<"\":"<<g.second;first=false;}

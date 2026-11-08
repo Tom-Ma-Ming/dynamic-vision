@@ -131,6 +131,7 @@ struct ScenarioResult {
 
 struct ImageObservation {
   cv::Mat sprite, background;
+  cv::Rect2f sprite_target; // annotated target inside context image; empty means whole sprite
   std::function<std::vector<mot::Detection>(const cv::Mat&,int,std::int64_t)> detect;
 };
 
