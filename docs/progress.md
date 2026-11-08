@@ -103,3 +103,7 @@ TRT2-04/05：C++ 实图与 ONNX 5 图 13 框通过，最大坐标差 <0.001 px�
 configs/sim-expiry-clock.yml采用20ms抖动和80%发送失败以覆盖未被替换而到期的命令。before/after证据为 artifacts/sim/expiry-jitter-before-v1、expiry-jitter-after-v1；33次到期报告比截止晚0.473～39.001ms，修复只改变expired的报告时间，逐帧运动、其他命令事件和指标均不变。场景仍FAILED，不把时间契约修复称为控制精度达标。
 
 新增C++断言确保到期报告发生在实际advance调度点，Python审计拒绝截止前的到期通知，并接受跨截止区间的动作汇总报告。CPU34/34及新增断言定向复测通过，Python54/54通过；199命令生命周期审计通过。完整帧步长和动作有效期未改变。
+
+## 2026-11-08 反馈接收顺序契约
+
+新增独立FeedbackReceiver累计快照接收器，支持序号去重/迟到拒绝、epoch隔离、容量限制、时间与非有限值拒绝；control_contract通过。尚未接入simulator传输路径，不能宣称端到端乱序已实现。详见feedback-receiver-contract.md。小时测试最新实测仍存活，约37分钟；未覆盖运行程序。

@@ -1,5 +1,7 @@
 #include "vision/sim/Control.hpp"
+#include "vision/sim/FeedbackReceiver.hpp"
 #include <iostream>
+#include <limits>
 static void require(bool ok) { if(!ok) throw std::runtime_error("control contract failed"); }
 int main() try {
   sim::IncrementActuator a(100);
@@ -45,6 +47,33 @@ int main() try {
   ledger.acknowledged(2,150);
   require(ledger.overdue(200,100)); // receipt is not execution completion
   ledger.clear();require(ledger.size()==0 && !ledger.overdue(300,100));
+  sim::FeedbackReceiver receiver(.08,2);
+  receiver.beginEpoch(1,0);receiver.issued(1,0,10,-5);
+  sim::FeedbackSnapshot snapshot{1,1,2,120000000,100000000,4,-2,false};
+  require(receiver.receive(snapshot,150000000)==sim::FeedbackDisposition::Applied);
+  require(receiver.pending().first==6 && std::abs(receiver.delay()-.084)<1e-12);
+  require(receiver.receive(snapshot,160000000)==sim::FeedbackDisposition::Stale);
+  auto old=snapshot;old.sequence=1;old.applied_x=0;
+  require(receiver.receive(old,170000000)==sim::FeedbackDisposition::Stale && receiver.pending().first==6);
+  auto invalid=snapshot;invalid.sequence=3;invalid.accepted_at=110000000;
+  require(receiver.receive(invalid,170000000)==sim::FeedbackDisposition::Invalid);
+  invalid=snapshot;invalid.sequence=3;invalid.reported=200000000;
+  require(receiver.receive(invalid,170000000)==sim::FeedbackDisposition::Invalid && receiver.pending().first==6);
+  invalid=snapshot;invalid.sequence=3;invalid.applied_x=std::numeric_limits<double>::quiet_NaN();
+  require(receiver.receive(invalid,170000000)==sim::FeedbackDisposition::Invalid && receiver.pending().first==6);
+  invalid=snapshot;invalid.sequence=3;
+  require(receiver.receive(invalid,140000000)==sim::FeedbackDisposition::Invalid && receiver.pending().first==6);
+  snapshot.sequence=4;snapshot.reported=180000000;snapshot.applied_x=7;
+  require(receiver.receive(snapshot,200000000)==sim::FeedbackDisposition::Applied && receiver.pending().first==3);
+  snapshot.sequence=5;snapshot.terminal=true;
+  require(receiver.receive(snapshot,210000000)==sim::FeedbackDisposition::Applied && receiver.size()==0);
+  require(receiver.receive(snapshot,220000000)==sim::FeedbackDisposition::Unknown);
+  receiver.beginEpoch(2,300000000);receiver.issued(1,300000000,20,0);
+  require(receiver.receive(snapshot,310000000)==sim::FeedbackDisposition::Stale && receiver.pending().first==20);
+  receiver.issued(2,300000000,10,0);
+  bool full=false;try {receiver.issued(3,300000000,1,0);} catch(const std::invalid_argument&) {full=true;}
+  require(full && receiver.size()==2);
+  receiver.retireLocal(1);receiver.retireLocal(2);require(receiver.size()==0);
   sim::PidAxis slow(0,1,0,100,100), fast(0,1,0,100,100);
   double s=0,f=0;
   for(int i=0;i<10;++i)s=slow.step(1,.1);
