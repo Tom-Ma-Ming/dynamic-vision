@@ -67,3 +67,7 @@ TRT2-04/05：C++ 实图与 ONNX 5 图 13 框通过，最大坐标差 <0.001 px�
 新增 head_measured / last_head_observed_ts_ns，可靠头测量才更新时间；person单独更新、头候选或身份关联冲突、Lost及预测均不伪造新测量。覆盖CV/IMM、普通关联/ByteTrack两阶段、时间0、单独头部、共享头归属冲突与恢复。head+为本帧测量，head?为头候选冲突，head-为无本帧可靠测量；Tentative仍需下游状态门控。
 
 完整5400帧回放与上轮body-primary基线的检测、轨迹既有字段和选择逐帧完全相同。新增测量记录1220，历史4571，从未测量2008（逐帧全部轨迹计数，含Lost，非准确率）。视频完整解码并查看3993帧叠加。证据 artifacts/real-recordings-v1/head-measurement-v1/verification.json。CPU27/27、SDK6/6、Python33/33通过；增加ByteTrack低分阶段断言后，两套构建的CV/IMM测试再次通过。此前文档“测量有效性未完成”描述由本条更新；仍不证明头部检测正确、ReID或最终控制精度达标。
+
+## 2026-11-08 有界耗时统计与资源基线
+
+修复回放耗时vector随运行时长线性增长：固定内存直方图、全程计数/最大值、分位数误差上界1%+2ns，原始逐帧日志保留精确复算。百万样本测试通过，CPU29/29、SDK6/6。新增monitor_replay.ps1；180.52秒5400帧实时节奏回放无丢帧，result-age精确P99=13.4531ms。三分钟资源证据不替代小时级验收，详情 replay-resource-validation.md。

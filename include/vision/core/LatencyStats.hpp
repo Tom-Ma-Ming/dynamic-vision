@@ -1,6 +1,7 @@
 #pragma once
 
 #include <algorithm>
+#include <array>
 #include <cmath>
 #include <cstddef>
 #include <cstdint>
@@ -46,5 +47,43 @@ inline LatencySummary summarize(std::vector<std::int64_t> samples_ns) {
   summary.max_ns = static_cast<double>(samples_ns.back());
   return summary;
 }
+
+// Single-writer fixed-memory histogram over the entire run. Quantiles are bin
+// upper bounds (at most 1% + 2 ns above nearest rank), capped by exact maximum.
+// log1p covers zero and all nonnegative int64 nanosecond values in 4600 bins.
+class OnlineLatencyStats {
+ public:
+  void add(std::int64_t value) {
+    const double sample = static_cast<double>(std::max<std::int64_t>(0, value));
+    auto index = static_cast<std::size_t>(std::floor(std::log1p(sample) / logBase()));
+    index = std::min(index, bins_.size()-1);
+    ++bins_[index]; ++count_;
+    maximum_ = std::max(maximum_, sample);
+  }
+  LatencySummary summary() const {
+    LatencySummary result;
+    result.n = count_; result.max_ns = maximum_;
+    if(!count_) return result;
+    result.p50_ns = quantile(.50);
+    result.p95_ns = quantile(.95);
+    result.p99_ns = quantile(.99);
+    return result;
+  }
+ private:
+  static double logBase() { static const double value=std::log(1.01); return value; }
+  double quantile(double p) const {
+    const auto rank=static_cast<std::uint64_t>(std::ceil(p*static_cast<double>(count_)));
+    std::uint64_t accumulated=0;
+    for(std::size_t i=0;i<bins_.size();++i) {
+      accumulated+=bins_[i];
+      if(accumulated>=rank)
+        return std::min(maximum_, std::ceil(std::expm1((i+1)*logBase())));
+    }
+    return maximum_;
+  }
+  std::array<std::uint64_t,4600> bins_{};
+  std::size_t count_=0;
+  double maximum_=0;
+};
 
 }  // namespace vision

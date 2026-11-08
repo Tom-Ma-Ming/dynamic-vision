@@ -195,11 +195,11 @@ int main(int argc, char** argv) try {
   std::exception_ptr producer_error;
   std::exception_ptr consumer_error;
 
-  std::vector<std::int64_t> queue_wait_ns;
-  std::vector<std::int64_t> infer_ns;
-  std::vector<std::int64_t> mot_ns;
-  std::vector<std::int64_t> camera_ns;
-  std::vector<std::int64_t> result_age_ns;
+  vision::OnlineLatencyStats queue_wait_ns;
+  vision::OnlineLatencyStats infer_ns;
+  vision::OnlineLatencyStats mot_ns;
+  vision::OnlineLatencyStats camera_ns;
+  vision::OnlineLatencyStats result_age_ns;
 
   const auto pacing_start = Clock::now();
   std::int64_t first_source_ts = 0;
@@ -343,15 +343,15 @@ int main(int argc, char** argv) try {
               << ",\"features\":" << camera.features << ",\"inliers\":" << camera.inliers
               << ",\"inlier_ratio\":" << camera.inlierRatio << ",\"coverage\":" << camera.coverage
               << ",\"grid_cells\":" << camera.gridCells << "}";
-          camera_ns.push_back(camera_elapsed);
+          camera_ns.add(camera_elapsed);
         }
         log << "}\n";
 
         ++processed;
-        queue_wait_ns.push_back(queue_wait);
-        infer_ns.push_back(infer);
-        mot_ns.push_back(mot);
-        result_age_ns.push_back(result_age);
+        queue_wait_ns.add(queue_wait);
+        infer_ns.add(infer);
+        mot_ns.add(mot);
+        result_age_ns.add(result_age);
 
         if (!writer_open) {
           if (fs::is_directory(output / "overlay.mp4"))
@@ -415,10 +415,10 @@ int main(int argc, char** argv) try {
   log.exceptions(std::ios::goodbit);
   log.close();
 
-  const auto queue_wait_summary = vision::summarize(queue_wait_ns);
-  const auto infer_summary = vision::summarize(infer_ns);
-  const auto mot_summary = vision::summarize(mot_ns);
-  const auto age_summary = vision::summarize(result_age_ns);
+  const auto queue_wait_summary = queue_wait_ns.summary();
+  const auto infer_summary = infer_ns.summary();
+  const auto mot_summary = mot_ns.summary();
+  const auto age_summary = result_age_ns.summary();
 
   const std::uint64_t processed_count = processed.load();
   const bool empty_output = processed_count == 0;
@@ -444,6 +444,7 @@ int main(int argc, char** argv) try {
           << ",\"paced\":" << (config.realtime_pace ? "true" : "false")
           << ",\"peak\":" << queue.peak()
           << ",\"overlay_fps\":" << fps
+          << ",\"latency_quantiles\":\"log_histogram_upper_bound_1pct_plus_2ns\""
           << ",\"queue_wait_ms\":" << latencyJson(queue_wait_summary)
           << ",\"infer_ms\":" << latencyJson(infer_summary)
           << ",\"mot_ms\":" << latencyJson(mot_summary)
@@ -455,7 +456,7 @@ int main(int argc, char** argv) try {
           << ",\"status\":\"" << status << "\""
           << ",\"error\":" << (error.empty() ? "null" : jsonString(error));
   if(tracker_config.cameraMotion.enabled)
-    summary << ",\"camera_ms\":" << latencyJson(vision::summarize(camera_ns));
+    summary << ",\"camera_ms\":" << latencyJson(camera_ns.summary());
   summary << "}\n";
   summary.close();
 
