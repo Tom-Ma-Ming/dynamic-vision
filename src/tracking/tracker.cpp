@@ -69,6 +69,9 @@ cv::Rect2f Track::box() const {
 }
 static cv::Point2f center(cv::Rect2f b) { return (b.tl()+b.br())*.5f; }
 struct Observation { Detection d; std::optional<cv::Point2f> head; bool ambiguous=false, headAmbiguous=false; };
+static void recordHead(Track& t,const Observation& o,Time ts) {
+    if(o.head && !t.ambiguous && !t.headAmbiguous) t.lastHeadSeen=ts;
+}
 static std::vector<Observation> group(const std::vector<Detection>& detections,bool separate) {
     std::vector<Observation> obs;
     for(const auto& d:detections) if(d.cls==1) obs.push_back({d});
@@ -280,6 +283,7 @@ bool Tracker::update(Time frame,Time ts,const std::vector<Detection>& detections
                 auto c=candidate(t,high[j],cfg);
                 apply(t,high[j],c);
                 t.ambiguous |= assignmentAmbiguous(costs,i,j,m,cfg.ambiguity);
+                recordHead(t,high[j],ts);
                 live.push_back(t);
             }
         }
@@ -305,6 +309,7 @@ bool Tracker::update(Time frame,Time ts,const std::vector<Detection>& detections
                     auto c=candidate(t,low[j],cfg);
                     apply(t,low[j],c);
                     t.ambiguous |= assignmentAmbiguous(costs2,i,j,m2,cfg.ambiguity);
+                    recordHead(t,low[j],ts);
                 }
                 live.push_back(t);
             }
@@ -322,6 +327,7 @@ bool Tracker::update(Time frame,Time ts,const std::vector<Detection>& detections
             auto p=center(o.d.box); t.x={p.x,p.y,0,0}; t.body=o.d.cls==1;
             t.headOffset=o.head.value_or(cv::Point2f(p.x,o.d.box.y))-p;
             t.ambiguous=o.ambiguous;t.headAmbiguous=o.headAmbiguous;
+            recordHead(t,o,ts);
             t.covariance=cv::Matx44d::eye();
             for(int a=0;a<4;++a) t.covariance(a,a)=std::pow(a<2?cfg.headSigma:cfg.initialSpeed,2);
             initializeImm(t,cfg);
@@ -376,6 +382,7 @@ bool Tracker::update(Time frame,Time ts,const std::vector<Detection>& detections
             t.score=o.d.score; t.cost=c.cost; t.innovation=c.d2;
             t.ambiguous=o.ambiguous;t.headAmbiguous=o.headAmbiguous;
             t.ambiguous |= assignmentAmbiguous(costs,i,j,m,cfg.ambiguity);
+            recordHead(t,o,ts);
             t.lastSeen=ts;
             if(++t.hits>=cfg.minHits) t.state=State::Confirmed;
         }
@@ -388,6 +395,7 @@ bool Tracker::update(Time frame,Time ts,const std::vector<Detection>& detections
         auto p=center(o.d.box); t.x={p.x,p.y,0,0}; t.body=o.d.cls==1;
         t.headOffset=o.head.value_or(cv::Point2f(p.x,o.d.box.y))-p;
         t.ambiguous=o.ambiguous;t.headAmbiguous=o.headAmbiguous;
+        recordHead(t,o,ts);
         t.covariance=cv::Matx44d::eye();
         for(int a=0;a<4;++a) t.covariance(a,a)=std::pow(a<2?cfg.headSigma:cfg.initialSpeed,2);
         initializeImm(t,cfg);

@@ -31,6 +31,12 @@ struct Track {
     cv::Size2f size;
     cv::Point2f headOffset{};
     bool body = false, ambiguous = false, headAmbiguous = false;
+    // Timestamp of the last unambiguous associated head measurement, not a prediction.
+    std::optional<Time> lastHeadSeen;
+    bool headMeasuredAt(Time timestamp) const {
+        return lastHeadSeen && *lastHeadSeen==timestamp && !ambiguous &&
+               !headAmbiguous && state!=State::Lost;
+    }
     Time lastSeen;
     int hits = 1;
     double score, cost = -1, innovation = -1;

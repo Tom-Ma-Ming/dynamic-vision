@@ -82,6 +82,36 @@ int main(int argc,char** argv) try {
     require(single.snapshot().tracks.size()==1 && single.snapshot().tracks[0].body,"head to body");
 
     for(bool useByte:{false,true}) {
+      for(bool separate:{false,true}) {
+        auto c=cfg;c.byteTrack=useByte;c.separateHeadAmbiguity=separate;
+        Tracker measured(c);
+        measured.update(0,0,{person(50)});
+        require(!measured.snapshot().tracks.at(0).lastHeadSeen,"body-only birth is not a measured head");
+        measured.update(1,step,{person(50),head(50)});
+        require(measured.snapshot().tracks.at(0).headMeasuredAt(step),"unique head measurement timestamp");
+        auto future=measured.predictAt(step+1);
+        require(!future.tracks.at(0).headMeasuredAt(step+1),"prediction cannot fabricate fresh head");
+        measured.update(2,step*2,{person(50)});
+        require(!measured.snapshot().tracks.at(0).headMeasuredAt(step*2) &&
+                measured.snapshot().tracks.at(0).lastHeadSeen==step,"body-only update preserves historical head timestamp");
+        measured.update(3,step*3,{person(50),head(50),head(51)});
+        require(!measured.snapshot().tracks.at(0).headMeasuredAt(step*3) &&
+                measured.snapshot().tracks.at(0).lastHeadSeen==step,"conflicting heads cannot refresh valid measurement");
+        measured.update(4,step*4,{});
+        require(!measured.snapshot().tracks.at(0).headMeasuredAt(step*4),"lost track cannot claim fresh head");
+        measured.update(5,step*5,{person(50),head(50)});
+        require(measured.snapshot().tracks.at(0).headMeasuredAt(step*5),"unique head recovery");
+        if(useByte) {
+            auto lowBody=person(50);lowBody.score=.2f;
+            measured.update(6,step*6,{lowBody,head(50)});
+            require(measured.snapshot().tracks.at(0).headMeasuredAt(step*6),"ByteTrack second-stage head measurement");
+        }
+        Tracker headOnly(c);headOnly.update(0,0,{head(50)});
+        require(headOnly.snapshot().tracks.at(0).headMeasuredAt(0),"head birth at zero timestamp");
+        Tracker shared(c);shared.update(0,0,{person(50),person(52),head(51)});
+        for(const auto& t:shared.snapshot().tracks)
+            require(!t.lastHeadSeen,"head shared between bodies is not reliable measurement");
+      }
       auto bodyCfg=cfg;bodyCfg.separateHeadAmbiguity=true;bodyCfg.byteTrack=useByte;
       Tracker bodyPrimary(bodyCfg);
       for(int i=0;i<3;++i) bodyPrimary.update(i,step*i,{person(50),head(50),head(51)});
