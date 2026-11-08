@@ -27,7 +27,7 @@ float clampf(float value, float low, float high) {
 }
 
 bool validate(const ScenarioConfig& config) {
-  return (!config.feedback_prediction || config.encoder_compensation) && (!config.encoder_compensation || config.view_feedback) && (!config.view_feedback || config.incremental_control) && std::isfinite(config.actuator_units_per_px) && config.actuator_units_per_px>0 &&
+  return std::isfinite(config.observation_delay_ms) && config.observation_delay_ms>=0 && config.observation_delay_ms<=10000 && (!config.feedback_prediction || config.encoder_compensation) && (!config.encoder_compensation || config.view_feedback) && (!config.view_feedback || config.incremental_control) && std::isfinite(config.actuator_units_per_px) && config.actuator_units_per_px>0 &&
          std::isfinite(config.delay_jitter_ms) && config.delay_jitter_ms>=0 && config.delay_jitter_ms<=1000 &&
          config.selected_track_id > 0 && std::isfinite(config.command_horizon_s) &&
          config.command_horizon_s >= 0 && config.noise_px >= 0 && config.frames > 0 && config.dt_s > 0 && config.width > 0 &&
@@ -149,6 +149,14 @@ ScenarioResult Simulator::run() {
   std::mt19937 delay_rng(config_.seed+100003);
   std::uniform_real_distribution<double> jitter(-config_.delay_jitter_ms,config_.delay_jitter_ms);
   double measured_dx=0, measured_dy=0;
+  double encoder_x=0,encoder_y=0,observed_encoder_x=0,observed_encoder_y=0;
+  struct PendingObservation {
+    int frame;SimTime captured,ready;std::vector<mot::Detection> detections;
+    mot::CameraMotionEstimate motion;double encoder_x,encoder_y;
+  };
+  std::deque<PendingObservation> observations;
+  SimTime previous_capture=-1;
+  int observation_frame=-1;
   CommandFeedback feedback(config_.actuator_delay_frames*config_.dt_s);
   IncrementCommand active_command;
   auto event=[&](const char* kind,const IncrementCommand& c,SimTime time,double dx,double dy) {
@@ -166,6 +174,8 @@ ScenarioResult Simulator::run() {
       event("expired",active_command,active_command.expires,0,0);active_command={};
     }
     if(config_.view_feedback) {
+      encoder_x+=delta.dx/config_.actuator_units_per_px;
+      encoder_y+=delta.dy/config_.actuator_units_per_px;
       measured_dx+=delta.dx/config_.actuator_units_per_px;
       measured_dy+=delta.dy/config_.actuator_units_per_px;
       camera_x+=float(delta.dx/config_.actuator_units_per_px);
@@ -326,18 +336,29 @@ ScenarioResult Simulator::run() {
 
     total_detections += static_cast<int>(detections.size());
     mot::CameraMotionEstimate measured_motion;
-    measured_motion.from=tracker.snapshot().timestamp;
+    measured_motion.from=previous_capture;
+    previous_capture=ts_ns;
     measured_motion.to=ts_ns;
     measured_motion.accepted=config_.encoder_compensation && measured_motion.from>=0;
     measured_motion.shift={-measured_dx,-measured_dy};
     measured_motion.variance=.25;
     measured_motion.reason="simulated_applied_encoder";
     measured_dx=measured_dy=0;
-    if (!tracker.update(frame, ts_ns, detections,config_.encoder_compensation ? &measured_motion : nullptr)) {
-      throw std::runtime_error("Simulation produced out-of-order frames");
+    observations.push_back({frame,ts_ns,ts_ns+std::llround(config_.observation_delay_ms*1e6),
+                            detections,measured_motion,encoder_x,encoder_y});
+    while(!observations.empty() && observations.front().ready<=ts_ns) {
+      const auto& observation=observations.front();
+      if(!tracker.update(observation.frame,observation.captured,observation.detections,
+                         config_.encoder_compensation ? &observation.motion : nullptr))
+        throw std::runtime_error("Out-of-order published observation");
+      observation_frame=observation.frame;
+      observed_encoder_x=observation.encoder_x;observed_encoder_y=observation.encoder_y;
+      observations.pop_front();
     }
-
-    const auto& snapshot = tracker.snapshot();
+    const double recent_dx=config_.encoder_compensation ? encoder_x-observed_encoder_x : 0;
+    const double recent_dy=config_.encoder_compensation ? encoder_y-observed_encoder_y : 0;
+    auto snapshot=tracker.predictAt(ts_ns);
+    for(auto& track:snapshot.tracks) {track.x[0]-=recent_dx;track.x[1]-=recent_dy;}
     const mot::Track* selected = nullptr;
     if (!selection.selected) {
       if (config_.acquire_single_confirmed) {
@@ -394,8 +415,8 @@ ScenarioResult Simulator::run() {
     if (selected && selected->imm) {
       auto forecast=tracker.predictAt(ts_ns+std::llround(config_.command_horizon_s*1e9));
       for(const auto& future:forecast.tracks) if(future.id==selected->id) {
-        predicted_x=static_cast<float>(future.x[0]);
-        predicted_y=static_cast<float>(future.x[1]);
+        predicted_x=static_cast<float>(future.x[0]-recent_dx);
+        predicted_y=static_cast<float>(future.x[1]-recent_dy);
       }
       last_pred_x=predicted_x; last_pred_y=predicted_y;
     }
@@ -404,7 +425,7 @@ ScenarioResult Simulator::run() {
 
     // Only actionable observations may produce a new control command.
     const bool controllable = selected && selected->state == mot::State::Confirmed &&
-                              !selected->ambiguous && selected->lastSeen == ts_ns &&
+                              !selected->ambiguous &&
                               age_ms <= config_.max_age_ms &&
                               covariance_trace <= config_.covariance_limit;
     std::pair<float,float> target{aim_x,aim_y};
@@ -419,8 +440,8 @@ ScenarioResult Simulator::run() {
       if(selected->imm) {
         auto future=tracker.predictAt(ts_ns+std::llround(horizon*1e9));
         for(const auto& track:future.tracks) if(track.id==selected->id) {
-          target.first=clampf(static_cast<float>(track.x[0]),0,static_cast<float>(config_.width));
-          target.second=clampf(static_cast<float>(track.x[1]),0,static_cast<float>(config_.height));
+          target.first=clampf(static_cast<float>(track.x[0]-recent_dx),0,static_cast<float>(config_.width));
+          target.second=clampf(static_cast<float>(track.x[1]-recent_dy),0,static_cast<float>(config_.height));
         }
       }
     }
@@ -470,6 +491,7 @@ ScenarioResult Simulator::run() {
     const bool valid = controllable;
 
     FrameRecord record;
+    record.observation_ts_ns=tracker.snapshot().timestamp;record.observation_frame=observation_frame;
     record.estimated_delay_ms=feedback.delay()*1000;
     record.frame = frame;
     record.ts_ns = ts_ns;
@@ -487,7 +509,7 @@ ScenarioResult Simulator::run() {
     record.track_state = selected ? mot::name(selected->state) : "None";
     record.ambiguous = ambiguous;
     record.control_gate=!selected ? "no_selected_track" : selected->state!=mot::State::Confirmed ? "not_confirmed" :
-      selected->ambiguous ? "ambiguous" : selected->lastSeen!=ts_ns ? "no_current_observation" :
+      selected->ambiguous ? "ambiguous" :
       age_ms>config_.max_age_ms ? "stale" : covariance_trace>config_.covariance_limit ? "uncertain" : "ready";
     record.est_x = estimate_x;
     record.est_y = estimate_y;

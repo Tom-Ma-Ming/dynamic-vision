@@ -109,6 +109,7 @@ std::vector<sim::ScenarioConfig> loadScenarios(const std::string& path) {
     config.pid_ki=floatOr(node,"pid_ki",config.pid_ki);
     config.pid_kd=floatOr(node,"pid_kd",config.pid_kd);
     config.actuator_units_per_px=floatOr(node,"actuator_units_per_px",config.actuator_units_per_px);
+    config.observation_delay_ms=floatOr(node,"observation_delay_ms",config.observation_delay_ms);
     config.delay_jitter_ms=floatOr(node,"delay_jitter_ms",config.delay_jitter_ms);
     config.seed = static_cast<std::uint32_t>(intOr(node, "seed", 1));
     result.push_back(config);
@@ -136,6 +137,8 @@ void writeFrame(std::ostream& out, const std::string& scene,
                 const sim::FrameRecord& frame) {
   out << "{\"scene\":" << jsonString(scene)
       << ",\"frame\":" << frame.frame
+      << ",\"observation_ts_ns\":" << frame.observation_ts_ns
+      << ",\"observation_frame\":" << frame.observation_frame
       << ",\"ts_ns\":" << frame.ts_ns
       << ",\"estimated_delay_ms\":" << frame.estimated_delay_ms
       << ",\"camera_x\":" << frame.camera_x

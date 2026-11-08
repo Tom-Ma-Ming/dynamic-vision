@@ -59,3 +59,11 @@ vision_sim_image 可在 selected-track-id 后追加 units-per-pixel 与 subpixel
 | 16 | 开 | 7.723 | 1.296 | FAILED |
 
 门控均99 ready/1 no_selected_track。CPU27/27，含亚像素上下文锚点测试；SDK目标构建通过。分辨率提高未带来一致收益，不能据此选择更细步长宣称完成。当前检测和真值的像素级偏差仍限制严格小目标判据；不放宽阈值、不移动真值。下一阶段优先建立观察发布延迟/时钟模型，保持精度缺口显式存在。
+
+## 观察采集与发布时钟
+
+新增 observation_delay_ms（0～10000ms，默认0），图像/检测携带采集帧号和模拟采集时刻，进入延迟发布队列。到期后按采集时间更新 tracker，而不是将旧结果改写为当前结果。控制使用 predictAt(now)；模拟编码器额外补偿采集到当前之间已经实际执行的增量，避免把旧图像坐标直接作为当前坐标。IMM 后续外推同样应用该位移。观测年龄超过 max_age_ms 时禁止生成命令。
+
+vision_sim_image 可在 subpixel-render 后追加 observation-delay-ms。feedback 增加 observation_frame/observation_ts_ns，-1表示尚无已发布结果。图像检测仍同步计算，配置延迟是模拟发布安排；真实 detect_ms 单独测量，不代表全部耗时已进入模拟时钟。
+
+CPU27/27；固定80ms测试验证前两帧不可见结果、后续来源帧为当前帧减2，时间戳不重写；40ms有效期面对80ms延迟不产生增量控制。图像四组 artifacts/sim/observation-delay-v1：0/40/80ms MAE7.690/8.157/8.585，均FAILED；240ms为UNKNOWN、93 stale、零控制命令。零延迟逐字段等于旧图像基线。尚缺真实推理服务时钟、可变观察延迟、丢弃计数和长时队列压力验证，不据此声明完整实时链路验收。

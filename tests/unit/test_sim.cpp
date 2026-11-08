@@ -124,6 +124,17 @@ int main(int argc, char** argv) try {
   pixels.detect=[](const cv::Mat&,int,std::int64_t){return std::vector<mot::Detection>{};};
   auto empty_images=Simulator(feedback,tracker,pixels).run();
   require(empty_images.metrics.tracked_frames==0,"image backend cannot fall back to truth boxes");
+  auto delayed=constant;delayed.observation_delay_ms=80;
+  auto delayed_result=Simulator(delayed,tracker).run();
+  require(delayed_result.frames[0].observation_frame==-1 && delayed_result.frames[1].observation_frame==-1,"observations cannot publish early");
+  for(size_t i=2;i<delayed_result.frames.size();++i) {
+    require(delayed_result.frames[i].observation_frame==int(i)-2,"capture identity preserved across delay");
+    require(delayed_result.frames[i].observation_ts_ns==std::llround((i-2)*delayed.dt_s*1e9),"capture timestamp must not be rewritten as ready time");
+  }
+  auto expired=delayed;expired.max_age_ms=40;expired.incremental_control=true;
+  auto stale_result=Simulator(expired,tracker).run();
+  require(stale_result.commands.empty(),"stale observations cannot create incremental commands");
+  for(const auto& f:stale_result.frames) require(f.aim_x==expired.width*.5f,"stale observations cannot move actuator");
   const auto repeated = Simulator(constant, tracker).run();
   require(repeated.result == success.result, "determinism: result");
   require(repeated.terminal_frame == success.terminal_frame, "determinism: terminal frame");
