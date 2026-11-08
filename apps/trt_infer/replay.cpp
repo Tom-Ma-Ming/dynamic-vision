@@ -383,6 +383,7 @@ int main(int argc, char** argv) try {
           std::string label = "#" + std::to_string(track.id);
           if (track.state == mot::State::Lost) label += " lost";
           if (track.ambiguous) label += " ?";
+          if (track.headAmbiguous) label += " head?";
           cv::putText(frame, label,
                       {cvRound(box.x), std::max(12, cvRound(box.br().y) + 10)},
                       cv::FONT_HERSHEY_SIMPLEX, .38, color, 1, cv::LINE_AA);

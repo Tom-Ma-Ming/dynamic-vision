@@ -13,7 +13,9 @@ inline void writeTracking(std::ostream& out,const mot::Snapshot& s,const mot::Se
            <<b.x<<","<<b.y<<","<<b.br().x<<","<<b.br().y<<"],\"velocity\":["<<t.x[2]<<","<<t.x[3]
            <<"],\"last_observed_ts_ns\":"<<t.lastSeen<<",\"score\":"<<t.score
            <<",\"association_cost\":"<<t.cost<<",\"mahalanobis_squared\":"<<t.innovation
-           <<",\"identity_ambiguous\":"<<(t.ambiguous?"true":"false")<<",\"covariance\":[";
+           <<",\"identity_ambiguous\":"<<(t.ambiguous?"true":"false")
+           <<",\"head_ambiguous\":"<<(t.headAmbiguous?"true":"false")
+           <<",\"body_track\":"<<(t.body?"true":"false")<<",\"covariance\":[";
         for(int i=0;i<16;++i) out<<(i?",":"")<<t.covariance.val[i];
         out<<"]";
         if(t.imm) {
