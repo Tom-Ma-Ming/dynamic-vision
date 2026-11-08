@@ -101,6 +101,7 @@ std::vector<sim::ScenarioConfig> loadScenarios(const std::string& path) {
         floatOr(node, "command_horizon_s", config.command_horizon_s);
     config.unknown_grace_frames =
         intOr(node, "unknown_grace_frames", config.unknown_grace_frames);
+    config.feedback_prediction=intOr(node,"feedback_prediction",0)!=0;
     config.encoder_compensation=intOr(node,"encoder_compensation",0)!=0;
     config.view_feedback = intOr(node,"view_feedback",0)!=0;
     config.incremental_control = intOr(node, "incremental_control", 0)!=0;
@@ -136,6 +137,7 @@ void writeFrame(std::ostream& out, const std::string& scene,
   out << "{\"scene\":" << jsonString(scene)
       << ",\"frame\":" << frame.frame
       << ",\"ts_ns\":" << frame.ts_ns
+      << ",\"estimated_delay_ms\":" << frame.estimated_delay_ms
       << ",\"camera_x\":" << frame.camera_x
       << ",\"camera_y\":" << frame.camera_y
       << ",\"truth_x\":" << frame.truth_x
@@ -277,6 +279,7 @@ int main(int argc, char** argv) try {
             << ",\"incremental_control\":" << (scenarios[i].incremental_control ? "true" : "false")
             << ",\"view_feedback\":" << (scenarios[i].view_feedback ? "true" : "false")
             << ",\"encoder_compensation\":" << (scenarios[i].encoder_compensation ? "true" : "false")
+            << ",\"feedback_prediction\":" << (scenarios[i].feedback_prediction ? "true" : "false")
             << ",\"delay_jitter_ms\":" << scenarios[i].delay_jitter_ms
             << ",\"pid_kp\":" << scenarios[i].pid_kp
             << ",\"pid_ki\":" << scenarios[i].pid_ki

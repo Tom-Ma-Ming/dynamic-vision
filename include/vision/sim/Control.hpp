@@ -3,6 +3,7 @@
 #include <cmath>
 #include <cstdint>
 #include <optional>
+#include <map>
 #include <stdexcept>
 
 namespace sim {
@@ -61,6 +62,42 @@ class IncrementActuator {
   SimTime now_=0;
   std::uint64_t last_id_=0;
   std::optional<IncrementCommand> active_;
+};
+
+// Controller-side ledger: only submitted requests and received feedback enter here.
+class CommandFeedback {
+ public:
+  explicit CommandFeedback(double initial_delay_s):delay_(initial_delay_s) {
+    if(!std::isfinite(delay_) || delay_<0) throw std::invalid_argument("Invalid delay prior");
+  }
+  void issued(std::uint64_t id,SimTime generated,double dx,double dy) {
+    if(!id || pending_.count(id) || generated<0 || !std::isfinite(dx) || !std::isfinite(dy))
+      throw std::invalid_argument("Invalid issued command");
+    pending_[id]={generated,dx,dy,false};
+  }
+  void acknowledged(std::uint64_t id,SimTime time) {
+    auto it=pending_.find(id);
+    if(it==pending_.end() || time<it->second.generated) throw std::invalid_argument("Invalid feedback");
+    if(it->second.acknowledged) return;
+    delay_=.8*delay_+.2*((time-it->second.generated)*1e-9);
+    it->second.acknowledged=true;
+  }
+  void applied(std::uint64_t id,double dx,double dy) {
+    auto it=pending_.find(id);
+    if(it==pending_.end() || !std::isfinite(dx) || !std::isfinite(dy)) throw std::invalid_argument("Unknown application");
+    it->second.x-=dx;it->second.y-=dy;
+  }
+  void retire(std::uint64_t id) { pending_.erase(id); }
+  double delay() const { return delay_; }
+  std::pair<double,double> pending() const {
+    std::pair<double,double> sum{};
+    for(const auto& item:pending_) {sum.first+=item.second.x;sum.second+=item.second.y;}
+    return sum;
+  }
+ private:
+  struct Entry { SimTime generated;double x,y;bool acknowledged; };
+  std::map<std::uint64_t,Entry> pending_;
+  double delay_;
 };
 
 // Gains use seconds; output is actuator units/second after coordinate calibration.

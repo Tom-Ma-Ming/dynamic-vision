@@ -23,6 +23,7 @@ struct ScenarioConfig {
   bool incremental_control = false;
   bool view_feedback = false;
   bool encoder_compensation = false;
+  bool feedback_prediction = false;
   double pid_kp=8, pid_ki=0, pid_kd=0;
   double actuator_units_per_px=1;
   double delay_jitter_ms=0;
@@ -59,6 +60,7 @@ struct ScenarioConfig {
 struct FrameRecord {
   int frame = 0;
   std::int64_t ts_ns = 0;
+  double estimated_delay_ms=0;
   float camera_x = 0, camera_y = 0;
   float truth_x = 0;
   float truth_y = 0;

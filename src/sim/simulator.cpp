@@ -26,7 +26,7 @@ float clampf(float value, float low, float high) {
 }
 
 bool validate(const ScenarioConfig& config) {
-  return (!config.encoder_compensation || config.view_feedback) && (!config.view_feedback || config.incremental_control) && std::isfinite(config.actuator_units_per_px) && config.actuator_units_per_px>0 &&
+  return (!config.feedback_prediction || config.encoder_compensation) && (!config.encoder_compensation || config.view_feedback) && (!config.view_feedback || config.incremental_control) && std::isfinite(config.actuator_units_per_px) && config.actuator_units_per_px>0 &&
          std::isfinite(config.delay_jitter_ms) && config.delay_jitter_ms>=0 && config.delay_jitter_ms<=1000 &&
          config.selected_track_id > 0 && std::isfinite(config.command_horizon_s) &&
          config.command_horizon_s >= 0 && config.noise_px >= 0 && config.frames > 0 && config.dt_s > 0 && config.width > 0 &&
@@ -137,8 +137,14 @@ ScenarioResult Simulator::run() {
   std::mt19937 delay_rng(config_.seed+100003);
   std::uniform_real_distribution<double> jitter(-config_.delay_jitter_ms,config_.delay_jitter_ms);
   double measured_dx=0, measured_dy=0;
+  CommandFeedback feedback(config_.actuator_delay_frames*config_.dt_s);
   IncrementCommand active_command;
   auto event=[&](const char* kind,const IncrementCommand& c,SimTime time,double dx,double dy) {
+    const std::string type(kind);
+    if(type=="generated") feedback.issued(c.id,c.generated,dx,dy);
+    else if(type=="accepted") feedback.acknowledged(c.id,time);
+    else if(type=="applied") feedback.applied(c.id,dx,dy);
+    else feedback.retire(c.id);
     output.commands.push_back({kind,c.id,c.frame_id,c.track_id,time,c.generated,c.arrival,c.expires,dx,dy});
   };
   auto apply=[&](SimTime t) {
@@ -357,7 +363,7 @@ ScenarioResult Simulator::run() {
                               covariance_trace <= config_.covariance_limit;
     std::pair<float,float> target{aim_x,aim_y};
     if (controllable) {
-      const float horizon = config_.compensate_actuator_delay
+      const float horizon = config_.feedback_prediction ? float(feedback.delay()) : config_.compensate_actuator_delay
                                 ? config_.actuator_delay_frames * dt
                                 : config_.command_horizon_s;
       target.first = clampf(estimate_x + static_cast<float>(selected->x[2])*horizon, 0,
@@ -376,8 +382,9 @@ ScenarioResult Simulator::run() {
       if(controllable) {
         const double delay=std::max(0.0,config_.actuator_delay_frames*config_.dt_s+jitter(delay_rng)*.001);
         const auto arrival=ts_ns+std::llround(delay*1e9);
-        const double ux=pid_x.step((target.first-aim_x)*config_.actuator_units_per_px,config_.dt_s);
-        const double uy=pid_y.step((target.second-aim_y)*config_.actuator_units_per_px,config_.dt_s);
+        const auto pending=config_.feedback_prediction ? feedback.pending() : std::pair<double,double>{};
+        const double ux=pid_x.step((target.first-aim_x)*config_.actuator_units_per_px-pending.first,config_.dt_s);
+        const double uy=pid_y.step((target.second-aim_y)*config_.actuator_units_per_px-pending.second,config_.dt_s);
         transit.push_back({std::uint64_t(frame+1),std::uint64_t(frame),selected->id,
                           ts_ns,arrival,arrival+std::llround(2*config_.dt_s*1e9),ux*config_.dt_s,uy*config_.dt_s});
         event("generated",transit.back(),ts_ns,ux*config_.dt_s,uy*config_.dt_s);
@@ -417,6 +424,7 @@ ScenarioResult Simulator::run() {
     const bool valid = controllable;
 
     FrameRecord record;
+    record.estimated_delay_ms=feedback.delay()*1000;
     record.frame = frame;
     record.ts_ns = ts_ns;
     record.camera_x=camera_x;record.camera_y=camera_y;

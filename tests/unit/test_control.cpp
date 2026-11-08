@@ -28,6 +28,15 @@ int main() try {
     total+=small.advance(t+10000000).dx;
   }
   require(total==1);
+  sim::CommandFeedback ledger(.08);
+  ledger.issued(1,0,10,-5);
+  require(ledger.delay()==.08 && ledger.pending().first==10);
+  ledger.acknowledged(1,100000000);
+  require(std::abs(ledger.delay()-.084)<1e-12);
+  ledger.acknowledged(1,110000000);
+  require(std::abs(ledger.delay()-.084)<1e-12);
+  ledger.applied(1,4,-2);require(ledger.pending().first==6 && ledger.pending().second==-3);
+  ledger.retire(1);require(ledger.pending().first==0);
   sim::PidAxis slow(0,1,0,100,100), fast(0,1,0,100,100);
   double s=0,f=0;
   for(int i=0;i<10;++i)s=slow.step(1,.1);

@@ -54,3 +54,13 @@ configs/sim-view-feedback.yml 使用相同 36 场景，IMM 结果 0/0/36（artif
 配置 configs/sim-encoder-feedback.yml，IMM 下 36 场景结果 7 SUCCESS / 29 FAILED / 0 UNKNOWN；与无编码器反馈的 0/0/36 相比，消除了这组场景的断轨，但严格控制仍未通过。两轮 runs/commands/summary 字节一致，证据 encoder-feedback-v1、encoder-feedback-repeat-v1，SHA-256 见 repeat-check.json。CPU 27/27，包括静止目标反馈覆盖率 >95%、最终误差 <3 px 的针对性检查。没有更换默认 tracker 或放宽成功阈值。
 
 下一步：补足观察/执行时间轴的动态延迟估计、在途动作对预测的影响，并建立图像观察接口和场景渲染，最终用真实 TensorRT 检测替换合成框。编码器实验结果不能代替此项视觉验收。
+
+## 延迟反馈与未完成命令预测
+
+新增默认关闭 feedback_prediction（依赖 encoder_compensation）。CommandFeedback 只记录本端已发出的 ID/时刻/增量，以及已收到的接受、应用、替换、取消消息，不接收未来到达时刻。延迟以名义值初始化，对已接受反馈的生成至到达间隔作 alpha=.2 的 EWMA；重复确认不重复更新。反馈在本模拟中即时可用，真实反馈延迟/丢包尚未建模。
+
+预测使用该估计延迟，控制误差减去所有尚未完成命令的剩余请求增量；替换/拒绝/取消后清理对应账目。它是请求位移的启发式近似，并不保证每条在途请求最终都执行。场景日志增加 estimated_delay_ms；summary 记录新增开关、PID、抖动与单位换算。
+
+CPU 27/27，新增账目、实际反馈更新、重复确认幂等和清理测试。实验双跑逐字节一致。最初 36 个配置中 c0/c1 在此开关下都由反馈时域覆盖，构成重复；报告只采用 18 个 c1 有效配对，最终配置已移除重复项。与原编码器 + 固定补偿比较，成功 2→6/18，但全窗口 MAE 9.044→12.228 px，故不能宣布一致收益或切换默认。证据 artifacts/sim/feedback-prediction-v1/paired-report.json，去重最终运行 feedback-prediction-v2。
+
+下一步仍需改进控制稳定性并接通图像观察层；动态延迟实验不能替代捕获/推理/反馈全链路延迟标定。
