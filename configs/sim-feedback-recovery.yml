@@ -1,0 +1,5 @@
+%YAML:1.0
+scenarios:
+  - {id: "resync_after_blackout", motion: "constant", frames: 200, vx: 0., noise_px: 0., incremental_control: 1, acquire_single_confirmed: 1, feedback_drop_rate: 1., feedback_timeout_ms: 200., feedback_drop_end_frame: 30, feedback_resync_frame: 20, success_after_frame: 50, unknown_grace_frames: 100}
+  - {id: "link_recovers_no_request", motion: "constant", frames: 200, vx: 0., noise_px: 0., incremental_control: 1, acquire_single_confirmed: 1, feedback_drop_rate: 1., feedback_timeout_ms: 200., feedback_drop_end_frame: 30, success_after_frame: 50, unknown_grace_frames: 100}
+  - {id: "snapshot_never_delivered", motion: "constant", frames: 200, vx: 0., noise_px: 0., incremental_control: 1, acquire_single_confirmed: 1, feedback_drop_rate: 1., feedback_timeout_ms: 200., feedback_resync_frame: 20, success_after_frame: 50, unknown_grace_frames: 100}

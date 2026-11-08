@@ -3,7 +3,9 @@
 static void require(bool ok) { if(!ok) throw std::runtime_error("control contract failed"); }
 int main() try {
   sim::IncrementActuator a(100);
+  require(a.idle());
   require(a.submit({1,0,1,0,10000000,50000000,100,0}));
+  require(!a.idle());
   require(a.advance(5000000).dx==0);
   require(a.advance(20000000).dx==1);
   require(a.advance(60000000).dx==3);
@@ -12,6 +14,7 @@ int main() try {
   require(a.submit({2,1,1,70000000,70000000,90000000,-9,0}));
   require(a.advance(80000000).dx==-1);
   a.cancel(); require(a.advance(90000000).dx==0);
+  require(a.idle());
   require(a.submit({3,2,1,90000000,90000000,200000000,10,0}));
   require(a.advance(95000000).dx==0);
   require(a.advance(100000000).dx==1);

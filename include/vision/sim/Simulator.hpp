@@ -34,6 +34,7 @@ struct ScenarioConfig {
   int disconnect_start=-1, disconnect_frames=0;
   double dispatch_failure_rate=0;
   double feedback_drop_rate=0, feedback_timeout_ms=0;
+  int feedback_drop_end_frame=-1, feedback_resync_frame=-1;
   double dt_s = 0.04;
   int width = 640;
   int height = 480;
@@ -72,6 +73,8 @@ struct FrameRecord {
   double estimated_delay_ms=0;
   int feedback_dropped=0;
   bool feedback_fault=false;
+  bool feedback_resynced=false;
+  int feedback_sync_attempts=0;
   std::size_t feedback_pending=0;
   float camera_x = 0, camera_y = 0;
   float truth_x = 0;

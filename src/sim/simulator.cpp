@@ -27,7 +27,7 @@ float clampf(float value, float low, float high) {
 }
 
 bool validate(const ScenarioConfig& config) {
-  return std::isfinite(config.feedback_drop_rate) && config.feedback_drop_rate>=0 && config.feedback_drop_rate<=1 && std::isfinite(config.feedback_timeout_ms) && config.feedback_timeout_ms>=0 && config.feedback_timeout_ms<=10000 && (config.feedback_drop_rate==0 || config.feedback_timeout_ms>0) && (config.feedback_timeout_ms==0 || (config.feedback_timeout_ms>=.001 && config.incremental_control)) && std::isfinite(config.dispatch_failure_rate) && config.dispatch_failure_rate>=0 && config.dispatch_failure_rate<=1 && config.disconnect_start>=-1 && config.disconnect_frames>=0 && (config.disconnect_start<0 || config.disconnect_start<=config.frames-config.disconnect_frames) && ((config.disconnect_frames==0 && config.dispatch_failure_rate==0) || config.incremental_control) && config.observation_capacity>0 && config.observation_capacity<=10000 && std::isfinite(config.observation_jitter_ms) && config.observation_jitter_ms>=0 && config.observation_jitter_ms<=10000 && std::isfinite(config.inference_service_ms) && config.inference_service_ms>=0 && config.inference_service_ms<=10000 && std::isfinite(config.observation_delay_ms) && config.observation_delay_ms>=0 && config.observation_delay_ms<=10000 && (!config.feedback_prediction || config.encoder_compensation) && (!config.encoder_compensation || config.view_feedback) && (!config.view_feedback || config.incremental_control) && std::isfinite(config.actuator_units_per_px) && config.actuator_units_per_px>0 &&
+  return config.feedback_drop_end_frame>=-1 && config.feedback_drop_end_frame<config.frames && config.feedback_resync_frame>=-1 && config.feedback_resync_frame<config.frames && (config.feedback_resync_frame<0 || config.feedback_timeout_ms>0) && std::isfinite(config.feedback_drop_rate) && config.feedback_drop_rate>=0 && config.feedback_drop_rate<=1 && std::isfinite(config.feedback_timeout_ms) && config.feedback_timeout_ms>=0 && config.feedback_timeout_ms<=10000 && (config.feedback_drop_rate==0 || config.feedback_timeout_ms>0) && (config.feedback_timeout_ms==0 || (config.feedback_timeout_ms>=.001 && config.incremental_control)) && std::isfinite(config.dispatch_failure_rate) && config.dispatch_failure_rate>=0 && config.dispatch_failure_rate<=1 && config.disconnect_start>=-1 && config.disconnect_frames>=0 && (config.disconnect_start<0 || config.disconnect_start<=config.frames-config.disconnect_frames) && ((config.disconnect_frames==0 && config.dispatch_failure_rate==0) || config.incremental_control) && config.observation_capacity>0 && config.observation_capacity<=10000 && std::isfinite(config.observation_jitter_ms) && config.observation_jitter_ms>=0 && config.observation_jitter_ms<=10000 && std::isfinite(config.inference_service_ms) && config.inference_service_ms>=0 && config.inference_service_ms<=10000 && std::isfinite(config.observation_delay_ms) && config.observation_delay_ms>=0 && config.observation_delay_ms<=10000 && (!config.feedback_prediction || config.encoder_compensation) && (!config.encoder_compensation || config.view_feedback) && (!config.view_feedback || config.incremental_control) && std::isfinite(config.actuator_units_per_px) && config.actuator_units_per_px>0 &&
          std::isfinite(config.delay_jitter_ms) && config.delay_jitter_ms>=0 && config.delay_jitter_ms<=1000 &&
          config.selected_track_id > 0 && std::isfinite(config.command_horizon_s) &&
          config.command_horizon_s >= 0 && config.noise_px >= 0 && config.frames > 0 && config.dt_s > 0 && config.width > 0 &&
@@ -164,11 +164,18 @@ ScenarioResult Simulator::run() {
   std::mt19937 feedback_rng(config_.seed+400003);
   int feedback_dropped=0;
   bool feedback_fault=false;
+  bool feedback_resynced=false;
+  int feedback_sync_attempts=0;
+  auto dropFeedback=[&](SimTime time) {
+    const bool within_window=config_.feedback_drop_end_frame<0 ||
+      time<std::llround(config_.feedback_drop_end_frame*config_.dt_s*1e9);
+    return within_window && config_.feedback_drop_rate>0 && failure(feedback_rng)<config_.feedback_drop_rate;
+  };
   IncrementCommand active_command;
   auto event=[&](const char* kind,const IncrementCommand& c,SimTime time,double dx,double dy) {
     const std::string type(kind);
     const bool remote=type=="accepted" || type=="applied" || type=="expired" || type=="replaced" || type=="rejected";
-    const bool dropped=remote && config_.feedback_drop_rate>0 && failure(feedback_rng)<config_.feedback_drop_rate;
+    const bool dropped=remote && dropFeedback(time);
     if(dropped) ++feedback_dropped;
     else if(type=="generated") feedback.issued(c.id,c.generated,dx,dy);
     else if(type=="accepted") feedback.acknowledged(c.id,time);
@@ -233,6 +240,19 @@ ScenarioResult Simulator::run() {
       apply(ts_ns);
       if(config_.feedback_timeout_ms>0 && feedback.overdue(ts_ns,std::llround(config_.feedback_timeout_ms*1e6))) {
         feedback_fault=true;feedback.clear();
+      }
+      // Explicit recovery request; a received idle snapshot confirms the model
+      // has cancelled active work and drained transport. Time alone never clears it.
+      if(feedback_fault && !feedback_resynced && config_.feedback_resync_frame>=0 &&
+         frame>=config_.feedback_resync_frame && connected) {
+        ++feedback_sync_attempts;
+        const bool idle_snapshot=actuator.idle() && transit.empty() && active_command.id==0;
+        const bool snapshot_lost=dropFeedback(ts_ns);
+        if(snapshot_lost) ++feedback_dropped;
+        else if(idle_snapshot) {
+          feedback.clear();pid_x.reset();pid_y.reset();
+          feedback_fault=false;feedback_resynced=true;
+        }
       }
     }
 
@@ -521,6 +541,7 @@ ScenarioResult Simulator::run() {
     record.observation_ts_ns=tracker.snapshot().timestamp;record.observation_frame=observation_frame;
     record.estimated_delay_ms=feedback.delay()*1000;
     record.feedback_dropped=feedback_dropped;record.feedback_fault=feedback_fault;record.feedback_pending=feedback.size();
+    record.feedback_resynced=feedback_resynced;record.feedback_sync_attempts=feedback_sync_attempts;
     record.frame = frame;
     record.ts_ns = ts_ns;
     record.camera_x=camera_x;record.camera_y=camera_y;

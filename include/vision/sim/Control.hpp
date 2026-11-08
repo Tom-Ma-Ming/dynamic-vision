@@ -34,6 +34,7 @@ class IncrementActuator {
     return true;
   }
   void cancel() { active_.reset(); carry_x_=carry_y_=0; }
+  bool idle() const { return !active_; }
   AppliedIncrement advance(SimTime time) {
     if(time<now_) throw std::invalid_argument("Simulation time moved backwards");
     AppliedIncrement result{0,time,0,0};

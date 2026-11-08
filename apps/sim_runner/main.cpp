@@ -118,6 +118,8 @@ std::vector<sim::ScenarioConfig> loadScenarios(const std::string& path) {
     config.dispatch_failure_rate=doubleOr(node,"dispatch_failure_rate",config.dispatch_failure_rate);
     config.feedback_drop_rate=doubleOr(node,"feedback_drop_rate",config.feedback_drop_rate);
     config.feedback_timeout_ms=doubleOr(node,"feedback_timeout_ms",config.feedback_timeout_ms);
+    config.feedback_drop_end_frame=intOr(node,"feedback_drop_end_frame",config.feedback_drop_end_frame);
+    config.feedback_resync_frame=intOr(node,"feedback_resync_frame",config.feedback_resync_frame);
     config.observation_capacity=intOr(node,"observation_capacity",config.observation_capacity);
     config.observation_jitter_ms=doubleOr(node,"observation_jitter_ms",config.observation_jitter_ms);
     config.inference_service_ms=doubleOr(node,"inference_service_ms",config.inference_service_ms);
@@ -156,6 +158,8 @@ void writeFrame(std::ostream& out, const std::string& scene,
       << ",\"feedback_dropped\":" << frame.feedback_dropped
       << ",\"feedback_pending\":" << frame.feedback_pending
       << ",\"feedback_fault\":" << (frame.feedback_fault?"true":"false")
+      << ",\"feedback_resynced\":" << (frame.feedback_resynced?"true":"false")
+      << ",\"feedback_sync_attempts\":" << frame.feedback_sync_attempts
       << ",\"camera_x\":" << frame.camera_x
       << ",\"camera_y\":" << frame.camera_y
       << ",\"truth_x\":" << frame.truth_x
@@ -301,6 +305,8 @@ int main(int argc, char** argv) try {
             << ",\"feedback_prediction\":" << (scenarios[i].feedback_prediction ? "true" : "false")
             << ",\"feedback_drop_rate\":" << scenarios[i].feedback_drop_rate
             << ",\"feedback_timeout_ms\":" << scenarios[i].feedback_timeout_ms
+            << ",\"feedback_drop_end_frame\":" << scenarios[i].feedback_drop_end_frame
+            << ",\"feedback_resync_frame\":" << scenarios[i].feedback_resync_frame
             << ",\"delay_jitter_ms\":" << scenarios[i].delay_jitter_ms
             << ",\"pid_kp\":" << scenarios[i].pid_kp
             << ",\"pid_ki\":" << scenarios[i].pid_ki

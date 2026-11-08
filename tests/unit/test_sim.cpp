@@ -184,6 +184,21 @@ int main(int argc, char** argv) try {
   auto reliable=incremental;reliable.feedback_timeout_ms=500;
   auto reliable_result=Simulator(reliable,tracker).run();
   for(const auto& f:reliable_result.frames) require(!f.feedback_fault,"reliable notifications avoid timeout");
+  auto resync=missing_feedback;
+  resync.feedback_drop_end_frame=30;resync.feedback_resync_frame=20;
+  resync.success_after_frame=50;resync.unknown_grace_frames=100;
+  auto resumed=Simulator(resync,tracker).run();
+  require(resumed.result==TaskResult::Success,"confirmed idle resync must recover stationary scenario");
+  for(int i=6;i<30;++i) require(resumed.frames[i].feedback_fault && !resumed.frames[i].feedback_resynced,"lost stop snapshots cannot unlock control");
+  require(resumed.frames[30].feedback_resynced && !resumed.frames[30].feedback_fault,"received stopped snapshot unlocks recovery");
+  require(resumed.frames[30].feedback_sync_attempts==11,"recovery requests retry during blackout");
+  for(const auto& e:resumed.commands) {
+    if(e.kind=="generated") require(e.frame_id<6 || e.frame_id>=30,"blackout cannot generate commands");
+    if(e.kind=="accepted" && e.timestamp>=1200000000) require(e.generated>=1200000000,"recovery cannot replay old generation");
+  }
+  auto no_request=resync;no_request.feedback_resync_frame=-1;
+  auto held=Simulator(no_request,tracker).run();
+  require(held.frames.back().feedback_fault && !held.frames.back().feedback_resynced,"link recovery alone cannot clear fault");
   const auto repeated = Simulator(constant, tracker).run();
   require(repeated.result == success.result, "determinism: result");
   require(repeated.terminal_frame == success.terminal_frame, "determinism: terminal frame");
