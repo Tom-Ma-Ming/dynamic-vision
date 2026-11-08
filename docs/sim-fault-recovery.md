@@ -11,3 +11,11 @@ CPU CTest27/27。configs/sim-faults.yml 三组双跑输出完全一致：短断�
 测试覆盖断连窗口位置不变化、不生成命令、恢复后静止目标误差<3px、全部发送失败不移动及正确归因。未改变既有精度阈值或默认参数。这是确定性执行故障模型，不包含真实设备接入、反馈消息丢失、设备固件缓存或真实连接恢复。完整系统长时故障验收仍待完成。
 
 复现：按 image-replay.md 设置OpenCV PATH并构建 windows-cpu，执行 sim_runner configs/sim-faults.yml 新输出目录 configs/tracker.yml。
+
+可复用命令账目审计（仅检查事件契约，不代表控制精度通过）：
+
+```powershell
+.\.venv\Scripts\python tools/audit_sim_commands.py artifacts/sim/fault-recovery-v2/commands.jsonl --repeat artifacts/sim/fault-recovery-repeat-v2/commands.jsonl
+```
+
+工具按 scene/id 隔离命令，拒绝缺失生成、重复生成、接受前执行、失败后继续执行、不匹配终结和未终结命令；11项工具测试包含损坏证据。applied 是时间段聚合报告，不能据其报告时间推导真实设备动作时刻。
