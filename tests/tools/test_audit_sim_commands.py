@@ -14,7 +14,7 @@ def event(kind, timestamp=0, **extra):
 
 
 def test_valid_expiry_and_aggregated_movement():
-    rows = [event('generated'), event('accepted', 10), event('applied', 20), event('expired', 20)]
+    rows = [event('generated'), event('accepted', 10), event('applied', 25), event('expired', 25)]
     assert module.audit(rows)['commands'] == 1
 
 
@@ -26,6 +26,7 @@ def test_valid_expiry_and_aggregated_movement():
     [event('generated'), event('accepted', 9), event('expired', 20)],
     [event('generated'), event('accepted', 10), event('window_end_pending', 20)],
     [event('generated'), event('dispatch_failed'), event('dispatch_failed')],
+    [event('generated'), event('accepted', 10), event('expired', 19)],
 ])
 def test_corrupt_evidence_rejected(rows):
     with pytest.raises(ValueError):

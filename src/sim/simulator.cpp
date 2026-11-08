@@ -187,7 +187,9 @@ ScenarioResult Simulator::run() {
     auto delta=actuator.advance(t);
     if(delta.dx!=0 || delta.dy!=0) event("applied",active_command,t,delta.dx,delta.dy);
     if(active_command.id && t>=active_command.expires) {
-      event("expired",active_command,active_command.expires,0,0);active_command={};
+      // Event timestamp is when advance reports the transition; the physical
+      // deadline remains in expires. Never backdate a received notification.
+      event("expired",active_command,t,0,0);active_command={};
     }
     if(config_.view_feedback) {
       encoder_x+=delta.dx/config_.actuator_units_per_px;

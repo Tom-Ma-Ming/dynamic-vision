@@ -199,6 +199,19 @@ int main(int argc, char** argv) try {
   auto no_request=resync;no_request.feedback_resync_frame=-1;
   auto held=Simulator(no_request,tracker).run();
   require(held.frames.back().feedback_fault && !held.frames.back().feedback_resynced,"link recovery alone cannot clear fault");
+  auto expiry_clock=incremental;expiry_clock.delay_jitter_ms=20;
+  expiry_clock.dispatch_failure_rate=.8;expiry_clock.seed=12;
+  const auto expiry_result=Simulator(expiry_clock,tracker).run();
+  int expiry_events=0;
+  for(const auto& e:expiry_result.commands) if(e.kind=="expired") {
+    ++expiry_events;
+    const auto tick=std::llround(expiry_clock.dt_s*1e9);
+    bool report_point=e.timestamp%tick==0;
+    for(const auto& arrival:expiry_result.commands)
+      if((arrival.kind=="accepted" || arrival.kind=="rejected") && arrival.timestamp==e.timestamp) report_point=true;
+    require(report_point && e.timestamp>=e.expires,"expiry notification must use actual advance time");
+  }
+  require(expiry_events>0,"expiry clock regression must exercise expiration");
   const auto repeated = Simulator(constant, tracker).run();
   require(repeated.result == success.result, "determinism: result");
   require(repeated.terminal_frame == success.terminal_frame, "determinism: terminal frame");

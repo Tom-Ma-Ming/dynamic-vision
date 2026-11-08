@@ -29,3 +29,11 @@ configs/sim-feedback-recovery.yml双跑：反馈在第30帧恢复，显式请求
 证据 artifacts/sim/feedback-recovery-v1、feedback-recovery-repeat-v1、feedback-loss-regression-v2。feedback_resynced表示本场景曾成功同步，feedback_sync_attempts记录累计尝试；当前是否故障仍看feedback_fault。恢复场景显式使用100帧未知宽限和第50帧后的成功窗口，不修改原故障场景门槛。
 
 这补齐了零延迟仿真通道的停止确认恢复模型；仍不是实际设备恢复协议。没有消息乱序、重启epoch、延迟旧快照/重放保护或取消失败模型；这些仍待完整通信层实现。此前“没有恢复协议”描述由本段更新，encoder位移反馈缺失与真实设备验收仍未完成。
+
+## 2026-11-08 到期截止时间与报告时间分离
+
+修复expired日志将报告时间回填为expires的问题。IncrementActuator在advance(t)时汇总动作/观察到期，故事件timestamp应为t，物理截止仍为expires，动作积分仍只到截止时刻。这也让反馈丢失窗口按实际通知报告时刻判断，而非倒填历史时刻。
+
+configs/sim-expiry-clock.yml采用20ms抖动和80%发送失败以覆盖未被替换而到期的命令。before/after证据为 artifacts/sim/expiry-jitter-before-v1、expiry-jitter-after-v1；33次到期报告比截止晚0.473～39.001ms，修复只改变expired的报告时间，逐帧运动、其他命令事件和指标均不变。场景仍FAILED，不把时间契约修复称为控制精度达标。
+
+新增C++断言确保到期报告发生在实际advance调度点，Python审计拒绝截止前的到期通知，并接受跨截止区间的动作汇总报告。CPU34/34及新增断言定向复测通过，Python54/54通过；199命令生命周期审计通过。完整帧步长和动作有效期未改变。

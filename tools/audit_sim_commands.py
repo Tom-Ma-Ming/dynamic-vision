@@ -46,6 +46,8 @@ def audit(rows):
             elif kind in PENDING_END | ACTIVE_END:
                 require(state['state'] == ('pending' if kind in PENDING_END else 'active'),
                         'terminal incompatible with command state')
+                if kind == 'expired':
+                    require(row['timestamp'] >= row['expires'], 'expiry reported before deadline')
                 state['state'] = 'terminal'
             else:
                 require(False, f'unknown event {kind}')

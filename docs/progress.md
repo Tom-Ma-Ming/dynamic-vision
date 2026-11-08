@@ -95,3 +95,11 @@ TRT2-04/05：C++ 实图与 ONNX 5 图 13 框通过，最大坐标差 <0.001 px�
 ## 2026-11-08 仿真反馈故障恢复
 
 显式恢复请求必须收到当前停止/清空快照；通道恢复本身不能解锁。双跑三场景：确认成功恢复SUCCESS，未请求/确认全丢仍UNKNOWN/control；185命令审计通过，恢复后不接受旧命令，原反馈丢失场景行为未变。CPU34/34通过。这里只完成零延迟停止确认模型；延迟乱序、旧快照/epoch及设备取消失败仍待实现，见sim-feedback-loss.md。
+
+## 2026-11-08 到期截止时间与报告时间分离
+
+修复expired日志将报告时间回填为expires的问题。IncrementActuator在advance(t)时汇总动作/观察到期，故事件timestamp应为t，物理截止仍为expires，动作积分仍只到截止时刻。这也让反馈丢失窗口按实际通知报告时刻判断，而非倒填历史时刻。
+
+configs/sim-expiry-clock.yml采用20ms抖动和80%发送失败以覆盖未被替换而到期的命令。before/after证据为 artifacts/sim/expiry-jitter-before-v1、expiry-jitter-after-v1；33次到期报告比截止晚0.473～39.001ms，修复只改变expired的报告时间，逐帧运动、其他命令事件和指标均不变。场景仍FAILED，不把时间契约修复称为控制精度达标。
+
+新增C++断言确保到期报告发生在实际advance调度点，Python审计拒绝截止前的到期通知，并接受跨截止区间的动作汇总报告。CPU34/34及新增断言定向复测通过，Python54/54通过；199命令生命周期审计通过。完整帧步长和动作有效期未改变。

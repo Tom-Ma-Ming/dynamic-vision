@@ -1,0 +1,3 @@
+%YAML:1.0
+scenarios:
+  - {id: "expiry_jitter", motion: "constant", frames: 200, vx: 0., noise_px: 0., incremental_control: 1, acquire_single_confirmed: 1, delay_jitter_ms: 20., dispatch_failure_rate: 0.8, seed: 12, success_after_frame: 150}
