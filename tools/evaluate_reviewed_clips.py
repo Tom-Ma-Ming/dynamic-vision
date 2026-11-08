@@ -124,6 +124,8 @@ def main():
     parser.add_argument('output',type=Path)
     parser.add_argument('--quality-notes',type=Path,required=True,help='Explicit visual acceptance status and unresolved issues')
     parser.add_argument('--methods',nargs='+',default=['cv','imm'],help='Replay directory suffixes to compare')
+    parser.add_argument('--identity-semantics',choices=['unconfirmed','tracklet','persistent'],default='unconfirmed',
+                        help='Meaning of group_id; tracklet labels may change for the same person')
     args=parser.parse_args()
     if len(args.methods)<2 or len(set(args.methods))!=len(args.methods) or any(not re.fullmatch('[a-z0-9_-]+',name) for name in args.methods):
         raise ValueError('Provide at least two unique simple method names')
@@ -138,6 +140,8 @@ def main():
                               tracker_states=['Confirmed'],ambiguous_tracks_included=True,
                               tracker_box_semantics='All unified tracker boxes, including any head-origin tracks; no class filtering available in replay JSON.',
                               identity_scope='per clip',tracker_warm_start='state from full source video; score only annotated window',
+                              ground_truth_identity_semantics=args.identity_semantics,
+                              persistent_identity_acceptance=False,
                               HOTA='TrackEval default IoU thresholds 0.05..0.95',IDF1_IDSW_iou=.5),clips=[])
     for folder in folders:
         clip=evaluate_clip(folder,args.replay,args.output,args.methods);report['clips'].append(clip)

@@ -22,8 +22,8 @@ def fixture(root,duplicate=False):
 def test_gap_inventory_does_not_merge_clip_ids(tmp_path):
     for name in ('clip01','clip02'):fixture(tmp_path/name)
     a=audit.inventory(tmp_path/'clip01');b=audit.inventory(tmp_path/'clip02')
-    assert a['identities'][0]['identity']!=b['identities'][0]['identity']
-    row=a['identities'][0]
+    assert a['tracklets'][0]['tracklet']!=b['tracklets'][0]['tracklet']
+    row=a['tracklets'][0]
     assert row['annotations']==2 and row['long_gap_candidates']==1
     assert row['annotation_gaps'][0]['missing_frames']==2
     assert row['height_below_32']==2
@@ -37,3 +37,13 @@ def test_duplicate_identity_rejected(tmp_path):
 def test_zero_gap_threshold_rejected(tmp_path):
     fixture(tmp_path/'clip')
     with pytest.raises(ValueError):audit.inventory(tmp_path/'clip',0)
+
+
+def test_relationships_start_unknown_even_for_different_labels():
+    clips=[dict(tracklets=[dict(tracklet='clip:1',source_frames=[1,2]),
+                           dict(tracklet='clip:2',source_frames=[4,5]),
+                           dict(tracklet='clip:3',source_frames=[2,3])])]
+    review=audit.relationship_template(clips)
+    assert len(review['relations'])==3
+    assert all(pair['relation']=='unknown' and pair['scene_boundary_between'] is None for pair in review['relations'])
+    assert review['relations'][1]['shared_frames']==[2]

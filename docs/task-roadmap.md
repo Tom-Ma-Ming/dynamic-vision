@@ -40,4 +40,6 @@
 
 用户安排：2026-11-08 明确暂时不接远程，继续本地任务；仓库当前没有 remote，远程CI不能标为通过。当前控制证据见 docs/sim-incremental.md、docs/sim-image-loop.md。
 
-资源验收进展：固定内存耗时统计及三分钟实时节奏基线已验证，详情 replay-resource-validation.md。小时级验收仍待结果，不把测试正在运行标成通过。头身歧义真实录像消融和头测量时间契约见 body-head-video-ablation.md。
+资源验收进展：固定内存耗时统计及三分钟实时节奏基线已验证，详情 replay-resource-validation.md。本地单进程一小时门槛已通过（107974处理/26替换、结果年龄P99=14.137ms），仍有98ms峰值和7MiB内存增长；多小时及部署机验收待做。头身歧义真实录像消融和头测量时间契约见 body-head-video-ablation.md。
+
+身份语义已由用户确认：group_id可在遮挡/离开/场景变化后更换；这些是局部轨迹标签，不是永久人物身份。持续身份映射及场景边界仍需侧表复核，原MOT分数只用于局部编号诊断。

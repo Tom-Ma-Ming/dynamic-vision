@@ -111,3 +111,9 @@ configs/sim-expiry-clock.yml采用20ms抖动和80%发送失败以覆盖未被替
 ## 2026-11-08 有界延迟命令反馈通道
 
 FeedbackReceiver已接入默认关闭的feedback_transport；累计快照经有界队列/延迟抖动交付，旧epoch/迟到序号不改账目，新增逐消息feedback.jsonl。四场景双跑2SUCCESS/2UNKNOWN(control)，433命令审计通过，无invalid更新，关闭通道后旧行为一致。CPU34/34及容量故障定向回归通过。停止确认仍零延迟，不能宣称完整设备通信已完成；详见feedback-receiver-contract.md。小时回放已实测运行约46分钟，仍待完成。
+
+## 2026-11-08 身份语义确认与小时验收完成
+
+用户确认同人可更换group_id，已保存原回复与约束，审计改用tracklet/entity_id=null，生成11组未知关系复核表；不修改原框，不把不同编号自动做负例。评估报告新增身份语义字段，Python55/55通过。
+
+小时回放正常退出3602.379秒，所有预设本地门槛通过：108000捕获、107974处理/解码、26替换，结果年龄精确P99=14.137ms，私有内存窗口增量7.029MiB；最大结果年龄98.223ms仍记录。结束后日志轮转GPU对照5400帧通过：保留122/淘汰5278、112222字节，稳定字段等于完整尾部，默认完整输出与旧CV结果一致。详情见replay-resource-validation.md和replay-log-retention.md。

@@ -2,6 +2,7 @@
 import argparse
 from collections import defaultdict
 import hashlib
+from itertools import combinations
 import json
 import math
 from pathlib import Path
@@ -41,12 +42,14 @@ def inventory(folder, gap_seconds=.5):
             if min(width,height)<=0:raise ValueError('Degenerate box')
             tracks[identity].append((entry['source_frame'],width,height))
         co_visible+=len(seen)*(len(seen)-1)//2
-    identities=[]
+    tracklets=[]
     for identity,rows in sorted(tracks.items()):
         gaps=[dict(before=a[0],after=b[0],missing_frames=b[0]-a[0]-1,
                    missing_seconds=(b[0]-a[0]-1)/fps)
               for a,b in zip(rows,rows[1:]) if b[0]>a[0]+1]
-        identities.append(dict(identity=f'{folder.name}:{identity}',annotations=len(rows),
+        tracklets.append(dict(tracklet=f'{folder.name}:{identity}',entity_id=None,annotations=len(rows),
+                               source_frames=[r[0] for r in rows],
+                               review_images=[mapping[frames.index(rows[i][0])]['image'] for i in sorted({0,len(rows)//2,len(rows)-1})],
                                first_frame=rows[0][0],last_frame=rows[-1][0],
                                median_width=statistics.median(r[1] for r in rows),
                                median_height=statistics.median(r[2] for r in rows),
@@ -54,28 +57,44 @@ def inventory(folder, gap_seconds=.5):
                                annotation_gaps=gaps,
                                long_gap_candidates=sum(g['missing_seconds']>=gap_seconds for g in gaps)))
     return dict(clip=folder.name,source_video=manifest['source_video'],fps=fps,
-                frames=len(mapping),identities=identities,
-                co_visible_identity_pairs=co_visible,
+                frames=len(mapping),tracklets=tracklets,
+                co_visible_tracklet_pairs=co_visible,
                 manifest_sha256=hashlib.sha256(manifest_path.read_bytes()).hexdigest(),annotations=hashes)
+
+
+def relationship_template(clips):
+    pairs=[]
+    for clip in clips:
+        for a,b in combinations(clip['tracklets'],2):
+            pairs.append(dict(a=a['tracklet'],b=b['tracklet'],relation='unknown',
+                              shared_frames=sorted(set(a['source_frames']) & set(b['source_frames'])),
+                              scene_boundary_between=None,reviewed_by=None))
+    return dict(status='needs_human_review_not_training_pairs',
+                rule='Different group_id is not evidence of different entity; never auto-merge across scene resets.',
+                clips=clips,relations=pairs)
 
 
 def main():
     parser=argparse.ArgumentParser(description=__doc__)
     parser.add_argument('labels',type=Path)
     parser.add_argument('output',type=Path,help='New report file')
+    parser.add_argument('--relations-output',type=Path,help='Optional new human-review relationship template')
     parser.add_argument('--gap-seconds',type=float,default=.5)
     args=parser.parse_args()
     clips=[inventory(p,args.gap_seconds) for p in sorted(args.labels.glob('clip*')) if (p/'manifest.json').is_file()]
     if not clips:raise ValueError('No identity clips')
-    ids=[identity for clip in clips for identity in clip['identities']]
-    report=dict(status='diagnostic_inventory_not_reid_acceptance',identity_scope='clip_local_only',
+    ids=[tracklet for clip in clips for tracklet in clip['tracklets']]
+    report=dict(status='diagnostic_inventory_not_reid_acceptance',identity_scope='clip_local_tracklet_not_persistent_entity',
                 cross_clip_identity_links='unconfirmed',gap_seconds=args.gap_seconds,
                 caveat='Annotation gaps are not verified occlusions; co-visible pairs require identity review.',
-                clips=clips,totals=dict(clips=len(clips),identities=len(ids),
+                clips=clips,totals=dict(clips=len(clips),tracklets=len(ids),
                     person_annotations=sum(i['annotations'] for i in ids),
                     long_gap_candidates=sum(i['long_gap_candidates'] for i in ids),
                     height_below_32=sum(i['height_below_32'] for i in ids)))
     with args.output.open('x',encoding='utf-8') as stream:json.dump(report,stream,indent=2,ensure_ascii=False)
+    if args.relations_output:
+        review=relationship_template(clips)
+        with args.relations_output.open('x',encoding='utf-8') as stream:json.dump(review,stream,indent=2,ensure_ascii=False)
     print(json.dumps(report['totals']))
 
 

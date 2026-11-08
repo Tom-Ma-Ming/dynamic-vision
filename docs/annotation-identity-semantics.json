@@ -1,0 +1,14 @@
+{
+  "recorded_date": "2026-11-08",
+  "source": "user clarification in project conversation",
+  "user_statement": "同一人物在局部遮挡，离开后也曾换过编号 ，这个是换了场景后会换个编号",
+  "group_id_semantics": "local_tracklet_label_may_change_after_occlusion_or_scene_change",
+  "persistent_entity_mapping": "not_provided",
+  "scene_boundary_mapping": "not_provided",
+  "constraints": [
+    "Do not infer different persons solely from different group_id values.",
+    "Do not merge different group_id values without a reviewed relationship mapping.",
+    "Do not use existing tracklet-label scores as persistent-identity or long-occlusion acceptance.",
+    "Preserve original boxes and labels; store reviewed identity relationships separately."
+  ]
+}
