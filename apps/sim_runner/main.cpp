@@ -101,6 +101,7 @@ std::vector<sim::ScenarioConfig> loadScenarios(const std::string& path) {
         floatOr(node, "command_horizon_s", config.command_horizon_s);
     config.unknown_grace_frames =
         intOr(node, "unknown_grace_frames", config.unknown_grace_frames);
+    config.encoder_compensation=intOr(node,"encoder_compensation",0)!=0;
     config.view_feedback = intOr(node,"view_feedback",0)!=0;
     config.incremental_control = intOr(node, "incremental_control", 0)!=0;
     config.pid_kp=floatOr(node,"pid_kp",config.pid_kp);
@@ -273,6 +274,14 @@ int main(int argc, char** argv) try {
             << ",\"cause\":" << jsonString(sim::name(result.cause))
             << ",\"acquire_single_confirmed\":" << (scenarios[i].acquire_single_confirmed ? "true" : "false")
             << ",\"compensate_actuator_delay\":" << (scenarios[i].compensate_actuator_delay ? "true" : "false")
+            << ",\"incremental_control\":" << (scenarios[i].incremental_control ? "true" : "false")
+            << ",\"view_feedback\":" << (scenarios[i].view_feedback ? "true" : "false")
+            << ",\"encoder_compensation\":" << (scenarios[i].encoder_compensation ? "true" : "false")
+            << ",\"delay_jitter_ms\":" << scenarios[i].delay_jitter_ms
+            << ",\"pid_kp\":" << scenarios[i].pid_kp
+            << ",\"pid_ki\":" << scenarios[i].pid_ki
+            << ",\"pid_kd\":" << scenarios[i].pid_kd
+            << ",\"actuator_units_per_px\":" << scenarios[i].actuator_units_per_px
             << ",\"planned_frames\":" << scenarios[i].frames
             << ",\"selected_track_id\":" << scenarios[i].selected_track_id
             << ",\"prediction_horizon_s\":" << scenarios[i].command_horizon_s

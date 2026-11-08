@@ -92,6 +92,11 @@ int main(int argc, char** argv) try {
     if(std::abs(r.camera_x)>0) changed=true;
   }
   require(changed,"feedback must affect the camera");
+  feedback.encoder_compensation=true;
+  feedback.pid_kp=8;
+  auto encoded=Simulator(feedback,tracker).run();
+  require(encoded.metrics.track_coverage>.95,"applied encoder feedback preserves stationary target identity");
+  require(encoded.frames.back().error_px<3,"encoder feedback converges stationary target");
   const auto repeated = Simulator(constant, tracker).run();
   require(repeated.result == success.result, "determinism: result");
   require(repeated.terminal_frame == success.terminal_frame, "determinism: terminal frame");

@@ -26,7 +26,7 @@ float clampf(float value, float low, float high) {
 }
 
 bool validate(const ScenarioConfig& config) {
-  return (!config.view_feedback || config.incremental_control) && std::isfinite(config.actuator_units_per_px) && config.actuator_units_per_px>0 &&
+  return (!config.encoder_compensation || config.view_feedback) && (!config.view_feedback || config.incremental_control) && std::isfinite(config.actuator_units_per_px) && config.actuator_units_per_px>0 &&
          std::isfinite(config.delay_jitter_ms) && config.delay_jitter_ms>=0 && config.delay_jitter_ms<=1000 &&
          config.selected_track_id > 0 && std::isfinite(config.command_horizon_s) &&
          config.command_horizon_s >= 0 && config.noise_px >= 0 && config.frames > 0 && config.dt_s > 0 && config.width > 0 &&
@@ -111,7 +111,9 @@ ScenarioResult Simulator::run() {
   std::normal_distribution<float> noise(0.0f, config_.noise_px);
   std::uniform_real_distribution<float> unit(0.0f, 1.0f);
 
-  mot::Tracker tracker(tracker_);
+  auto tracker_config=tracker_;
+  if(config_.encoder_compensation) tracker_config.cameraMotion.enabled=true;
+  mot::Tracker tracker(tracker_config);
   mot::Selection selection;
 
   float world_x = config_.start_x;
@@ -134,6 +136,7 @@ ScenarioResult Simulator::run() {
   std::vector<IncrementCommand> transit;
   std::mt19937 delay_rng(config_.seed+100003);
   std::uniform_real_distribution<double> jitter(-config_.delay_jitter_ms,config_.delay_jitter_ms);
+  double measured_dx=0, measured_dy=0;
   IncrementCommand active_command;
   auto event=[&](const char* kind,const IncrementCommand& c,SimTime time,double dx,double dy) {
     output.commands.push_back({kind,c.id,c.frame_id,c.track_id,time,c.generated,c.arrival,c.expires,dx,dy});
@@ -145,6 +148,8 @@ ScenarioResult Simulator::run() {
       event("expired",active_command,active_command.expires,0,0);active_command={};
     }
     if(config_.view_feedback) {
+      measured_dx+=delta.dx/config_.actuator_units_per_px;
+      measured_dy+=delta.dy/config_.actuator_units_per_px;
       camera_x+=float(delta.dx/config_.actuator_units_per_px);
       camera_y+=float(delta.dy/config_.actuator_units_per_px);
     } else {
@@ -268,7 +273,15 @@ ScenarioResult Simulator::run() {
     }
 
     total_detections += static_cast<int>(detections.size());
-    if (!tracker.update(frame, ts_ns, detections)) {
+    mot::CameraMotionEstimate measured_motion;
+    measured_motion.from=tracker.snapshot().timestamp;
+    measured_motion.to=ts_ns;
+    measured_motion.accepted=config_.encoder_compensation && measured_motion.from>=0;
+    measured_motion.shift={-measured_dx,-measured_dy};
+    measured_motion.variance=.25;
+    measured_motion.reason="simulated_applied_encoder";
+    measured_dx=measured_dy=0;
+    if (!tracker.update(frame, ts_ns, detections,config_.encoder_compensation ? &measured_motion : nullptr)) {
       throw std::runtime_error("Simulation produced out-of-order frames");
     }
 
