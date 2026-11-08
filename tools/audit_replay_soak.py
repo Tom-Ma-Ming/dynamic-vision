@@ -15,6 +15,31 @@ def percentile(values, fraction):
     return ordered[math.ceil(len(ordered)*fraction)-1]
 
 
+def verify_inputs(root, manifest):
+    args=manifest['arguments']
+    expected=[manifest['executable'],args[0],args[1],args[3],args[5]]
+    entries=manifest['inputs']
+    if [str(Path(e['path']).resolve()) for e in entries]!=[str(Path(p).resolve()) for p in expected]:return False
+    copies=None
+    archive=root/'input-archive.json'
+    if archive.exists():
+        saved=json.loads(archive.read_text(encoding='utf-8'))
+        if saved['original_manifest_sha256']!=hashlib.sha256((root/'manifest.json').read_bytes()).hexdigest():return False
+        copies=saved['inputs']
+        if len(copies)!=len(entries):return False
+    for i,entry in enumerate(entries):
+        path=Path(entry['path'])
+        if copies is not None:
+            copy=copies[i]
+            if copy['source_path']!=entry['path'] or copy['sha256'].lower()!=entry['sha256'].lower():return False
+            path=(root/copy['file']).resolve()
+            try:path.relative_to((root/'input-archive').resolve())
+            except ValueError:return False
+        with path.open('rb') as stream:
+            if hashlib.file_digest(stream,'sha256').hexdigest().lower()!=entry['sha256'].lower():return False
+    return True
+
+
 def summary_gates(summary, completion):
     names = ('captured','processed','replaced','rejected','pending','stale','failed','peak','capacity')
     counters_valid = all(type(summary[k]) is int and summary[k]>=0 for k in names)
@@ -58,12 +83,7 @@ def main():
     resources = [json.loads(s) for s in (root/'resources.jsonl').read_text().splitlines()]
     elapsed = completion['elapsed_s']
     gates = summary_gates(summary, completion)
-    arguments = manifest['arguments']
-    expected_paths = [manifest['executable'],arguments[0],arguments[1],arguments[3],arguments[5]]
-    gates['input_hashes'] = [str(Path(e['path']).resolve()) for e in manifest['inputs']]==[str(Path(p).resolve()) for p in expected_paths]
-    for entry in manifest['inputs']:
-        with Path(entry['path']).open('rb') as stream:
-            gates['input_hashes'] &= hashlib.file_digest(stream,'sha256').hexdigest().lower()==entry['sha256'].lower()
+    gates['input_hashes'] = verify_inputs(root,manifest)
     keys = ('queue_wait_ms','infer_ms','mot_ms','result_age_ms')
     samples = {k:[] for k in keys}
     count = 0

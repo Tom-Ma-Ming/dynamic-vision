@@ -33,3 +33,11 @@ artifacts/replay-soak-hour-v1/completion.json记录3602.379秒、退出码0，au
 这是本机GTX1060/FP32/320输入、同一录像重复20次的单进程资源测试。期间同机有CPU开发/测试负载，无其他新GPU推理任务；不是空载独占性能测量。最大结果年龄98.223ms，虽然P99通过单帧预算，仍不能宣称逐帧硬实时或无延迟尖峰。内存仍有增长，单次一小时通过不证明多小时无泄漏。更长运行、实际部署机和完整视觉执行时延继续待验收。
 
 上述小时测试不包含后续日志轮转源码；日志轮转使用独立程序单独完成GPU对照，见replay-log-retention.md。旧“正在运行”段落保留为阶段记录，当前对应进程已正常退出。
+
+## 输入快照与重编译后的证据复核
+
+monitor_replay.ps1 现在先复制程序、Engine、录像和两个配置到新输出目录的 inputs 子目录，验证复制前后的 SHA256，再执行副本。manifest 记录实际执行路径和原始来源路径；复制时间不计入运行时间。DLL 仍由运行环境提供，输入快照不代表完整部署环境封存。
+
+历史 replay-soak-v1 和 replay-soak-hour-v1 在重编译前通过 `python tools/archive_replay_inputs.py 输出目录` 保存五项输入。工具只接受与原 manifest 摘要一致的内容，不修改原 manifest；input-archive.json 绑定原 manifest 的原始字节摘要。审计器优先验证归档副本，副本损坏不能退回原路径蒙混通过。
+
+2026-11-08 标准 windows-sdk 已重新编译，SDK CTest 6/6、已入库 Python 测试 57/57 通过。一小时历史证据在程序摘要已改变后重新完整审计仍全部通过。新监测路径实际执行 30 帧 TensorRT 回放：artifacts/monitor-snapshot-check-v2，退出码0、捕获/处理均30、无丢弃/失败，路径与摘要检查见 verification.json。这仅验证快照执行流程，不是新版程序的一小时压力结果。v1 短测因测试配置错误（blocking 配合 realtime_pace）按预期退出1，保留日志；v2 改为 blocking、不限速。

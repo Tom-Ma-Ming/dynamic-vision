@@ -13,11 +13,25 @@ $inputs = @($Engine,$Video,$Tracker,$Config) | ForEach-Object { (Resolve-Path -L
 $outputPath = [System.IO.Path]::GetFullPath($Output)
 if (Test-Path -LiteralPath $outputPath) { throw 'Output directory already exists' }
 New-Item -ItemType Directory -Path $outputPath | Out-Null
+$snapshotDirectory = Join-Path $outputPath 'inputs'
+New-Item -ItemType Directory -Path $snapshotDirectory | Out-Null
+$sourcePaths = @($exePath)+$inputs
+$snapshots = @()
+for ($index=0; $index -lt $sourcePaths.Count; $index++) {
+    $sourcePath = $sourcePaths[$index]
+    $sourceHash = (Get-FileHash -LiteralPath $sourcePath -Algorithm SHA256).Hash
+    $snapshotPath = Join-Path $snapshotDirectory ("$index-" + [System.IO.Path]::GetFileName($sourcePath))
+    Copy-Item -LiteralPath $sourcePath -Destination $snapshotPath -ErrorAction Stop
+    if ((Get-FileHash -LiteralPath $snapshotPath -Algorithm SHA256).Hash -ne $sourceHash) { throw 'Input changed during snapshot' }
+    $snapshots += $snapshotPath
+}
+$exePath = $snapshots[0]
+$inputs = $snapshots[1..4]
 $arguments = @($inputs[0],$inputs[1],(Join-Path $outputPath 'replay'),$inputs[2],'--config',$inputs[3])
 $argumentLine = ($arguments | ForEach-Object { '"' + $_ + '"' }) -join ' '
 $manifest = @{ executable=$exePath; arguments=$arguments; timeout_seconds=$TimeoutSeconds; inputs=@() }
 foreach ($path in @($exePath)+$inputs) {
-    $manifest.inputs += @{path=$path;sha256=(Get-FileHash -LiteralPath $path -Algorithm SHA256).Hash}
+    $manifest.inputs += @{path=$path;source_path=$sourcePaths[$manifest.inputs.Count];sha256=(Get-FileHash -LiteralPath $path -Algorithm SHA256).Hash}
 }
 $manifest | ConvertTo-Json -Depth 6 | Set-Content -LiteralPath (Join-Path $outputPath 'manifest.json') -Encoding utf8
 $writer = [System.IO.StreamWriter]::new((Join-Path $outputPath 'resources.jsonl'))
