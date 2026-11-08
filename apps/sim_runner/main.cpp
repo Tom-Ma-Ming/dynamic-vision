@@ -211,6 +211,9 @@ int main(int argc, char** argv) try {
   runs.exceptions(std::ios::badbit | std::ios::failbit);
   runs.precision(9);
 
+  std::ofstream commands(output / "commands.jsonl");
+  commands.exceptions(std::ios::badbit | std::ios::failbit);
+  commands.precision(17);
   std::vector<sim::ScenarioResult> results;
   std::map<std::string, Group> by_motion;
   std::map<std::string, Group> by_size;
@@ -224,6 +227,14 @@ int main(int argc, char** argv) try {
     sim::ScenarioResult result = simulator.run();
     for (const auto& frame : result.frames) {
       writeFrame(runs, result.scene_id, frame);
+    }
+    for(const auto& e:result.commands) {
+      commands << "{\"scene\":" << jsonString(result.scene_id)
+        << ",\"kind\":" << jsonString(e.kind) << ",\"id\":" << e.id
+        << ",\"frame_id\":" << e.frame_id << ",\"track_id\":" << e.track_id
+        << ",\"timestamp\":" << e.timestamp << ",\"generated\":" << e.generated
+        << ",\"arrival\":" << e.arrival << ",\"expires\":" << e.expires
+        << ",\"dx\":" << e.dx << ",\"dy\":" << e.dy << "}\n";
     }
     results.push_back(std::move(result));
 

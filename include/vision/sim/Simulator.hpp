@@ -104,6 +104,13 @@ struct Metrics {
   int id_switches = 0;
 };
 
+struct CommandEvent {
+  std::string kind;
+  std::uint64_t id=0, frame_id=0, track_id=0;
+  std::int64_t timestamp=0, generated=0, arrival=0, expires=0;
+  double dx=0,dy=0;
+};
+
 struct ScenarioResult {
   std::string scene_id;
   Motion motion = Motion::Constant;
@@ -112,6 +119,7 @@ struct ScenarioResult {
   int terminal_frame = -1;
   Metrics metrics;
   std::vector<FrameRecord> frames;
+  std::vector<CommandEvent> commands;
 };
 
 class Simulator {

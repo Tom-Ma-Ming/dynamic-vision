@@ -134,8 +134,16 @@ ScenarioResult Simulator::run() {
   std::vector<IncrementCommand> transit;
   std::mt19937 delay_rng(config_.seed+100003);
   std::uniform_real_distribution<double> jitter(-config_.delay_jitter_ms,config_.delay_jitter_ms);
+  IncrementCommand active_command;
+  auto event=[&](const char* kind,const IncrementCommand& c,SimTime time,double dx,double dy) {
+    output.commands.push_back({kind,c.id,c.frame_id,c.track_id,time,c.generated,c.arrival,c.expires,dx,dy});
+  };
   auto apply=[&](SimTime t) {
     auto delta=actuator.advance(t);
+    if(delta.dx!=0 || delta.dy!=0) event("applied",active_command,t,delta.dx,delta.dy);
+    if(active_command.id && t>=active_command.expires) {
+      event("expired",active_command,active_command.expires,0,0);active_command={};
+    }
     aim_x+=float(delta.dx/config_.actuator_units_per_px);
     aim_y+=float(delta.dy/config_.actuator_units_per_px);
   };
@@ -168,7 +176,11 @@ ScenarioResult Simulator::run() {
       std::stable_sort(transit.begin(),transit.end(),[](const auto& a,const auto& b){return a.arrival<b.arrival;});
       while(!transit.empty() && transit.front().arrival<=ts_ns) {
         auto c=transit.front();transit.erase(transit.begin());
-        apply(c.arrival);actuator.submit(c);
+        apply(c.arrival);
+        if(actuator.submit(c)) {
+          if(active_command.id) event("replaced",active_command,c.arrival,0,0);
+          active_command=c;event("accepted",c,c.arrival,0,0);
+        } else event("rejected",c,c.arrival,0,0);
       }
       apply(ts_ns);
     }
@@ -348,8 +360,12 @@ ScenarioResult Simulator::run() {
         const double uy=pid_y.step((target.second-aim_y)*config_.actuator_units_per_px,config_.dt_s);
         transit.push_back({std::uint64_t(frame+1),std::uint64_t(frame),selected->id,
                           ts_ns,arrival,arrival+std::llround(2*config_.dt_s*1e9),ux*config_.dt_s,uy*config_.dt_s});
+        event("generated",transit.back(),ts_ns,ux*config_.dt_s,uy*config_.dt_s);
+        if(std::hypot(ux,uy)>=config_.actuator_max_speed*config_.actuator_units_per_px) ++saturated_frames;
       } else {
-        transit.clear();actuator.cancel();pid_x.reset();pid_y.reset();
+        for(const auto& c:transit) event("cancelled_in_transit",c,ts_ns,0,0);
+        if(active_command.id) event("cancelled",active_command,ts_ns,0,0);
+        active_command={};transit.clear();actuator.cancel();pid_x.reset();pid_y.reset();
       }
     } else {
     command_queue.push_back(target);
@@ -452,6 +468,10 @@ ScenarioResult Simulator::run() {
       unseen_frames = 0;
     }
   }
+
+  const auto end_time=std::llround((config_.frames-1)*config_.dt_s*1e9);
+  for(const auto& c:transit) event("window_end_pending",c,end_time,0,0);
+  if(active_command.id) event("window_end_active",active_command,end_time,0,0);
 
   if (output.result == TaskResult::Running) {
     output.result = TaskResult::Failed;
