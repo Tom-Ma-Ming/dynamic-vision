@@ -101,6 +101,7 @@ std::vector<sim::ScenarioConfig> loadScenarios(const std::string& path) {
         floatOr(node, "command_horizon_s", config.command_horizon_s);
     config.unknown_grace_frames =
         intOr(node, "unknown_grace_frames", config.unknown_grace_frames);
+    config.view_feedback = intOr(node,"view_feedback",0)!=0;
     config.incremental_control = intOr(node, "incremental_control", 0)!=0;
     config.pid_kp=floatOr(node,"pid_kp",config.pid_kp);
     config.pid_ki=floatOr(node,"pid_ki",config.pid_ki);
@@ -134,6 +135,8 @@ void writeFrame(std::ostream& out, const std::string& scene,
   out << "{\"scene\":" << jsonString(scene)
       << ",\"frame\":" << frame.frame
       << ",\"ts_ns\":" << frame.ts_ns
+      << ",\"camera_x\":" << frame.camera_x
+      << ",\"camera_y\":" << frame.camera_y
       << ",\"truth_x\":" << frame.truth_x
       << ",\"truth_y\":" << frame.truth_y
       << ",\"occluded\":" << (frame.occluded ? "true" : "false")

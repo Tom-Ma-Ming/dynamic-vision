@@ -26,7 +26,7 @@ float clampf(float value, float low, float high) {
 }
 
 bool validate(const ScenarioConfig& config) {
-  return std::isfinite(config.actuator_units_per_px) && config.actuator_units_per_px>0 &&
+  return (!config.view_feedback || config.incremental_control) && std::isfinite(config.actuator_units_per_px) && config.actuator_units_per_px>0 &&
          std::isfinite(config.delay_jitter_ms) && config.delay_jitter_ms>=0 && config.delay_jitter_ms<=1000 &&
          config.selected_track_id > 0 && std::isfinite(config.command_horizon_s) &&
          config.command_horizon_s >= 0 && config.noise_px >= 0 && config.frames > 0 && config.dt_s > 0 && config.width > 0 &&
@@ -120,7 +120,7 @@ ScenarioResult Simulator::run() {
   float vy = config_.vy;
   float height = config_.target_h;
   float bottom = world_y + height * 0.5f;
-  float camera_x = 0;
+  float camera_x = 0, camera_y = 0;
   float aim_x = config_.width * 0.5f;
   float aim_y = config_.height * 0.5f;
   float last_est_x = aim_x;
@@ -144,8 +144,13 @@ ScenarioResult Simulator::run() {
     if(active_command.id && t>=active_command.expires) {
       event("expired",active_command,active_command.expires,0,0);active_command={};
     }
-    aim_x+=float(delta.dx/config_.actuator_units_per_px);
-    aim_y+=float(delta.dy/config_.actuator_units_per_px);
+    if(config_.view_feedback) {
+      camera_x+=float(delta.dx/config_.actuator_units_per_px);
+      camera_y+=float(delta.dy/config_.actuator_units_per_px);
+    } else {
+      aim_x+=float(delta.dx/config_.actuator_units_per_px);
+      aim_y+=float(delta.dy/config_.actuator_units_per_px);
+    }
   };
 
   std::uint64_t last_track_id = 0;
@@ -217,10 +222,10 @@ ScenarioResult Simulator::run() {
       if (world_y > max_y) { world_y = max_y; vy = -vy; }
     }
 
-    const float truth_x = clampf(world_x - camera_x,
+    const float truth_x = config_.view_feedback ? world_x-camera_x : clampf(world_x - camera_x,
                                  config_.target_w * 0.5f,
                                  static_cast<float>(config_.width) - config_.target_w * 0.5f);
-    const float truth_y = clampf(world_y,
+    const float truth_y = config_.view_feedback ? world_y-camera_y : clampf(world_y,
                                  config_.target_h * 0.5f,
                                  static_cast<float>(config_.height) - config_.target_h * 0.5f);
     const bool occluded = config_.occlusion_start >= 0 &&
@@ -229,7 +234,9 @@ ScenarioResult Simulator::run() {
     std::vector<mot::Detection> detections;
     bool detected = false;
     bool false_positive_this_frame = false;
-    if (!occluded && unit(rng) >= config_.dropout) {
+    const bool in_view=truth_x+config_.target_w*.5f>0 && truth_x-config_.target_w*.5f<config_.width &&
+                       truth_y+height*.5f>0 && truth_y-height*.5f<config_.height;
+    if (!occluded && in_view && unit(rng) >= config_.dropout) {
       detected = true;
       const float sx = truth_x + noise(rng);
       const float sy = truth_y + noise(rng);
@@ -399,6 +406,7 @@ ScenarioResult Simulator::run() {
     FrameRecord record;
     record.frame = frame;
     record.ts_ns = ts_ns;
+    record.camera_x=camera_x;record.camera_y=camera_y;
     record.truth_x = truth_x;
     record.truth_y = truth_y;
     record.occluded = occluded;

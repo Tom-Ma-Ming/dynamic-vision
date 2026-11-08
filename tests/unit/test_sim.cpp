@@ -82,6 +82,16 @@ int main(int argc, char** argv) try {
   require(inc.frames.back().error_px<3,"incremental stationary convergence");
   require(inc.metrics.mae_px==inc2.metrics.mae_px,"jitter must be reproducible");
   require(inc.frames.front().aim_x==incremental.width*.5f,"no immediate actuation");
+  auto feedback=incremental;
+  feedback.view_feedback=true;feedback.pid_kp=2;
+  auto fb=Simulator(feedback,tracker).run();
+  bool changed=false;
+  for(const auto& r:fb.frames) {
+    require(r.aim_x==feedback.width*.5f && r.aim_y==feedback.height*.5f,"view feedback keeps image reference centered");
+    require(std::abs(r.truth_x+r.camera_x-feedback.start_x)<.001,"action changes next observation projection");
+    if(std::abs(r.camera_x)>0) changed=true;
+  }
+  require(changed,"feedback must affect the camera");
   const auto repeated = Simulator(constant, tracker).run();
   require(repeated.result == success.result, "determinism: result");
   require(repeated.terminal_frame == success.terminal_frame, "determinism: terminal frame");

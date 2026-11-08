@@ -32,3 +32,13 @@ out/windows-cpu/apps/sim_runner/Release/sim_runner.exe configs/sim-incremental.y
 ## 剩余工作
 
 当前为合成检测与二维光标反馈，尚未驱动视角或渲染并进入 YOLO。动态延迟估计器尚未实现；抖动模型只是测试输入。命令执行为事件区间内的速率限幅/量化近似，未建模设备加速度、写入失败和真实采样延迟。需要补充长延迟/乱序/过期场景、自动审计工具及命令量守恒测试，再推进视觉反馈。不得将这批诊断结果当作真实操作性能验收。
+
+## 视角反馈与跟踪消融（后续检查点）
+
+默认 CV 的 unknown 并非没有输入检测：constant-s1 在边界反弹后 Lost，frame 161 原轨迹过期；turn-s1 在转向后 frame 115 过期，后续仍 observed=true。独立选择保留原 ID，没有用新生轨迹伪装恢复。
+
+同一 configs/sim-incremental.yml 下，机动 CV 结果 3 SUCCESS/33 FAILED/0 UNKNOWN；IMM 为 11/25/0。证据 incremental-maneuver-v1、incremental-imm-v1。只表明这些合成场景中的机动关联改善，默认配置未改。
+
+新增默认关闭 view_feedback，必须搭配 incremental_control。执行增量改变 camera_x/camera_y，固定图像中心为参考，下一帧真值投影等于世界坐标减相机偏移；视野外停止生成观测，不把物体钳在画面边缘。日志增加相机位置。CPU 27/27，测试证明动作改变下一观察坐标且中心固定。
+
+configs/sim-view-feedback.yml 使用相同 36 场景，IMM 结果 0/0/36（artifacts/sim/view-feedback-v1）。这是暴露闭环问题的诊断结果，不是完成验收。当前目标图像速度仍混合自身动作造成的视角运动；延迟动作和反馈改变原控制假设，不能用前一光标模式的参数直接宣称有效。下一步分析已应用动作反馈与背景运动补偿如何在同一时间轴融合、验证稳定性，再接入图像渲染与 YOLO。本版观察仍为合成框，尚非图像级视觉闭环。
