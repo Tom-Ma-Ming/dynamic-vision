@@ -1,6 +1,7 @@
 #pragma once
 
 #include <cstdint>
+#include <functional>
 #include <deque>
 #include <string>
 #include <vector>
@@ -127,12 +128,18 @@ struct ScenarioResult {
   std::vector<CommandEvent> commands;
 };
 
+struct ImageObservation {
+  cv::Mat sprite, background;
+  std::function<std::vector<mot::Detection>(const cv::Mat&,int,std::int64_t)> detect;
+};
+
 class Simulator {
  public:
-  Simulator(ScenarioConfig config, mot::Config tracker);
+  Simulator(ScenarioConfig config, mot::Config tracker, ImageObservation images = {});
   ScenarioResult run();
 
  private:
+  ImageObservation images_;
   ScenarioConfig config_;
   mot::Config tracker_;
 };

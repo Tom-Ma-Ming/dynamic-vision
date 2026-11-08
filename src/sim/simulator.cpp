@@ -2,6 +2,7 @@
 #include "vision/sim/Control.hpp"
 
 #include <algorithm>
+#include <opencv2/imgproc.hpp>
 #include <cmath>
 #include <deque>
 #include <limits>
@@ -94,8 +95,12 @@ std::string sizeBucket(float width, float height) {
   return ">96";
 }
 
-Simulator::Simulator(ScenarioConfig config, mot::Config tracker)
-    : config_(std::move(config)), tracker_(std::move(tracker)) {
+Simulator::Simulator(ScenarioConfig config, mot::Config tracker, ImageObservation images)
+    : images_(std::move(images)), config_(std::move(config)), tracker_(std::move(tracker)) {
+  if(images_.detect && (images_.sprite.empty() || images_.background.empty() ||
+      images_.sprite.type()!=CV_8UC3 || images_.background.type()!=CV_8UC3))
+    throw std::invalid_argument("Image observation requires BGR sprite and background");
+  images_.sprite=images_.sprite.clone();images_.background=images_.background.clone();
   if (!validate(config_)) {
     throw std::invalid_argument("Invalid simulation scenario configuration");
   }
@@ -247,7 +252,22 @@ ScenarioResult Simulator::run() {
     bool false_positive_this_frame = false;
     const bool in_view=truth_x+config_.target_w*.5f>0 && truth_x-config_.target_w*.5f<config_.width &&
                        truth_y+height*.5f>0 && truth_y-height*.5f<config_.height;
-    if (!occluded && in_view && unit(rng) >= config_.dropout) {
+    if(images_.detect) {
+      cv::Mat background,raster;
+      cv::resize(images_.background,background,{config_.width,config_.height});
+      const cv::Mat affine=(cv::Mat_<double>(2,3)<<1,0,-camera_x,0,1,-camera_y);
+      cv::warpAffine(background,raster,affine,background.size(),cv::INTER_LINEAR,cv::BORDER_WRAP);
+      if(!occluded && in_view) {
+        cv::Rect destination(cvRound(truth_x-config_.target_w*.5f),cvRound(truth_y-height*.5f),
+                             std::max(1,cvRound(config_.target_w)),std::max(1,cvRound(height)));
+        cv::Mat sprite;cv::resize(images_.sprite,sprite,destination.size());
+        const cv::Rect visible=destination & cv::Rect(0,0,raster.cols,raster.rows);
+        if(visible.area()>0) sprite(cv::Rect(visible.x-destination.x,visible.y-destination.y,visible.width,visible.height)).copyTo(raster(visible));
+      }
+      detections=images_.detect(raster,frame,ts_ns);
+      detected=!detections.empty();
+      if(!detected && !occluded) ++missed;
+    } else if (!occluded && in_view && unit(rng) >= config_.dropout) {
       detected = true;
       const float sx = truth_x + noise(rng);
       const float sy = truth_y + noise(rng);
@@ -269,7 +289,7 @@ ScenarioResult Simulator::run() {
       ++missed;
     }
 
-    if (unit(rng) < config_.false_positive_rate) {
+    if (!images_.detect && unit(rng) < config_.false_positive_rate) {
       const float fp_x = 20.0f + unit(rng) * (config_.width - 40.0f);
       const float fp_y = 20.0f + unit(rng) * (config_.height - 40.0f);
       detections.push_back({1, 0.5f,

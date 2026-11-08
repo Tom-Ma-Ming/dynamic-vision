@@ -1,3 +1,4 @@
+#include <opencv2/imgproc.hpp>
 #include "vision/sim/Simulator.hpp"
 
 #include <cmath>
@@ -97,6 +98,24 @@ int main(int argc, char** argv) try {
   auto encoded=Simulator(feedback,tracker).run();
   require(encoded.metrics.track_coverage>.95,"applied encoder feedback preserves stationary target identity");
   require(encoded.frames.back().error_px<3,"encoder feedback converges stationary target");
+  sim::ImageObservation pixels;
+  pixels.sprite=cv::Mat(40,20,CV_8UC3,cv::Scalar(0,255,0));
+  pixels.background=cv::Mat(480,640,CV_8UC3,cv::Scalar(0,0,0));
+  int image_calls=0;
+  pixels.detect=[&](const cv::Mat& image,int frame,std::int64_t) {
+    require(frame==image_calls++,"one image observation per frame");
+    cv::Mat mask;cv::inRange(image,cv::Scalar(0,200,0),cv::Scalar(0,255,0),mask);
+    std::vector<cv::Point> points;cv::findNonZero(mask,points);
+    std::vector<mot::Detection> boxes;
+    if(!points.empty()) boxes.push_back({1,.99f,cv::Rect2f(cv::boundingRect(points))});
+    return boxes;
+  };
+  auto image_result=Simulator(feedback,tracker,pixels).run();
+  require(image_calls==feedback.frames,"all frames use rendered observation");
+  require(image_result.frames.back().error_px<3,"pixel-derived observations close the loop");
+  pixels.detect=[](const cv::Mat&,int,std::int64_t){return std::vector<mot::Detection>{};};
+  auto empty_images=Simulator(feedback,tracker,pixels).run();
+  require(empty_images.metrics.tracked_frames==0,"image backend cannot fall back to truth boxes");
   const auto repeated = Simulator(constant, tracker).run();
   require(repeated.result == success.result, "determinism: result");
   require(repeated.terminal_frame == success.terminal_frame, "determinism: terminal frame");
