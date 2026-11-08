@@ -39,7 +39,7 @@
 - artifacts/runs/yolo11n-v002-320/ 包含 baseline.json、person-diagnosis.json、weights/best.pt、weights/best.onnx、weights/onnx-contract.json、weights/onnx-reference.npz。验证集只有一个场次，全部有人。
 - artifacts/engines/yolo11n-v002-fp32/ 有 best-fp32.engine、manifest.json、verification.json、image-check.json。输入 FP32 RGB 1×3×320×320；输出 1×6×2100；外部逐类 NMS。
 - artifacts/replay/mot-v1/ 有 fixture.avi、first/frames.jsonl、first/overlay.mp4、selection-demo/、synthetic-metrics.json。夹具由 200 张采集截图按 25 FPS 循环生成，适用于工程回归。跨帧真值指标来自另一条 36 帧合成序列：HOTA 0.9370、IDF1 0.9714、IDSW 0。
-- 源码入口 apps/trt_infer/replay.cpp、src/tracking/tracker.cpp、configs/tracker.yml、configs/replay.yml。构建与运行命令见 docs/image-replay.md，跟踪测试与复核操作见 docs/mot-replay.md。按前者设置 OpenCV/CUDA/TRT 的 PATH 后执行 cmake --build --preset windows-sdk 和 ctest --preset windows-sdk；启用 OpenCV 的 windows-sdk 最近一次验收为 5/5。完整构建（含 vision_core/GTest）用 windows-full，无 TRT 的 CPU 全量测试用 windows-cpu；两者都需要追加 -DOpenCV_DIR=F:/opencv/opencv/build，CPU CTest 最近一次为 25/25。
+- 源码入口 apps/trt_infer/replay.cpp、src/tracking/tracker.cpp、configs/tracker.yml、configs/replay.yml。构建与运行命令见 docs/image-replay.md，跟踪测试与复核操作见 docs/mot-replay.md。按前者设置 OpenCV/CUDA/TRT 的 PATH 后执行 cmake --build --preset windows-sdk 和 ctest --preset windows-sdk；启用 OpenCV 的 windows-sdk 最近一次验收为 6/6。完整构建（含 vision_core/GTest）用 windows-full，无 TRT 的 CPU 全量测试用 windows-cpu；两者都需要追加 -DOpenCV_DIR=F:/opencv/opencv/build，CPU CTest 最近一次为 26/26。
 - 统一评估入口 tools/eval_report.py：只读聚合检测/Engine/MOT/回放/仿真/测试证据，输出 report.json/md/html，支持 --strict 和 --sim-summary；最新 review-fixed 报告 gates 6 pass/4 partial/2 missing，旧 artifacts/eval-report 的 7/3/2 不再作为当前结论。使用见 docs/eval-report.md。
 - GPU 性能入口 tools/benchmark_replay.py：同机重复回放并汇总 P50/P95/P99；TRT2-06 前后对比见 docs/performance.md，before/after 二进制与 benchmark.json 在 artifacts/bench/。
 - 仿真入口 out/windows-cpu/apps/sim_runner/Release/sim_runner.exe + configs/sim.yml：12 个二维场景，输出 runs.jsonl/summary.json/report.md；见 docs/sim-report.md，证据在 artifacts/sim/sim-01/。
@@ -58,3 +58,7 @@
 ## 异机交接
 
 如接手方只有聊天框，请先提供本文件和 v2.0 总设计，让其明确是否可读写工作区。要实际开发，可提供包含当前未跟踪源码、配置、测试、OpenSpec 和 docs 的项目快照；要运行回归，再提供 ONNX、验证夹具、参考输出及清单。采集数据和人工标注按需要、经用户决定后转移。不同机器上重建 Python 环境和 Engine，核对 dataset.yaml 的本机绝对路径。此文档仅保存在本机。
+
+## 旧执行工程参考（2026-11-08）
+
+用户指定的 E:/mac-share/tensor/tensorRT_Pro-main/src/application/auto_ai 已完成只读源码梳理。接入设计及关键兼容性问题见 docs/auto-ai-simulation-review.md；下一步按 docs/task-roadmap.md 建立控制命令契约、相对增量仿真执行器及动态延迟反馈。尚未接通渲染到 YOLO 的视觉闭环，不得将现有合成检测/录像回放当作该验收。

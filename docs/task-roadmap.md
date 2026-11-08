@@ -22,7 +22,7 @@
 ## 后续推进顺序
 
 1. 根据已有录像诊断 head 漏匹配、背景误检、镜头补偿拒绝及断轨；无需立即重做整批标注。
-2. 完善仿真的变化延迟、反馈时间、执行器模型与控制标定，验证稳定性和失败恢复。
+2. 旧 auto_ai 源码阅读已完成（见 docs/auto-ai-simulation-review.md）；下一步建立坐标/时钟/命令接口，接入相对增量仿真执行器与独立 PID，再完善变化延迟、反馈时间、控制标定和场景视角反馈。最后接通场景渲染 → YOLO → 执行 → 新图像的视觉闭环；现有合成检测仿真与录像回放不等于这一步已完成。
 3. 在可靠身份真值和遮挡问题证据支持下推进 ReID 实验，保持独立开关及退化检查。
 4. 按用户后置安排补足数据并优化检测训练，验证 person 95% 等目标；不把当前诊断窗口用于训练后再拿同一批宣称测试提升。
 5. 做最终代表性测试、长时运行、远程 CI 与交付整理；必要时根据证据返回前面阶段修复。
@@ -33,6 +33,7 @@
 
 - 总设计：docs/FPS_Vision_Tracking_TensorRT_Official_v2.0.md。
 - 当前实验：docs/camera-motion-experiment.md。
+- 旧执行流程与仿真接入：docs/auto-ai-simulation-review.md（阅读完成，接入待实现）。
 - 真实标注诊断：docs/reviewed-clip-evaluation.md。
 - 时间顺序进展与缺口：docs/progress.md、docs/problems.md。
 - 逐任务实现/验收：openspec/changes；接手入口 docs/handoff-grok.md。
