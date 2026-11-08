@@ -1,6 +1,7 @@
 #include "vision/sim/Control.hpp"
 #include "vision/sim/FeedbackReceiver.hpp"
 #include "vision/sim/FeedbackChannel.hpp"
+#include "vision/sim/StopConfirmation.hpp"
 #include <iostream>
 #include <limits>
 static void require(bool ok) { if(!ok) throw std::runtime_error("control contract failed"); }
@@ -91,6 +92,21 @@ int main() try {
   channel.event("cancelled",command,160,0,0,false);
   channel.newEpoch(160);channel.deliver(250);
   require(channel.ignored()==1 && channel.outstanding()==0);
+  sim::StopConfirmation stop;
+  auto nonce=stop.request(2,100,50);
+  sim::StopSnapshot stopped{2,nonce,110,true};
+  require(!stop.accept(stopped,109,2,true)); // future report
+  require(!stop.accept(stopped,120,3,true)); // changed session
+  require(!stop.accept(stopped,120,2,false)); // executing again
+  auto wrong=stopped;wrong.nonce++;
+  require(!stop.accept(wrong,120,2,true));
+  wrong=stopped;wrong.idle=false;
+  require(!stop.accept(wrong,120,2,true));
+  require(!stop.accept(stopped,150,2,true)); // deadline is exclusive
+  auto fresh=stop.request(2,150,50);
+  require(!stop.accept(stopped,160,2,true)); // old nonce
+  require(stop.accept({2,fresh,150,true},160,2,true));
+  require(!stop.accept({2,fresh,150,true},170,2,true)); // duplicate
   sim::PidAxis slow(0,1,0,100,100), fast(0,1,0,100,100);
   double s=0,f=0;
   for(int i=0;i<10;++i)s=slow.step(1,.1);

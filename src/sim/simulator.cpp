@@ -1,5 +1,6 @@
 #include "vision/sim/Simulator.hpp"
 #include "vision/sim/Control.hpp"
+#include "vision/sim/StopConfirmation.hpp"
 
 #include <algorithm>
 #include <opencv2/imgproc.hpp>
@@ -172,6 +173,10 @@ ScenarioResult Simulator::run() {
   bool feedback_capacity_fault=false;
   bool feedback_resynced=false;
   int feedback_sync_attempts=0;
+  StopConfirmation stop_confirmation;
+  StopSnapshot stop_snapshot;
+  SimTime stop_ready=-1;
+  std::mt19937 stop_rng(config_.seed+600003);
   auto dropFeedback=[&](SimTime time) {
     const bool within_window=config_.feedback_drop_end_frame<0 ||
       time<std::llround(config_.feedback_drop_end_frame*config_.dt_s*1e9);
@@ -261,11 +266,38 @@ ScenarioResult Simulator::run() {
       // has cancelled active work and drained transport. Time alone never clears it.
       if(feedback_fault && !feedback_resynced && config_.feedback_resync_frame>=0 &&
          frame>=config_.feedback_resync_frame && connected) {
-        ++feedback_sync_attempts;
         const bool idle_snapshot=actuator.idle() && transit.empty() && active_command.id==0;
-        const bool snapshot_lost=dropFeedback(ts_ns);
-        if(snapshot_lost) ++feedback_dropped;
-        else if(idle_snapshot) {
+        bool confirmed=false;
+        if(config_.feedback_transport) {
+          // Only one response is retained; expiry permits a fresh nonce.
+          // Check an arriving response before issuing a replacement request.
+          if(stop_ready>=0 && stop_ready<=ts_ns) {
+            confirmed=stop_confirmation.accept(stop_snapshot,ts_ns,feedback_channel.epoch(),idle_snapshot);
+            stop_ready=-1;
+          }
+          if(!confirmed && !stop_confirmation.pending(ts_ns)) {
+            ++feedback_sync_attempts;
+            const auto nonce=stop_confirmation.request(feedback_channel.epoch(),ts_ns,
+                std::llround(config_.feedback_timeout_ms*1e6));
+            stop_ready=-1;
+            if(dropFeedback(ts_ns)) ++feedback_dropped;
+            else {
+              stop_snapshot={feedback_channel.epoch(),nonce,ts_ns,idle_snapshot};
+              const auto j=std::uniform_int_distribution<SimTime>(-std::llround(config_.feedback_jitter_ms*1e6),
+                  std::llround(config_.feedback_jitter_ms*1e6))(stop_rng);
+              stop_ready=ts_ns+std::max<SimTime>(0,std::llround(config_.feedback_delay_ms*1e6)+j);
+              if(stop_ready==ts_ns) {
+                confirmed=stop_confirmation.accept(stop_snapshot,ts_ns,feedback_channel.epoch(),idle_snapshot);
+                stop_ready=-1;
+              }
+            }
+          }
+        } else {
+          ++feedback_sync_attempts;
+          if(dropFeedback(ts_ns)) ++feedback_dropped;
+          else confirmed=idle_snapshot;
+        }
+        if(confirmed) {
           feedback.clear();pid_x.reset();pid_y.reset();
           if(config_.feedback_transport) feedback_channel.newEpoch(ts_ns);
           feedback_fault=false;feedback_resynced=true;

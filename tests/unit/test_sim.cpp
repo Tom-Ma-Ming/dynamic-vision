@@ -197,6 +197,17 @@ int main(int argc, char** argv) try {
     if(e.kind=="accepted" && e.timestamp>=1200000000) require(e.generated>=1200000000,"recovery cannot replay old generation");
   }
   auto no_request=resync;no_request.feedback_resync_frame=-1;
+  auto delayed_stop=resync;delayed_stop.feedback_transport=true;
+  delayed_stop.feedback_delay_ms=80;delayed_stop.feedback_timeout_ms=200;
+  auto delayed_resumed=Simulator(delayed_stop,tracker).run();
+  for(int i=6;i<32;++i) require(delayed_resumed.frames[i].feedback_fault,"in-flight stop reply cannot unlock control");
+  require(delayed_resumed.frames[32].feedback_resynced,"stop confirmation waits for response delay");
+  for(const auto& e:delayed_resumed.commands)
+    if(e.kind=="generated") require(e.frame_id<6 || e.frame_id>=32,"no commands before delayed confirmation");
+  delayed_stop.feedback_delay_ms=500;
+  auto expired_stop=Simulator(delayed_stop,tracker).run();
+  require(!expired_stop.frames.back().feedback_resynced && expired_stop.frames.back().feedback_fault,
+          "reply beyond timeout cannot unlock control");
   auto held=Simulator(no_request,tracker).run();
   require(held.frames.back().feedback_fault && !held.frames.back().feedback_resynced,"link recovery alone cannot clear fault");
   auto expiry_clock=incremental;expiry_clock.delay_jitter_ms=20;

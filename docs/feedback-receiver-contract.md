@@ -33,3 +33,11 @@ configs/sim-feedback-transport.yml四场景双跑逐字节一致：
 最后一个场景使用合成观测和理想encoder，不是TensorRT图像或真实设备验收。unknown是终结/本地取消之后的迟到命令消息，未重建账目。四场景invalid均为0，接受序号严格递增，reported≤ready≤received；回传抖动未改变80ms正向延迟估计。433条命令生命周期审计通过。证据 artifacts/sim/feedback-transport-v1、feedback-transport-repeat-v1及verification.json。关闭新通道后原恢复场景的命令和既有帧字段一致。
 
 CPU34/34通过；之后新增512账目容量故障断言及针对性control/sim复测通过。真实回传时钟换算、停止确认请求nonce、延迟旧停止快照和encoder反馈丢失仍待实现。
+
+## 停止确认回传 · 2026-11-08
+
+上述nonce和确认回传缺口已补上第一版：feedback_transport启用后，每个恢复请求绑定递增nonce、当前epoch和feedback_timeout_ms期限；最多保留一个请求/回复，丢失或过期后重试。回复采用feedback_delay_ms及feedback_jitter_ms，独立随机种子。旧nonce/epoch、重复、未来报告、过期及非停止状态均不能解除故障；接收时还须确认仿真执行器/在途命令为空。关闭开关保持原即时模型。
+
+configs/sim-stop-confirmation.yml双跑五项产物逐字节一致，183条命令生命周期审计通过，CPU34/34通过。前30帧丢反馈，80ms回传、200ms期限时，第32帧才恢复且最终SUCCESS；500ms回传超过200ms期限，以及持续全丢，两项均保持故障并得到UNKNOWN/control。证据见artifacts/sim/stop-confirmation-v1及repeat-v1。
+
+请求与取消动作仍在本地即时执行，目前只延迟确认回传；单请求超时会丢弃旧在途回复，接收器另有旧nonce/epoch反例测试。这不是完整双向停止协议，也未实现真实设备时钟换算、encoder反馈丢失或墙钟异步执行。
