@@ -27,7 +27,7 @@ float clampf(float value, float low, float high) {
 }
 
 bool validate(const ScenarioConfig& config) {
-  return config.feedback_drop_end_frame>=-1 && config.feedback_drop_end_frame<config.frames && config.feedback_resync_frame>=-1 && config.feedback_resync_frame<config.frames && (config.feedback_resync_frame<0 || config.feedback_timeout_ms>0) && std::isfinite(config.feedback_drop_rate) && config.feedback_drop_rate>=0 && config.feedback_drop_rate<=1 && std::isfinite(config.feedback_timeout_ms) && config.feedback_timeout_ms>=0 && config.feedback_timeout_ms<=10000 && (config.feedback_drop_rate==0 || config.feedback_timeout_ms>0) && (config.feedback_timeout_ms==0 || (config.feedback_timeout_ms>=.001 && config.incremental_control)) && std::isfinite(config.dispatch_failure_rate) && config.dispatch_failure_rate>=0 && config.dispatch_failure_rate<=1 && config.disconnect_start>=-1 && config.disconnect_frames>=0 && (config.disconnect_start<0 || config.disconnect_start<=config.frames-config.disconnect_frames) && ((config.disconnect_frames==0 && config.dispatch_failure_rate==0) || config.incremental_control) && config.observation_capacity>0 && config.observation_capacity<=10000 && std::isfinite(config.observation_jitter_ms) && config.observation_jitter_ms>=0 && config.observation_jitter_ms<=10000 && std::isfinite(config.inference_service_ms) && config.inference_service_ms>=0 && config.inference_service_ms<=10000 && std::isfinite(config.observation_delay_ms) && config.observation_delay_ms>=0 && config.observation_delay_ms<=10000 && (!config.feedback_prediction || config.encoder_compensation) && (!config.encoder_compensation || config.view_feedback) && (!config.view_feedback || config.incremental_control) && std::isfinite(config.actuator_units_per_px) && config.actuator_units_per_px>0 &&
+  return std::isfinite(config.feedback_delay_ms) && config.feedback_delay_ms>=0 && config.feedback_delay_ms<=10000 && std::isfinite(config.feedback_jitter_ms) && config.feedback_jitter_ms>=0 && config.feedback_jitter_ms<=10000 && config.feedback_capacity>=1 && config.feedback_capacity<=10000 && (!config.feedback_transport || (config.incremental_control && config.feedback_timeout_ms>0)) && config.feedback_drop_end_frame>=-1 && config.feedback_drop_end_frame<config.frames && config.feedback_resync_frame>=-1 && config.feedback_resync_frame<config.frames && (config.feedback_resync_frame<0 || config.feedback_timeout_ms>0) && std::isfinite(config.feedback_drop_rate) && config.feedback_drop_rate>=0 && config.feedback_drop_rate<=1 && std::isfinite(config.feedback_timeout_ms) && config.feedback_timeout_ms>=0 && config.feedback_timeout_ms<=10000 && (config.feedback_drop_rate==0 || config.feedback_timeout_ms>0) && (config.feedback_timeout_ms==0 || (config.feedback_timeout_ms>=.001 && config.incremental_control)) && std::isfinite(config.dispatch_failure_rate) && config.dispatch_failure_rate>=0 && config.dispatch_failure_rate<=1 && config.disconnect_start>=-1 && config.disconnect_frames>=0 && (config.disconnect_start<0 || config.disconnect_start<=config.frames-config.disconnect_frames) && ((config.disconnect_frames==0 && config.dispatch_failure_rate==0) || config.incremental_control) && config.observation_capacity>0 && config.observation_capacity<=10000 && std::isfinite(config.observation_jitter_ms) && config.observation_jitter_ms>=0 && config.observation_jitter_ms<=10000 && std::isfinite(config.inference_service_ms) && config.inference_service_ms>=0 && config.inference_service_ms<=10000 && std::isfinite(config.observation_delay_ms) && config.observation_delay_ms>=0 && config.observation_delay_ms<=10000 && (!config.feedback_prediction || config.encoder_compensation) && (!config.encoder_compensation || config.view_feedback) && (!config.view_feedback || config.incremental_control) && std::isfinite(config.actuator_units_per_px) && config.actuator_units_per_px>0 &&
          std::isfinite(config.delay_jitter_ms) && config.delay_jitter_ms>=0 && config.delay_jitter_ms<=1000 &&
          config.selected_track_id > 0 && std::isfinite(config.command_horizon_s) &&
          config.command_horizon_s >= 0 && config.noise_px >= 0 && config.frames > 0 && config.dt_s > 0 && config.width > 0 &&
@@ -161,9 +161,15 @@ ScenarioResult Simulator::run() {
   std::deque<PendingObservation> observations;
   int observation_frame=-1;
   CommandFeedback feedback(config_.actuator_delay_frames*config_.dt_s);
+  FeedbackChannel feedback_channel(config_.actuator_delay_frames*config_.dt_s,
+      std::llround(config_.feedback_delay_ms*1e6),std::llround(config_.feedback_jitter_ms*1e6),
+      config_.feedback_capacity,config_.seed+500003);
+  auto feedbackDelay=[&] {return config_.feedback_transport?feedback_channel.delay():feedback.delay();};
+  auto feedbackSize=[&] {return config_.feedback_transport?feedback_channel.outstanding():feedback.size();};
   std::mt19937 feedback_rng(config_.seed+400003);
   int feedback_dropped=0;
   bool feedback_fault=false;
+  bool feedback_capacity_fault=false;
   bool feedback_resynced=false;
   int feedback_sync_attempts=0;
   auto dropFeedback=[&](SimTime time) {
@@ -177,6 +183,8 @@ ScenarioResult Simulator::run() {
     const bool remote=type=="accepted" || type=="applied" || type=="expired" || type=="replaced" || type=="rejected";
     const bool dropped=remote && dropFeedback(time);
     if(dropped) ++feedback_dropped;
+    if(config_.feedback_transport) feedback_channel.event(type,c,time,dx,dy,dropped);
+    else if(dropped) {} // physical event is still recorded below
     else if(type=="generated") feedback.issued(c.id,c.generated,dx,dy);
     else if(type=="accepted") feedback.acknowledged(c.id,time);
     else if(type=="applied") feedback.applied(c.id,dx,dy);
@@ -240,8 +248,14 @@ ScenarioResult Simulator::run() {
         } else event("rejected",c,c.arrival,0,0);
       }
       apply(ts_ns);
-      if(config_.feedback_timeout_ms>0 && feedback.overdue(ts_ns,std::llround(config_.feedback_timeout_ms*1e6))) {
+      if(config_.feedback_transport) feedback_channel.deliver(ts_ns);
+      const bool feedback_overdue=config_.feedback_timeout_ms>0 && (config_.feedback_transport ?
+        feedback_channel.overdue(ts_ns,std::llround(config_.feedback_timeout_ms*1e6)) :
+        feedback.overdue(ts_ns,std::llround(config_.feedback_timeout_ms*1e6)));
+      if(feedback_overdue || (config_.feedback_transport && feedback_channel.full())) {
+        feedback_capacity_fault=config_.feedback_transport && feedback_channel.full();
         feedback_fault=true;feedback.clear();
+        if(config_.feedback_transport) feedback_channel.newEpoch(ts_ns);
       }
       // Explicit recovery request; a received idle snapshot confirms the model
       // has cancelled active work and drained transport. Time alone never clears it.
@@ -253,7 +267,9 @@ ScenarioResult Simulator::run() {
         if(snapshot_lost) ++feedback_dropped;
         else if(idle_snapshot) {
           feedback.clear();pid_x.reset();pid_y.reset();
+          if(config_.feedback_transport) feedback_channel.newEpoch(ts_ns);
           feedback_fault=false;feedback_resynced=true;
+          feedback_capacity_fault=false;
         }
       }
     }
@@ -475,7 +491,7 @@ ScenarioResult Simulator::run() {
                               covariance_trace <= config_.covariance_limit;
     std::pair<float,float> target{aim_x,aim_y};
     if (controllable) {
-      const float horizon = config_.feedback_prediction ? float(feedback.delay()) : config_.compensate_actuator_delay
+      const float horizon = config_.feedback_prediction ? float(feedbackDelay()) : config_.compensate_actuator_delay
                                 ? config_.actuator_delay_frames * dt
                                 : config_.command_horizon_s;
       target.first = clampf(estimate_x + static_cast<float>(selected->x[2])*horizon, 0,
@@ -494,7 +510,7 @@ ScenarioResult Simulator::run() {
       if(controllable && connected && !feedback_fault) {
         const double delay=std::max(0.0,config_.actuator_delay_frames*config_.dt_s+jitter(delay_rng)*.001);
         const auto arrival=ts_ns+std::llround(delay*1e9);
-        const auto pending=config_.feedback_prediction ? feedback.pending() : std::pair<double,double>{};
+        const auto pending=config_.feedback_prediction ? (config_.feedback_transport?feedback_channel.pending():feedback.pending()) : std::pair<double,double>{};
         const double ux=pid_x.step((target.first-aim_x)*config_.actuator_units_per_px-pending.first,config_.dt_s);
         const double uy=pid_y.step((target.second-aim_y)*config_.actuator_units_per_px-pending.second,config_.dt_s);
         transit.push_back({std::uint64_t(frame+1),std::uint64_t(frame),selected->id,
@@ -541,8 +557,11 @@ ScenarioResult Simulator::run() {
 
     FrameRecord record;
     record.observation_ts_ns=tracker.snapshot().timestamp;record.observation_frame=observation_frame;
-    record.estimated_delay_ms=feedback.delay()*1000;
-    record.feedback_dropped=feedback_dropped;record.feedback_fault=feedback_fault;record.feedback_pending=feedback.size();
+    record.estimated_delay_ms=feedbackDelay()*1000;
+    record.feedback_dropped=feedback_dropped;record.feedback_fault=feedback_fault;record.feedback_pending=feedbackSize();
+    record.feedback_delivered=feedback_channel.delivered();record.feedback_ignored=feedback_channel.ignored();
+    record.feedback_invalid=feedback_channel.invalid();record.feedback_overflow=feedback_channel.overflow();
+    record.feedback_queued=feedback_channel.queued();record.feedback_epoch=config_.feedback_transport?feedback_channel.epoch():0;
     record.feedback_resynced=feedback_resynced;record.feedback_sync_attempts=feedback_sync_attempts;
     record.frame = frame;
     record.ts_ns = ts_ns;
@@ -559,7 +578,7 @@ ScenarioResult Simulator::run() {
     }
     record.track_state = selected ? mot::name(selected->state) : "None";
     record.ambiguous = ambiguous;
-    record.control_gate=feedback_fault ? "feedback_timeout" : !connected ? "actuator_disconnected" : !dispatch_ok ? "dispatch_failed" : !selected ? "no_selected_track" : selected->state!=mot::State::Confirmed ? "not_confirmed" :
+    record.control_gate=feedback_fault ? (feedback_capacity_fault?"feedback_capacity":"feedback_timeout") : !connected ? "actuator_disconnected" : !dispatch_ok ? "dispatch_failed" : !selected ? "no_selected_track" : selected->state!=mot::State::Confirmed ? "not_confirmed" :
       selected->ambiguous ? "ambiguous" :
       age_ms>config_.max_age_ms ? "stale" : covariance_trace>config_.covariance_limit ? "uncertain" : "ready";
     record.est_x = estimate_x;
@@ -686,6 +705,7 @@ ScenarioResult Simulator::run() {
   output.metrics.false_positives = total_false_positives;
   output.metrics.missed = missed;
   output.metrics.id_switches = id_switches;
+  if(config_.feedback_transport) output.feedback_messages=feedback_channel.traces();
   return output;
 }
 

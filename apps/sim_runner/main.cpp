@@ -120,6 +120,10 @@ std::vector<sim::ScenarioConfig> loadScenarios(const std::string& path) {
     config.feedback_timeout_ms=doubleOr(node,"feedback_timeout_ms",config.feedback_timeout_ms);
     config.feedback_drop_end_frame=intOr(node,"feedback_drop_end_frame",config.feedback_drop_end_frame);
     config.feedback_resync_frame=intOr(node,"feedback_resync_frame",config.feedback_resync_frame);
+    config.feedback_transport=intOr(node,"feedback_transport",0)!=0;
+    config.feedback_delay_ms=doubleOr(node,"feedback_delay_ms",0);
+    config.feedback_jitter_ms=doubleOr(node,"feedback_jitter_ms",0);
+    config.feedback_capacity=intOr(node,"feedback_capacity",config.feedback_capacity);
     config.observation_capacity=intOr(node,"observation_capacity",config.observation_capacity);
     config.observation_jitter_ms=doubleOr(node,"observation_jitter_ms",config.observation_jitter_ms);
     config.inference_service_ms=doubleOr(node,"inference_service_ms",config.inference_service_ms);
@@ -160,6 +164,12 @@ void writeFrame(std::ostream& out, const std::string& scene,
       << ",\"feedback_fault\":" << (frame.feedback_fault?"true":"false")
       << ",\"feedback_resynced\":" << (frame.feedback_resynced?"true":"false")
       << ",\"feedback_sync_attempts\":" << frame.feedback_sync_attempts
+      << ",\"feedback_delivered\":" << frame.feedback_delivered
+      << ",\"feedback_ignored\":" << frame.feedback_ignored
+      << ",\"feedback_invalid\":" << frame.feedback_invalid
+      << ",\"feedback_overflow\":" << frame.feedback_overflow
+      << ",\"feedback_queued\":" << frame.feedback_queued
+      << ",\"feedback_epoch\":" << frame.feedback_epoch
       << ",\"camera_x\":" << frame.camera_x
       << ",\"camera_y\":" << frame.camera_y
       << ",\"truth_x\":" << frame.truth_x
@@ -243,6 +253,8 @@ int main(int argc, char** argv) try {
   std::ofstream commands(output / "commands.jsonl");
   commands.exceptions(std::ios::badbit | std::ios::failbit);
   commands.precision(17);
+  std::ofstream feedback_log(output / "feedback.jsonl");
+  feedback_log.exceptions(std::ios::badbit | std::ios::failbit);feedback_log.precision(17);
   std::vector<sim::ScenarioResult> results;
   std::map<std::string, Group> by_motion;
   std::map<std::string, Group> by_size;
@@ -264,6 +276,15 @@ int main(int argc, char** argv) try {
         << ",\"timestamp\":" << e.timestamp << ",\"generated\":" << e.generated
         << ",\"arrival\":" << e.arrival << ",\"expires\":" << e.expires
         << ",\"dx\":" << e.dx << ",\"dy\":" << e.dy << "}\n";
+    }
+    for(const auto& trace:result.feedback_messages) {
+      const auto& m=trace.snapshot;
+      feedback_log << "{\"scene\":" << jsonString(result.scene_id)
+        << ",\"epoch\":" << m.epoch << ",\"id\":" << m.command_id << ",\"sequence\":" << m.sequence
+        << ",\"reported\":" << m.reported << ",\"accepted_at\":" << m.accepted_at
+        << ",\"ready\":" << trace.ready << ",\"received\":" << trace.received
+        << ",\"applied_x\":" << m.applied_x << ",\"applied_y\":" << m.applied_y
+        << ",\"terminal\":" << (m.terminal?"true":"false") << ",\"status\":" << jsonString(trace.status) << "}\n";
     }
     results.push_back(std::move(result));
 
@@ -307,6 +328,10 @@ int main(int argc, char** argv) try {
             << ",\"feedback_timeout_ms\":" << scenarios[i].feedback_timeout_ms
             << ",\"feedback_drop_end_frame\":" << scenarios[i].feedback_drop_end_frame
             << ",\"feedback_resync_frame\":" << scenarios[i].feedback_resync_frame
+            << ",\"feedback_transport\":" << (scenarios[i].feedback_transport?"true":"false")
+            << ",\"feedback_delay_ms\":" << scenarios[i].feedback_delay_ms
+            << ",\"feedback_jitter_ms\":" << scenarios[i].feedback_jitter_ms
+            << ",\"feedback_capacity\":" << scenarios[i].feedback_capacity
             << ",\"delay_jitter_ms\":" << scenarios[i].delay_jitter_ms
             << ",\"pid_kp\":" << scenarios[i].pid_kp
             << ",\"pid_ki\":" << scenarios[i].pid_ki

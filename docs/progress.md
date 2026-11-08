@@ -107,3 +107,7 @@ configs/sim-expiry-clock.yml采用20ms抖动和80%发送失败以覆盖未被替
 ## 2026-11-08 反馈接收顺序契约
 
 新增独立FeedbackReceiver累计快照接收器，支持序号去重/迟到拒绝、epoch隔离、容量限制、时间与非有限值拒绝；control_contract通过。尚未接入simulator传输路径，不能宣称端到端乱序已实现。详见feedback-receiver-contract.md。小时测试最新实测仍存活，约37分钟；未覆盖运行程序。
+
+## 2026-11-08 有界延迟命令反馈通道
+
+FeedbackReceiver已接入默认关闭的feedback_transport；累计快照经有界队列/延迟抖动交付，旧epoch/迟到序号不改账目，新增逐消息feedback.jsonl。四场景双跑2SUCCESS/2UNKNOWN(control)，433命令审计通过，无invalid更新，关闭通道后旧行为一致。CPU34/34及容量故障定向回归通过。停止确认仍零延迟，不能宣称完整设备通信已完成；详见feedback-receiver-contract.md。小时回放已实测运行约46分钟，仍待完成。

@@ -1,5 +1,6 @@
 #include "vision/sim/Control.hpp"
 #include "vision/sim/FeedbackReceiver.hpp"
+#include "vision/sim/FeedbackChannel.hpp"
 #include <iostream>
 #include <limits>
 static void require(bool ok) { if(!ok) throw std::runtime_error("control contract failed"); }
@@ -74,6 +75,22 @@ int main() try {
   bool full=false;try {receiver.issued(3,300000000,1,0);} catch(const std::invalid_argument&) {full=true;}
   require(full && receiver.size()==2);
   receiver.retireLocal(1);receiver.retireLocal(2);require(receiver.size()==0);
+  sim::FeedbackChannel channel(.08,100,0,2,7);
+  sim::IncrementCommand command{1,0,1,0,10,30,10,0};
+  channel.event("generated",command,0,10,0,false);
+  channel.event("accepted",command,10,0,0,false);
+  channel.event("applied",command,20,4,0,false);
+  channel.event("expired",command,30,0,0,false);
+  require(channel.queued()==2 && channel.overflow()==1);
+  channel.deliver(119);require(channel.pending().first==10);
+  channel.deliver(120);require(channel.pending().first==6);
+  channel.deliver(130);require(channel.outstanding()==0 && channel.invalid()==0);
+  command.id=2;command.generated=140;command.arrival=150;command.expires=170;
+  channel.event("generated",command,140,10,0,false);
+  channel.event("accepted",command,150,0,0,false);
+  channel.event("cancelled",command,160,0,0,false);
+  channel.newEpoch(160);channel.deliver(250);
+  require(channel.ignored()==1 && channel.outstanding()==0);
   sim::PidAxis slow(0,1,0,100,100), fast(0,1,0,100,100);
   double s=0,f=0;
   for(int i=0;i<10;++i)s=slow.step(1,.1);

@@ -212,6 +212,29 @@ int main(int argc, char** argv) try {
     require(report_point && e.timestamp>=e.expires,"expiry notification must use actual advance time");
   }
   require(expiry_events>0,"expiry clock regression must exercise expiration");
+  auto transported=incremental;transported.feedback_transport=true;
+  transported.feedback_delay_ms=60;transported.feedback_jitter_ms=80;transported.feedback_timeout_ms=1000;
+  const auto delayed_feedback=Simulator(transported,tracker).run();
+  require(!delayed_feedback.feedback_messages.empty(),"feedback transport must produce evidence");
+  for(const auto& f:delayed_feedback.frames) {
+    require(!f.feedback_fault && f.feedback_invalid==0,"reordered valid cumulative feedback must not fault");
+    require(f.feedback_queued<=std::size_t(transported.feedback_capacity),"feedback queue bounded");
+  }
+  require(delayed_feedback.frames.back().feedback_ignored>0,"reordering scenario must reject superseded snapshots");
+  auto overflow_feedback=transported;overflow_feedback.feedback_capacity=1;overflow_feedback.feedback_delay_ms=300;
+  const auto overflow_result=Simulator(overflow_feedback,tracker).run();
+  require(overflow_result.frames.back().feedback_overflow>0,"tiny feedback queue must exercise overflow");
+  for(const auto& f:overflow_result.frames) require(f.feedback_queued<=1,"overflow queue remains bounded");
+  auto epoch_feedback=transported;epoch_feedback.feedback_delay_ms=500;epoch_feedback.feedback_jitter_ms=0;
+  epoch_feedback.feedback_timeout_ms=200;epoch_feedback.feedback_resync_frame=20;
+  const auto epoch_result=Simulator(epoch_feedback,tracker).run();
+  bool stale_epoch=false;
+  for(const auto& e:epoch_result.feedback_messages) stale_epoch|=e.status=="stale";
+  require(stale_epoch && epoch_result.frames.back().feedback_invalid==0,"late previous epoch feedback is ignored");
+  auto capacity_feedback=transported;capacity_feedback.dt_s=.001;capacity_feedback.frames=700;
+  capacity_feedback.feedback_delay_ms=1000;capacity_feedback.feedback_jitter_ms=0;capacity_feedback.feedback_timeout_ms=5000;
+  const auto capacity_result=Simulator(capacity_feedback,tracker).run();
+  require(capacity_result.frames.back().control_gate=="feedback_capacity","ledger capacity fault must be explicit");
   const auto repeated = Simulator(constant, tracker).run();
   require(repeated.result == success.result, "determinism: result");
   require(repeated.terminal_frame == success.terminal_frame, "determinism: terminal frame");

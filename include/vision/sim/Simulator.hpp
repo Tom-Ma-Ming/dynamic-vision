@@ -1,4 +1,5 @@
 #pragma once
+#include "FeedbackChannel.hpp"
 
 #include <cstdint>
 #include <functional>
@@ -35,6 +36,9 @@ struct ScenarioConfig {
   double dispatch_failure_rate=0;
   double feedback_drop_rate=0, feedback_timeout_ms=0;
   int feedback_drop_end_frame=-1, feedback_resync_frame=-1;
+  bool feedback_transport=false;
+  double feedback_delay_ms=0,feedback_jitter_ms=0;
+  int feedback_capacity=256;
   double dt_s = 0.04;
   int width = 640;
   int height = 480;
@@ -75,6 +79,9 @@ struct FrameRecord {
   bool feedback_fault=false;
   bool feedback_resynced=false;
   int feedback_sync_attempts=0;
+  int feedback_delivered=0,feedback_ignored=0,feedback_invalid=0,feedback_overflow=0;
+  std::size_t feedback_queued=0;
+  std::uint64_t feedback_epoch=0;
   std::size_t feedback_pending=0;
   float camera_x = 0, camera_y = 0;
   float truth_x = 0;
@@ -146,6 +153,7 @@ struct ScenarioResult {
   std::vector<FrameRecord> frames;
   std::vector<CommandEvent> commands;
   std::vector<ObservationEvent> observations;
+  std::vector<FeedbackTrace> feedback_messages;
 };
 
 struct ImageObservation {
