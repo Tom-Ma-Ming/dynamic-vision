@@ -386,6 +386,25 @@ int main(int argc, char** argv) try {
   }
   require(failed_applied==0 && failed_marked>0 && std::abs(failed_run.frames.back().camera_x)<1e-4,
           "a failed dispatch does not reach the actuator");
+  auto stop_sync=inside;
+  stop_sync.feedback_transport=true;
+  stop_sync.feedback_timeout_ms=5000;
+  stop_sync.stop_request_delay_ms=20;
+  stop_sync.human_camera.push_back({280000000,0,0,true});
+  auto stop_async=stop_sync;
+  stop_async.async_stages=true;
+  const auto stop_sync_run=Simulator(stop_sync,tracker).run();
+  const auto stop_async_run=Simulator(stop_async,tracker).run();
+  auto stop_closed=[&](const ScenarioResult& result) {
+    bool cancelled_on_time=false, still_active=false;
+    for(const auto& command:result.commands) {
+      if(command.kind=="cancelled" && command.timestamp==300000000) cancelled_on_time=true;
+      if(command.kind=="window_end_active") still_active=true;
+    }
+    return cancelled_on_time && !still_active;
+  };
+  require(stop_closed(stop_sync_run) && stop_closed(stop_async_run),
+          "async takeover schedules the same stop instead of leaving the command active");
   auto assist_delayed=inside;
   assist_delayed.frames=30;
   assist_delayed.feedback_transport=true;

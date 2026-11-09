@@ -825,6 +825,11 @@ ScenarioResult Simulator::run() {
       if(remote_stop && assist_known_until>ts_ns && stop_request_ready<0) {
         stop_request_ready=ts_ns+std::llround(std::max(0.0,config_.stop_request_delay_ms)*1e6);
         assist_cancel_frame=true;
+        // Async execution only runs when an execution event is popped. The stop
+        // has to be that event; a later command must not be required to notice it.
+        // Rank 0 is popped before a command scheduled at the same time.
+        if(config_.async_stages && !stages.enqueue(Stage::Execution, stop_request_ready, frame, 0))
+          ++output.stage_rejected;
       }
     };
     if(legacy_chase && config_.incremental_control) {
