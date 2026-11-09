@@ -161,6 +161,9 @@ struct FrameRecord {
   std::string assist_reason = "legacy";
   bool assist_cancel = false;
   bool human_takeover = false;
+  bool human_sample = false;
+  bool human_explicit = false;
+  bool human_release = false;
   double assist_dx_px = 0, assist_dy_px = 0;
   double human_dx_px = 0, human_dy_px = 0;
   double executed_dx_px = 0, executed_dy_px = 0;

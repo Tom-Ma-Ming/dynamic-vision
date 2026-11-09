@@ -249,6 +249,9 @@ void writeFrame(std::ostream& out, const std::string& scene,
       << ",\"assist_dx_px\":" << frame.assist_dx_px
       << ",\"assist_dy_px\":" << frame.assist_dy_px
       << ",\"human_takeover\":" << (frame.human_takeover ? "true" : "false")
+      << ",\"human_sample\":" << (frame.human_sample ? "true" : "false")
+      << ",\"human_explicit\":" << (frame.human_explicit ? "true" : "false")
+      << ",\"human_release\":" << (frame.human_release ? "true" : "false")
       << ",\"human_dx_px\":" << frame.human_dx_px
       << ",\"human_dy_px\":" << frame.human_dy_px
       << ",\"executed_dx_px\":" << frame.executed_dx_px

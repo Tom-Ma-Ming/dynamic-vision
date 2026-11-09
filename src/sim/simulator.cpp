@@ -1021,6 +1021,9 @@ ScenarioResult Simulator::run() {
     record.human_dx_px=human_dx;
     record.human_dy_px=human_dy;
     record.human_takeover=human_explicit_frame || human_pulse_frame;
+    record.human_sample=human_explicit_frame || human_pulse_frame || human_release_frame || human_dx!=0 || human_dy!=0;
+    record.human_explicit=human_explicit_frame;
+    record.human_release=human_release_frame;
     record.executed_dx_px=config_.view_feedback ? sample_camera_x-previous_camera_x : aim_x-previous_aim_x;
     record.executed_dy_px=config_.view_feedback ? sample_camera_y-previous_camera_y : aim_y-previous_aim_y;
     record.auto_follow=auto_follow;
