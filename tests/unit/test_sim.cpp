@@ -1,5 +1,6 @@
 #include <opencv2/imgproc.hpp>
 #include "vision/sim/Simulator.hpp"
+#include "vision/sim/StageScheduler.hpp"
 
 #include <cmath>
 #include <iostream>
@@ -161,6 +162,140 @@ int main(int argc, char** argv) try {
   require(saw_command,"delay clocks need a controllable frame");
   clocks.encoder_drop_rate=1;
   require(Simulator(clocks,tracker).run().commands.empty(),"feedforward cannot move without a delivered encoder");
+  auto delayed_gain=feedback;
+  delayed_gain.encoder_transport=true;
+  delayed_gain.encoder_delay_ms=80;
+  delayed_gain.pid_kp=8;
+  delayed_gain.frames=120;
+  delayed_gain.success_after_frame=40;
+  delayed_gain.noise_px=0;
+  delayed_gain.encoder_delay_compensation=true;
+  const auto held_gain=Simulator(delayed_gain,tracker).run();
+  require(held_gain.result==TaskResult::Success && held_gain.metrics.success_maintained && held_gain.metrics.end_stable,
+          "delayed stationary gain stays inside the original gate");
+  require(held_gain.frames.back().error_px<0.48f,"delayed stationary tail stays inside the enter threshold");
+  auto bare_gain=delayed_gain;
+  bare_gain.encoder_delay_compensation=false;
+  const auto bare_delay=Simulator(bare_gain,tracker).run();
+  require(!bare_delay.metrics.end_stable && bare_delay.metrics.mae_px>held_gain.metrics.mae_px,
+          "turning compensation off restores the delayed high-gain miss");
+  require(!ScenarioConfig{}.encoder_delay_compensation,"delay compensation defaults off");
+  auto vertical=delayed_gain;
+  vertical.encoder_delay_compensation=false;
+  vertical.start_x=320; vertical.start_y=120; vertical.vx=0; vertical.vy=0;
+  vertical.pid_kp=2; vertical.frames=200; vertical.success_after_frame=50; vertical.noise_px=0;
+  const auto vertical_off=Simulator(vertical,tracker).run();
+  int vertical_off_commands=0;
+  for(const auto& command:vertical_off.commands)
+    if(command.kind=="generated" && std::abs(command.dy)>1e-9) ++vertical_off_commands;
+  require(vertical_off_commands>0 && vertical_off.metrics.end_stable &&
+          !vertical_off.effective.delay_compensation_active &&
+          vertical_off.effective.vertical_axis_enabled &&
+          vertical_off.effective.gate_uses_predicted_covariance &&
+          vertical_off.effective.maneuver_radius==0,
+          "compensation off keeps a vertical offset inside the gate");
+  vertical.encoder_delay_compensation=true;
+  const auto vertical_on=Simulator(vertical,tracker).run();
+  int vertical_on_commands=0;
+  for(const auto& command:vertical_on.commands)
+    if(command.kind=="generated" && std::abs(command.dy)>1e-9) ++vertical_on_commands;
+  require(vertical_on_commands>0 && vertical_on.metrics.end_stable &&
+          vertical_on.effective.delay_compensation_active &&
+          vertical_on.effective.vertical_axis_enabled &&
+          vertical_on.effective.measurement_sigma==tracker.sigma &&
+          vertical_on.effective.acceleration_sigma==10 &&
+          vertical_on.effective.maneuver_radius==96,
+          "opt-in compensation still controls both axes and records the tracker it uses");
+  auto diagonal=vertical;
+  diagonal.vx=40; diagonal.vy=30; diagonal.frames=80; diagonal.success_after_frame=40;
+  const auto diag=Simulator(diagonal,tracker).run();
+  int diagonal_x=0, diagonal_y=0;
+  for(const auto& command:diag.commands) if(command.kind=="generated") {
+    if(std::abs(command.dx)>1e-9) ++diagonal_x;
+    if(std::abs(command.dy)>1e-9) ++diagonal_y;
+  }
+  require(diagonal_x>0 && diagonal_y>0,"diagonal motion commands both axes");
+  auto squat_delay=vertical;
+  squat_delay.motion=Motion::Squat;
+  squat_delay.start_y=240; squat_delay.vx=0; squat_delay.vy=0;
+  squat_delay.frames=90; squat_delay.success_after_frame=40;
+  const auto squat_compensated=Simulator(squat_delay,tracker).run();
+  int squat_y=0;
+  for(const auto& command:squat_compensated.commands)
+    if(command.kind=="generated" && std::abs(command.dy)>1e-9) ++squat_y;
+  require(squat_compensated.frames.size()==squat_delay.frames && squat_y>0,
+          "squat under opt-in compensation still commands the vertical axis");
+  auto omitted=vertical;
+  omitted.encoder_delay_compensation=ScenarioConfig{}.encoder_delay_compensation;
+  const auto omitted_run=Simulator(omitted,tracker).run();
+  require(omitted_run.commands.size()==vertical_off.commands.size() &&
+          omitted_run.metrics.mae_px==vertical_off.metrics.mae_px,
+          "leaving compensation unset matches turning it off");
+  {
+    StageScheduler bounded(1);
+    require(bounded.enqueue(Stage::Capture,0,0),"stage accepts the first event");
+    require(!bounded.enqueue(Stage::Capture,1,1),"stage queue stays bounded");
+    require(bounded.rejected(Stage::Capture)==1,"rejection is counted");
+    StageScheduler blocked(2);
+    require(blocked.enqueue(Stage::Inference,0,0),"queue inference ahead of capture");
+    require(!blocked.popDue(0),"inference waits until its capture completes");
+    require(blocked.enqueue(Stage::Capture,0,0),"queue the matching capture");
+    const auto first=blocked.popDue(0);
+    const auto second=blocked.popDue(0);
+    require(first && first->stage==Stage::Capture && second && second->stage==Stage::Inference,
+            "capture precedes inference at the same timestamp");
+    StageScheduler tie(4);
+    require(tie.enqueue(Stage::Execution,5,3,1) && tie.enqueue(Stage::Execution,5,-1,0),"queue stop and command");
+    require(tie.enqueue(Stage::Feedback,5,3) && tie.enqueue(Stage::Capture,5,3),"queue the earlier stages");
+    const auto cap=tie.popDue(5);
+    const auto fb=tie.popDue(5);
+    const auto stop=tie.popDue(5);
+    const auto cmd=tie.popDue(5);
+    require(cap && cap->stage==Stage::Capture && fb && fb->stage==Stage::Feedback,"feedback follows capture");
+    require(stop && stop->frame==-1 && cmd && cmd->frame==3,"stop wins an equal-time execution");
+  }
+  auto scheduled=feedback;
+  scheduled.encoder_transport=true;
+  scheduled.observation_delay_ms=50;
+  scheduled.async_stages=true;
+  scheduled.frames=12;
+  scheduled.pid_kp=2;
+  scheduled.noise_px=0;
+  const auto once=Simulator(scheduled,tracker).run();
+  const auto twice=Simulator(scheduled,tracker).run();
+  require(!once.stages.empty() && once.stages.size()==twice.stages.size(),"async schedule repeats");
+  int capture_at=-1,inference_at=-1;
+  bool off_grid=false;
+  auto stage_rank=[](const std::string& stage) {
+    if(stage=="capture") return 0;
+    if(stage=="inference") return 1;
+    if(stage=="feedback") return 2;
+    return 3;
+  };
+  for(size_t i=0;i<once.stages.size();++i) {
+    require(once.stages[i].stage==twice.stages[i].stage && once.stages[i].time_ns==twice.stages[i].time_ns,
+            "async clocks repeat");
+    if(i>0) require(once.stages[i].time_ns>once.stages[i-1].time_ns ||
+                    (once.stages[i].time_ns==once.stages[i-1].time_ns &&
+                     stage_rank(once.stages[i].stage)>=stage_rank(once.stages[i-1].stage)),
+                    "stages follow time, then capture, inference, feedback, execution");
+    if(once.stages[i].frame==0 && once.stages[i].stage=="capture") capture_at=int(i);
+    if(once.stages[i].frame==0 && once.stages[i].stage=="inference") inference_at=int(i);
+    if(once.stages[i].stage=="inference" && once.stages[i].time_ns==50000000) off_grid=true;
+  }
+  require(capture_at>=0 && inference_at>capture_at,"capture precedes inference of the same frame");
+  require(off_grid,"inference keeps its ready time off the frame grid");
+  require(!once.observations.empty() && once.observations[0].released==50000000,
+          "publish uses the inference clock");
+  scheduled.encoder_delay_ms=80;
+  scheduled.encoder_drop_rate=1;
+  require(Simulator(scheduled,tracker).run().commands.empty(),"async execution stays gated without an encoder");
+  scheduled.encoder_drop_rate=0;
+  scheduled.encoder_delay_ms=0;
+  scheduled.observation_capacity=1;
+  scheduled.observation_delay_ms=200;
+  scheduled.frames=4;
+  require(Simulator(scheduled,tracker).run().stage_rejected>0,"a full inference queue rejects instead of growing");
   sim::ImageObservation pixels;
   pixels.sprite=cv::Mat(40,20,CV_8UC3,cv::Scalar(0,255,0));
   pixels.background=cv::Mat(480,640,CV_8UC3,cv::Scalar(0,0,0));

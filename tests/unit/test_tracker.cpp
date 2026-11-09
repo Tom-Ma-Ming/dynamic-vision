@@ -155,6 +155,29 @@ int main(int argc,char** argv) try {
             }
         }
     }
+    {
+        auto plain=cfg;
+        auto maneuver=cfg;
+        maneuver.maneuverRadius=96;
+        maneuver.maneuverAccel=900;
+        auto run=[&](const Config& config) {
+            Tracker tracker(config);
+            for(int i=0;i<8;++i) require(tracker.update(i,step*i,{person(40+4.f*i)}),"approach");
+            require(tracker.update(8,step*8,{person(0)}),"reversal");
+            return tracker.snapshot();
+        };
+        const auto lost=run(plain);
+        const auto kept=run(maneuver);
+        bool confirmed_original=false, birthed=false;
+        for(const auto& t:lost.tracks) {
+            if(t.id==1 && t.state==State::Confirmed) confirmed_original=true;
+            if(t.id!=1) birthed=true;
+        }
+        require(!confirmed_original && birthed,"mahalanobis gate does not absorb a reversal");
+        require(kept.tracks.size()==1 && kept.tracks[0].id==1 && kept.tracks[0].state==State::Confirmed,
+                "a unique detection inside the maneuver radius keeps the track id");
+        require(kept.tracks[0].x[2]<0,"maneuver velocity follows the reversal");
+    }
     std::cout<<"Synthetic sequences passed: 1/2/5/10 people, crossing, head-only, occlusion, selection, stale results, bytetrack\n";
     return 0;
 } catch(const std::exception& e) {std::cerr<<e.what()<<"\n"; return 1;}

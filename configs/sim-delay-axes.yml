@@ -1,0 +1,7 @@
+%YAML:1.0
+# Opt-in delay compensation on both axes. The fixed review cases stay in
+# configs/sim-review-vertical.yml and are not changed here.
+scenarios:
+  - {id: "diagonal-comp1", motion: "constant", frames: 120, start_x: 200., start_y: 180., vx: 40., vy: 30., noise_px: 0., pid_kp: 2., incremental_control: 1, acquire_single_confirmed: 1, view_feedback: 1, encoder_compensation: 1, encoder_transport: 1, encoder_delay_ms: 80., encoder_delay_compensation: 1, success_after_frame: 60}
+  - {id: "squat-comp1", motion: "squat", frames: 120, start_x: 320., start_y: 240., vx: 0., vy: 0., noise_px: 0., pid_kp: 2., incremental_control: 1, acquire_single_confirmed: 1, view_feedback: 1, encoder_compensation: 1, encoder_transport: 1, encoder_delay_ms: 80., encoder_delay_compensation: 1, success_after_frame: 60}
+  - {id: "vertical_offset-default", motion: "constant", frames: 200, start_x: 320., start_y: 120., vx: 0., vy: 0., noise_px: 0., pid_kp: 2., incremental_control: 1, acquire_single_confirmed: 1, view_feedback: 1, encoder_compensation: 1, encoder_transport: 1, encoder_delay_ms: 80., success_after_frame: 50}

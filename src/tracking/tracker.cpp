@@ -41,6 +41,13 @@ Config Config::load(const std::string& path) {
         c.cameraMotion.centerRadius=get("camera_center_radius");
         c.cameraMotion.validate();
     }
+    c.maneuverRadius = f["maneuver_radius"].empty() ? 0 : get("maneuver_radius");
+    c.maneuverAccel = f["maneuver_acceleration"].empty() ? 0 : get("maneuver_acceleration");
+    if(!std::isfinite(c.maneuverRadius) || c.maneuverRadius<0 ||
+       !std::isfinite(c.maneuverAccel) || c.maneuverAccel<0 ||
+       (c.maneuverRadius>0 && c.maneuverAccel<=0) ||
+       (c.byteTrack && c.maneuverRadius>0))
+        throw std::runtime_error("Invalid maneuver recovery configuration");
     c.imm.enabled = !f["imm_enabled"].empty() && static_cast<int>(f["imm_enabled"]) != 0;
     if(c.imm.enabled) {
         c.imm.stationaryAcceleration=get("imm_stationary_acceleration");
@@ -193,6 +200,80 @@ static void initializeImm(Track& t,const Config& c) {
     if(c.imm.enabled) {
         t.imm.emplace();
         t.imm->initialize(t.x,t.covariance);
+    }
+}
+static cv::Point2f measurementAnchor(const Track& t,const Observation& o) {
+    auto anchor=center(o.d.box);
+    if(t.body && o.d.cls!=1) anchor-=t.headOffset;
+    if(!t.body && o.d.cls==1) anchor=o.head.value_or(cv::Point2f(anchor.x,o.d.box.y+t.size.height/2));
+    return anchor;
+}
+static void recoverManeuvers(std::vector<Track>& live,const std::vector<Observation>& obs,
+                             std::vector<bool>& used,Time ts,const Config& cfg) {
+    if(cfg.maneuverRadius<=0) return;
+    struct Pair { size_t track, observation; };
+    std::vector<int> trackCount(live.size()), observationCount(obs.size());
+    std::vector<Pair> pairs;
+    for(size_t ti=0;ti<live.size();++ti) {
+        if(live[ti].innovation>=0 || live[ti].state==State::Tentative) continue;
+        for(size_t j=0;j<obs.size();++j) {
+            if(used[j] || obs[j].ambiguous || obs[j].d.score<cfg.birthScore) continue;
+            const auto anchor=measurementAnchor(live[ti],obs[j]);
+            const double distance=std::hypot(anchor.x-live[ti].x[0],anchor.y-live[ti].x[1]);
+            if(distance>cfg.maneuverRadius) continue;
+            ++trackCount[ti]; ++observationCount[j];
+            pairs.push_back({ti,j});
+        }
+    }
+    for(const auto& pair:pairs) {
+        if(trackCount[pair.track]!=1 || observationCount[pair.observation]!=1) continue;
+        auto& t=live[pair.track];
+        const auto& o=obs[pair.observation];
+        const double dt=(ts-t.lastSeen)*1e-9;
+        const auto anchor=measurementAnchor(t,o);
+        double vx=t.x[2], vy=t.x[3];
+        if(dt>1e-6) {
+            vx+=(anchor.x-t.x[0])/dt;
+            vy+=(anchor.y-t.x[1])/dt;
+            const double speed=std::hypot(vx,vy);
+            if(speed>cfg.initialSpeed && speed>0) {
+                vx*=cfg.initialSpeed/speed;
+                vy*=cfg.initialSpeed/speed;
+            }
+        }
+        const double position=cfg.maneuverRadius*cfg.maneuverRadius;
+        const double velocity=cfg.maneuverAccel*cfg.maneuverAccel;
+        t.covariance(0,0)+=position; t.covariance(1,1)+=position;
+        t.covariance(2,2)+=velocity; t.covariance(3,3)+=velocity;
+        auto c=candidate(t,o,cfg);
+        correct(t,c);
+        t.x[2]=vx; t.x[3]=vy;
+        if(!t.body && o.d.cls==1) {
+            auto bodyAnchor=o.head.value_or(cv::Point2f(center(o.d.box).x,o.d.box.y+t.size.height/2));
+            auto offset=center(o.d.box)-bodyAnchor;
+            t.x[0]+=offset.x; t.x[1]+=offset.y;
+            if(t.imm) t.imm->translate(offset);
+            t.headOffset=-offset;
+        }
+        if(o.d.cls==1 || !t.body) t.size=o.d.box.size();
+        if(o.d.cls==1) {
+            t.body=true;
+            if(o.head) t.headOffset=*o.head-center(o.d.box);
+        }
+        t.score=o.d.score; t.cost=c.cost; t.innovation=c.d2;
+        t.ambiguous=o.ambiguous; t.headAmbiguous=o.headAmbiguous;
+        recordHead(t,o,ts);
+        t.lastSeen=ts;
+        if(++t.hits>=cfg.minHits) t.state=State::Confirmed;
+        // The acceptance inflation is only for this update. Leaving it in place
+        // makes the track fail the control covariance gate.
+        t.covariance=cv::Matx44d::zeros();
+        t.covariance(0,0)=cfg.sigma*cfg.sigma;
+        t.covariance(1,1)=cfg.sigma*cfg.sigma;
+        t.covariance(2,2)=cfg.initialSpeed*cfg.initialSpeed;
+        t.covariance(3,3)=cfg.initialSpeed*cfg.initialSpeed;
+        if(t.imm) t.imm->initialize(t.x,t.covariance);
+        used[pair.observation]=true;
     }
 }
 static bool assignmentAmbiguous(const std::vector<std::vector<double>>& costs,
@@ -388,6 +469,7 @@ bool Tracker::update(Time frame,Time ts,const std::vector<Detection>& detections
         }
         live.push_back(t);
     }
+    recoverManeuvers(live,obs,used,ts,cfg);
     for(size_t j=0;j<m;++j) if(!used[j] && obs[j].d.score>=cfg.birthScore) {
         const auto& o=obs[j];
         Track t{};

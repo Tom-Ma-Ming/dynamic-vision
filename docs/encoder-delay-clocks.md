@@ -57,9 +57,29 @@ u = Kp * (x_image - aim) * units + feedforward * v_filter * units
 
 无噪声、不碰边界的 80px/s 用外推、前馈和 horizon 0，可以在原门槛下结束稳定，末段平均误差约 0.25px。加上标准差 2px 的检测噪声后，估计相对瞄准点、估计相对真值都在 1px 量级，大于 0.48px 的进入门槛。这个残差来自已发布检测，不能靠把真值送进控制器消掉。
 
-## 尚未完成
+## 2026-11-09 延迟补偿与阶段调度
 
-动态 24 项没有一项结束稳定，主任务不能标成完成。固定步长里的服务耗时仍是仿真模型，实际异步调度没有开始。故障禁发、旧 epoch/nonce、停止屏障和命令一次终结这几项由原命令审计覆盖，本轮没有放宽。
+`encoder_delay_compensation` 默认关闭。只有场景显式写成 1，并且 `encoder_delay_ms>0`、没有 `feedback_prediction` 时，才进入延迟补偿。关闭时跟踪噪声、机动半径、协方差门、前馈和两个轴都保持原配置。摘要里的 `effective` 记下这次实际使用的测量噪声、过程噪声、机动半径、门控协方差来源和两个前馈开关。两个轴都参与控制，不再把垂直命令写成 0，也不再按水平场景把亚像素比例项限幅。速度不超过 5px/s 时，位置误差减去已经发出、尚未执行的位移，预测时域用反馈延迟估计。速度更高且没有显式 `velocity_feedforward` 时，时域为 0，图像位置用滤波速度乘编码器延迟补到当前时刻，命令是 `v_filter*units + Kp*e`，`e` 只减去在途命令的反馈分量。
+
+同一延迟场景里，过程噪声标准差高于 10 的会降到 10。马氏门失败后若只有一个检测落在 96px 内，跟踪器把速度改成这段位移对应的速度，更新后把协方差重置回测量噪声和初始速度，并保留原 ID。控制门用这次融合时刻的位置协方差，不用跨过编码器延迟之后的预测协方差。这两项会在下一批按控制时刻的预测协方差收回。默认配置的半径仍是 0，视频跟踪不变。ByteTrack 不走这条恢复。
+
+下面两组数字来自补偿默认开启、并且垂直轴被关掉时的运行，不是当前默认。当前默认关闭补偿，原传输配置不会自动套用新控制律。
+
+`configs/sim-encoder-transport.yml` 复跑结果是 2 SUCCESS / 0 FAILED / 2 UNKNOWN。`encoder_delayed` 和 `encoder_recovered` 都是持续稳定且结束稳定，全窗口 MAE 分别是 11.825px 和 33.825px。`encoder_lost` 与 `encoder_stale` 仍是 UNKNOWN，门控 `encoder_unavailable`，命令日志里没有这两项。374 条命令都恰好一次终结。证据在 `artifacts/sim/encoder-transport-delay-v3`。
+
+`configs/sim-encoder-gain-holdout.yml` 现在是 23 SUCCESS / 1 FAILED / 0 UNKNOWN，持续稳定 8，结束稳定 15，身份切换 0。门槛没改。结束稳定的包括两组停止、以及多组 Kp=2/Kp=8 的 80ms 匀速和变向，末 5 帧误差在 0 到 0.4px。没有结束稳定的 8 项，末 5 帧里有一帧是 0.6 或 0.8px：80px/s 每帧 3.2px，执行器只走整数像素，余数积到 1px 时多走一步，误差按大约 0.2px 的台阶来回。速度估计差 0.5px/s 就会把这一步的相位挪一帧，末段因此含 0.6px。唯一失败的是 `kp8-constant-d120-s11`，末 5 帧是 0.8、1.0、2.2、2.4、2.6px，末帧瞄准点离真值 +2.60px，估计离真值 +1.85px，门控仍是 ready。120ms 延迟上这组估计本身就在 0.48px 外面，把瞄准点对准估计也过不了原门槛。
+
+显式前馈的 24 项是 10 SUCCESS / 14 FAILED / 0 UNKNOWN，持续稳定 6，结束稳定 3。这条路径打开了 `velocity_feedforward`，所以上面的垂直保持和亚像素增益上限都不生效，Kp=8 末段仍有 10–60px 的振荡。证据在 `artifacts/sim/encoder-holdout-delay-v2` 和 `encoder-feedforward-delay-v2`。动态集合因此仍未完成。
+
+`async_stages` 默认关闭，原固定步长输出不变。打开后，捕获、推理、反馈、执行进入有界事件队列，同一时刻的顺序是捕获、推理、反馈、执行；推理在对应捕获完成前不能出队；停止事件在同一时刻先于普通命令。推理完成时刻可以落在 40ms 网格之外，发布时刻用这个完成时刻，而不是下一个场景帧。队列满时拒绝新事件并计数，不丢弃已经排队的事件。执行仍由命令到达时刻触发。这不是壁钟线程。无编码器样本时仍然不生成命令。
+
+```powershell
+$env:PATH = "F:\Program Files (x86)\Microsoft Visual Studio\2019\Community\Common7\IDE\CommonExtensions\Microsoft\CMake\CMake\bin;F:\opencv\opencv\build\x64\vc16\bin;" + $env:PATH
+cmake --build --preset windows-cpu --target sim_runner
+./out/windows-cpu/apps/sim_runner/Release/sim_runner.exe configs/sim-encoder-transport.yml artifacts/sim/encoder-transport-delay-v3 configs/tracker.yml
+./out/windows-cpu/apps/sim_runner/Release/sim_runner.exe configs/sim-encoder-gain-holdout.yml artifacts/sim/encoder-holdout-delay-v2 configs/tracker.yml
+```
+
 
 证据目录：`artifacts/sim/encoder-transport-clock-v1`、`encoder-feedforward-stable-v1` 和 `encoder-feedforward-stable-repeat-v1`。机动对照在 `encoder-feedforward-maneuver-stable-v1`。这些是合成检测，不是 TensorRT 图像或真实录像精度。
 

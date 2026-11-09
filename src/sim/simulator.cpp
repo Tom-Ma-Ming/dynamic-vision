@@ -2,11 +2,13 @@
 #include "vision/sim/Control.hpp"
 #include "vision/sim/StopConfirmation.hpp"
 #include "vision/sim/EncoderFeedback.hpp"
+#include "vision/sim/StageScheduler.hpp"
 
 #include <algorithm>
 #include <opencv2/imgproc.hpp>
 #include <cmath>
 #include <deque>
+#include <map>
 #include <limits>
 #include <random>
 #include <stdexcept>
@@ -134,6 +136,27 @@ ScenarioResult Simulator::run() {
 
   auto tracker_config=tracker_;
   if(config_.encoder_compensation) tracker_config.cameraMotion.enabled=true;
+  const bool delay_mode=config_.encoder_delay_compensation && config_.encoder_transport &&
+      config_.encoder_delay_ms>0 && !config_.feedback_prediction;
+  if(delay_mode && !tracker_config.byteTrack) {
+    if(tracker_config.maneuverRadius==0) {
+      tracker_config.maneuverRadius=96;
+      tracker_config.maneuverAccel=900;
+    }
+    // Steady motion should average the detector noise. Reversals still use the
+    // one-step maneuver update below, so this does not change tracker.yml.
+    if(tracker_config.accel>10) tracker_config.accel=10;
+  }
+  output.effective.delay_compensation_active=delay_mode;
+  output.effective.measurement_sigma=tracker_config.sigma;
+  output.effective.acceleration_sigma=tracker_config.accel;
+  output.effective.maneuver_radius=tracker_config.maneuverRadius;
+  output.effective.maneuver_acceleration=tracker_config.maneuverAccel;
+  output.effective.covariance_limit=config_.covariance_limit;
+  output.effective.gate_uses_predicted_covariance=!delay_mode;
+  output.effective.velocity_feedforward=config_.velocity_feedforward;
+  output.effective.encoder_extrapolation=config_.encoder_extrapolation;
+  output.effective.vertical_axis_enabled=true;
   mot::Tracker tracker(tracker_config);
   mot::Selection selection;
 
@@ -164,6 +187,7 @@ ScenarioResult Simulator::run() {
   SimTime service_finished=0;
   double encoder_x=0,encoder_y=0,observed_encoder_x=0,observed_encoder_y=0;
   EncoderFeedback encoder_channel(std::llround(config_.encoder_delay_ms*1e6),std::llround(config_.encoder_max_age_ms*1e6));
+  StageScheduler stages(static_cast<std::size_t>(std::max(1, config_.observation_capacity)));
   std::mt19937 encoder_rng(config_.seed+700003);
   struct PendingObservation {
     int frame;SimTime captured,ready;std::vector<mot::Detection> detections;
@@ -194,8 +218,31 @@ ScenarioResult Simulator::run() {
     return within_window && config_.feedback_drop_rate>0 && failure(feedback_rng)<config_.feedback_drop_rate;
   };
   IncrementCommand active_command;
+  struct InFlight { double fb_x=0, fb_y=0, total_x=0, total_y=0; };
+  std::map<std::uint64_t, InFlight> feedback_parts;
+  auto settleFlight=[&](const std::string& type, const IncrementCommand& c, double dx, double dy) {
+    auto it=feedback_parts.find(c.id);
+    if(it==feedback_parts.end()) return;
+    if(type=="applied") {
+      auto& part=it->second;
+      auto take=[&](double amount, double& fb, double& total) {
+        if(total==0) return;
+        double fraction=amount/total;
+        if(fraction<0) fraction=0;
+        if(fraction>1) fraction=1;
+        fb*=1-fraction;
+        total*=1-fraction;
+      };
+      take(dx, part.fb_x, part.total_x);
+      take(dy, part.fb_y, part.total_y);
+      if(std::abs(part.total_x)<1e-9 && std::abs(part.total_y)<1e-9) feedback_parts.erase(it);
+    } else if(type!="generated" && type!="accepted") {
+      feedback_parts.erase(it);
+    }
+  };
   auto event=[&](const char* kind,const IncrementCommand& c,SimTime time,double dx,double dy) {
     const std::string type(kind);
+    settleFlight(type,c,dx,dy);
     const bool remote=type=="accepted" || type=="applied" || type=="expired" || type=="replaced" || type=="rejected";
     const bool dropped=remote && dropFeedback(time);
     if(dropped) ++feedback_dropped;
@@ -268,15 +315,15 @@ ScenarioResult Simulator::run() {
     const bool connected=!(config_.disconnect_start>=0 && frame>=config_.disconnect_start &&
                            frame<config_.disconnect_start+config_.disconnect_frames);
     bool dispatch_ok=true;
-    if(config_.incremental_control) {
+    auto applyDueCommands=[&](SimTime now, bool link_up) {
       std::stable_sort(transit.begin(),transit.end(),[](const auto& a,const auto& b){return a.arrival<b.arrival;});
-      while((!transit.empty() && transit.front().arrival<=ts_ns) ||
-            (stop_request_ready>=0 && stop_request_ready<=ts_ns)) {
+      while((!transit.empty() && transit.front().arrival<=now) ||
+            (stop_request_ready>=0 && stop_request_ready<=now)) {
         // Stop wins ties and cancels older in-flight commands at the device barrier.
-        if(stop_request_ready>=0 && stop_request_ready<=ts_ns &&
+        if(stop_request_ready>=0 && stop_request_ready<=now &&
            (transit.empty() || stop_request_ready<=transit.front().arrival)) {
           const auto time=stop_request_ready;stop_request_ready=-1;
-          if(connected) {
+          if(link_up) {
             stopAt(time);
             if(stop_request_nonce) replyStop(time,stop_request_epoch,stop_request_nonce,true);
           }
@@ -289,61 +336,112 @@ ScenarioResult Simulator::run() {
           active_command=c;event("accepted",c,c.arrival,0,0);
         } else event("rejected",c,c.arrival,0,0);
       }
-      apply(ts_ns);
-      if(config_.feedback_transport) feedback_channel.deliver(ts_ns);
+      apply(now);
+    };
+    auto deliverFeedbackNow=[&](SimTime now, int event_frame, bool link_up) {
+      if(config_.feedback_transport) feedback_channel.deliver(now);
       const bool feedback_overdue=config_.feedback_timeout_ms>0 && (config_.feedback_transport ?
-        feedback_channel.overdue(ts_ns,std::llround(config_.feedback_timeout_ms*1e6)) :
-        feedback.overdue(ts_ns,std::llround(config_.feedback_timeout_ms*1e6)));
+        feedback_channel.overdue(now,std::llround(config_.feedback_timeout_ms*1e6)) :
+        feedback.overdue(now,std::llround(config_.feedback_timeout_ms*1e6)));
       if(feedback_overdue || (config_.feedback_transport && feedback_channel.full())) {
         feedback_capacity_fault=config_.feedback_transport && feedback_channel.full();
         if(!feedback_fault && config_.stop_request_delay_ms>0) {
-          stop_request_ready=ts_ns+std::llround(config_.stop_request_delay_ms*1e6);
+          stop_request_ready=now+std::llround(config_.stop_request_delay_ms*1e6);
           stop_request_nonce=0; // automatic stop cannot authorize recovery
+          if(config_.async_stages && !stages.enqueue(Stage::Execution,stop_request_ready,event_frame,0))
+            ++output.stage_rejected;
         }
         feedback_fault=true;feedback.clear();
-        if(config_.feedback_transport) feedback_channel.newEpoch(ts_ns);
+        if(config_.feedback_transport) feedback_channel.newEpoch(now);
       }
       // Explicit recovery request; a received idle snapshot confirms the model
       // has cancelled active work and drained transport. Time alone never clears it.
       if(feedback_fault && !feedback_resynced && config_.feedback_resync_frame>=0 &&
-         frame>=config_.feedback_resync_frame && connected) {
+         event_frame>=config_.feedback_resync_frame && link_up) {
         const bool idle_snapshot=actuator.idle() && transit.empty() && active_command.id==0;
         bool confirmed=false;
         if(config_.feedback_transport) {
           // Only one response is retained; expiry permits a fresh nonce.
           // Check an arriving response before issuing a replacement request.
-          if(stop_ready>=0 && stop_ready<=ts_ns) {
-            confirmed=stop_confirmation.accept(stop_snapshot,ts_ns,feedback_channel.epoch(),idle_snapshot);
+          if(stop_ready>=0 && stop_ready<=now) {
+            confirmed=stop_confirmation.accept(stop_snapshot,now,feedback_channel.epoch(),idle_snapshot);
             stop_ready=-1;
           }
-          if(!confirmed && !stop_confirmation.pending(ts_ns) && stop_request_ready<0) {
+          if(!confirmed && !stop_confirmation.pending(now) && stop_request_ready<0) {
             ++feedback_sync_attempts;
-            const auto nonce=stop_confirmation.request(feedback_channel.epoch(),ts_ns,
+            const auto nonce=stop_confirmation.request(feedback_channel.epoch(),now,
                 std::llround(config_.feedback_timeout_ms*1e6));
             stop_ready=-1;
             if(config_.stop_request_delay_ms>0) {
-              stop_request_ready=ts_ns+std::llround(config_.stop_request_delay_ms*1e6);
+              stop_request_ready=now+std::llround(config_.stop_request_delay_ms*1e6);
               stop_request_nonce=nonce;stop_request_epoch=feedback_channel.epoch();
+              if(config_.async_stages && !stages.enqueue(Stage::Execution,stop_request_ready,event_frame,0))
+                ++output.stage_rejected;
             } else {
-              replyStop(ts_ns,feedback_channel.epoch(),nonce,idle_snapshot);
-              if(stop_ready==ts_ns) {
-                confirmed=stop_confirmation.accept(stop_snapshot,ts_ns,feedback_channel.epoch(),idle_snapshot);
+              replyStop(now,feedback_channel.epoch(),nonce,idle_snapshot);
+              if(stop_ready==now) {
+                confirmed=stop_confirmation.accept(stop_snapshot,now,feedback_channel.epoch(),idle_snapshot);
                 stop_ready=-1;
               }
             }
           }
         } else {
           ++feedback_sync_attempts;
-          if(dropFeedback(ts_ns)) ++feedback_dropped;
+          if(dropFeedback(now)) ++feedback_dropped;
           else confirmed=idle_snapshot;
         }
         if(confirmed) {
           feedback.clear();pid_x.reset();pid_y.reset();
-          if(config_.feedback_transport) feedback_channel.newEpoch(ts_ns);
+          if(config_.feedback_transport) feedback_channel.newEpoch(now);
           feedback_fault=false;feedback_resynced=true;
           feedback_capacity_fault=false;
         }
       }
+    };
+    auto publishOne=[&](int frame_id, SimTime released) {
+      auto it=std::find_if(observations.begin(),observations.end(),[&](const auto& item){return item.frame==frame_id;});
+      if(it==observations.end()) return;
+      const auto observation=*it;
+      observations.erase(it);
+      auto& trace=output.observations[observation.frame];
+      trace.released=released;
+      if(config_.encoder_transport && !encoder_channel.at(observation.captured)) {
+        trace.status="encoder_missing";
+        return;
+      }
+      if(observation.captured<=tracker.snapshot().timestamp) {
+        trace.status="stale";
+        return;
+      }
+      mot::CameraMotionEstimate motion;
+      const auto paired_encoder=config_.encoder_transport ? encoder_channel.at(observation.captured) :
+          std::optional<EncoderSample>{{observation.captured,observation.encoder_x,observation.encoder_y}};
+      motion.from=tracker.snapshot().timestamp;motion.to=observation.captured;
+      motion.accepted=config_.encoder_compensation && motion.from>=0;
+      motion.shift={-(paired_encoder->x-observed_encoder_x),-(paired_encoder->y-observed_encoder_y)};
+      motion.variance=.25;motion.reason="simulated_applied_encoder";
+      if(!tracker.update(observation.frame,observation.captured,observation.detections,
+                         config_.encoder_compensation ? &motion : nullptr))
+        throw std::runtime_error("Invalid published observation");
+      trace.status="published";observation_frame=observation.frame;
+      observed_encoder_x=paired_encoder->x;observed_encoder_y=paired_encoder->y;
+    };
+    auto handleStage=[&](const StageEvent& event_stage) {
+      output.stages.push_back({name(event_stage.stage), event_stage.time_ns, event_stage.frame});
+      const bool link_up=!(config_.disconnect_start>=0 && event_stage.frame>=config_.disconnect_start &&
+                           event_stage.frame<config_.disconnect_start+config_.disconnect_frames);
+      if(event_stage.stage==Stage::Inference) publishOne(event_stage.frame, event_stage.time_ns);
+      if(event_stage.stage==Stage::Feedback && config_.incremental_control)
+        deliverFeedbackNow(event_stage.time_ns, event_stage.frame, link_up);
+      if(event_stage.stage==Stage::Execution && config_.incremental_control)
+        applyDueCommands(event_stage.time_ns, link_up);
+    };
+    if(config_.incremental_control && !config_.async_stages) {
+      applyDueCommands(ts_ns, connected);
+      deliverFeedbackNow(ts_ns, frame, connected);
+    } else if(config_.async_stages) {
+      if(config_.encoder_transport) encoder_channel.advance(ts_ns);
+      while(auto due=stages.popDue(ts_ns-1)) handleStage(*due);
     }
 
     if (config_.motion == Motion::Stop && frame >= config_.frames / 3) {
@@ -472,28 +570,14 @@ ScenarioResult Simulator::run() {
     output.observations.push_back({frame,ts_ns,ready,-1,service_ms,"pending"});
     observations.push_back({frame,ts_ns,ready,detections,encoder_x,encoder_y});
     std::stable_sort(observations.begin(),observations.end(),[](const auto& a,const auto& b){return a.ready<b.ready;});
-    while(!observations.empty() && observations.front().ready<=ts_ns) {
-      const auto& observation=observations.front();
-      auto& trace=output.observations[observation.frame];trace.released=ts_ns;
-      if(config_.encoder_transport && !encoder_channel.at(observation.captured)) {
-        trace.status="encoder_missing";observations.pop_front();continue;
-      }
-      if(observation.captured<=tracker.snapshot().timestamp) {
-        trace.status="stale";observations.pop_front();continue;
-      }
-      mot::CameraMotionEstimate motion;
-      const auto paired_encoder=config_.encoder_transport ? encoder_channel.at(observation.captured) :
-          std::optional<EncoderSample>{{observation.captured,observation.encoder_x,observation.encoder_y}};
-      motion.from=tracker.snapshot().timestamp;motion.to=observation.captured;
-      motion.accepted=config_.encoder_compensation && motion.from>=0;
-      motion.shift={-(paired_encoder->x-observed_encoder_x),-(paired_encoder->y-observed_encoder_y)};
-      motion.variance=.25;motion.reason="simulated_applied_encoder";
-      if(!tracker.update(observation.frame,observation.captured,observation.detections,
-                         config_.encoder_compensation ? &motion : nullptr))
-        throw std::runtime_error("Invalid published observation");
-      trace.status="published";observation_frame=observation.frame;
-      observed_encoder_x=paired_encoder->x;observed_encoder_y=paired_encoder->y;
-      observations.pop_front();
+    if(config_.async_stages) {
+      if(!stages.enqueue(Stage::Capture, ts_ns, frame)) ++output.stage_rejected;
+      if(!stages.enqueue(Stage::Inference, ready, frame)) ++output.stage_rejected;
+      if(!stages.enqueue(Stage::Feedback, ts_ns, frame)) ++output.stage_rejected;
+      while(auto due=stages.popDue(ts_ns)) handleStage(*due);
+    } else {
+      while(!observations.empty() && observations.front().ready<=ts_ns)
+        publishOne(observations.front().frame, ts_ns);
     }
     while(observations.size()>size_t(config_.observation_capacity)) {
       auto oldest=std::min_element(observations.begin(),observations.end(),[](const auto& a,const auto& b){return a.frame<b.frame;});
@@ -501,13 +585,15 @@ ScenarioResult Simulator::run() {
       observations.erase(oldest);
     }
     const auto received_encoder=encoder_channel.latest();
-    const auto extrapolated=config_.encoder_extrapolation ?
+    const auto extrapolated=(config_.encoder_extrapolation || delay_mode) ?
         encoder_channel.extrapolatedPosition(config_.actuator_max_speed) : std::optional<std::pair<double,double>>{};
     const bool encoder_valid=!config_.encoder_transport ||
         (received_encoder && observation_frame>=0 && received_encoder->captured>=tracker.snapshot().timestamp &&
          (!config_.encoder_extrapolation || extrapolated.has_value()));
-    const double available_x=extrapolated ? extrapolated->first : config_.encoder_transport ? (received_encoder?received_encoder->x:observed_encoder_x) : encoder_x;
-    const double available_y=extrapolated ? extrapolated->second : config_.encoder_transport ? (received_encoder?received_encoder->y:observed_encoder_y) : encoder_y;
+    const double delivered_x=config_.encoder_transport ? (received_encoder?received_encoder->x:observed_encoder_x) : encoder_x;
+    const double delivered_y=config_.encoder_transport ? (received_encoder?received_encoder->y:observed_encoder_y) : encoder_y;
+    const double available_x=(config_.encoder_extrapolation && extrapolated) ? extrapolated->first : delivered_x;
+    const double available_y=(config_.encoder_extrapolation && extrapolated) ? extrapolated->second : delivered_y;
     const double recent_dx=config_.encoder_compensation && encoder_valid ? available_x-observed_encoder_x : 0;
     const double recent_dy=config_.encoder_compensation && encoder_valid ? available_y-observed_encoder_y : 0;
     auto snapshot=tracker.predictAt(ts_ns);
@@ -534,6 +620,15 @@ ScenarioResult Simulator::run() {
         break;
       }
     }
+    const double track_speed=selected ? std::hypot(selected->x[2],selected->x[3]) : 0;
+    const bool auto_follow=delay_mode && !config_.velocity_feedforward && track_speed>5;
+    if(auto_follow && !config_.encoder_extrapolation) {
+      const double lead=config_.encoder_delay_ms*1e-3;
+      for(auto& track:snapshot.tracks) {
+        track.x[0]-=track.x[2]*lead;
+        track.x[1]-=track.x[3]*lead;
+      }
+    }
 
     if (selected && last_track_id != 0 && selected->id != last_track_id) {
       ++id_switches;
@@ -546,8 +641,17 @@ ScenarioResult Simulator::run() {
     const bool ambiguous = selected ? selected->ambiguous : true;
     const float age_ms =
         selected ? static_cast<float>((ts_ns - selected->lastSeen) * 1e-6) : 0;
-    const double covariance_trace =
+    double covariance_trace =
         selected ? selected->covariance(0, 0) + selected->covariance(1, 1) : 0;
+    // Predicting across the encoder delay spreads velocity variance into
+    // position and trips the control gate on an otherwise confirmed track.
+    // The gate uses the covariance at the measurement that was actually fused.
+    if(delay_mode && selected) {
+      for(const auto& raw:tracker.snapshot().tracks) if(raw.id==selected->id) {
+        covariance_trace=raw.covariance(0,0)+raw.covariance(1,1);
+        break;
+      }
+    }
 
     float estimate_x = last_est_x;
     float estimate_y = last_est_y;
@@ -588,7 +692,7 @@ ScenarioResult Simulator::run() {
     std::pair<float,float> target{aim_x,aim_y};
     double command_lead_ms=-1;
     if (controllable) {
-      const float horizon = config_.feedback_prediction ? float(feedbackDelay()) : config_.compensate_actuator_delay
+      const float horizon = auto_follow ? 0.f : (config_.feedback_prediction || (delay_mode && !config_.velocity_feedforward)) ? float(feedbackDelay()) : config_.compensate_actuator_delay
                                 ? config_.actuator_delay_frames * dt
                                 : config_.command_horizon_s;
       target.first = clampf(estimate_x + static_cast<float>(selected->x[2])*horizon, 0,
@@ -608,17 +712,31 @@ ScenarioResult Simulator::run() {
         const double delay=std::max(0.0,config_.actuator_delay_frames*config_.dt_s+jitter(delay_rng)*.001);
         const auto arrival=ts_ns+std::llround(delay*1e9);
         command_lead_ms=(arrival-ts_ns)*1e-6;
-        const auto pending=config_.feedback_prediction ? (config_.feedback_transport?feedback_channel.pending():feedback.pending()) : std::pair<double,double>{};
-        const double fx=config_.velocity_feedforward ? selected->x[2]*config_.actuator_units_per_px : 0;
-        const double fy=config_.velocity_feedforward ? selected->x[3]*config_.actuator_units_per_px : 0;
+        const bool account_pending=config_.feedback_prediction || (delay_mode && !auto_follow && !config_.velocity_feedforward);
+        const bool feed=config_.velocity_feedforward || auto_follow;
+        std::pair<double,double> split_pending{};
+        if(feed && delay_mode) {
+          for(const auto& item:feedback_parts) {
+            split_pending.first+=item.second.fb_x;
+            split_pending.second+=item.second.fb_y;
+          }
+        }
+        const auto pending=(feed && delay_mode) ? split_pending : account_pending ? (config_.feedback_transport?feedback_channel.pending():feedback.pending()) : std::pair<double,double>{};
+        const double fx=feed ? selected->x[2]*config_.actuator_units_per_px : 0;
+        const double fy=feed ? selected->x[3]*config_.actuator_units_per_px : 0;
         const double ux=pid_x.step((target.first-aim_x)*config_.actuator_units_per_px-pending.first,config_.dt_s,fx);
         const double uy=pid_y.step((target.second-aim_y)*config_.actuator_units_per_px-pending.second,config_.dt_s,fy);
         transit.push_back({std::uint64_t(frame+1),std::uint64_t(frame),selected->id,
                           ts_ns,arrival,arrival+std::llround(2*config_.dt_s*1e9),ux*config_.dt_s,uy*config_.dt_s});
+        if(feed && delay_mode) {
+          feedback_parts[transit.back().id]={(ux-fx)*config_.dt_s,(uy-fy)*config_.dt_s,ux*config_.dt_s,uy*config_.dt_s};
+        }
         event("generated",transit.back(),ts_ns,ux*config_.dt_s,uy*config_.dt_s);
         if(config_.dispatch_failure_rate>0 && failure(failure_rng)<config_.dispatch_failure_rate) {
           event("dispatch_failed",transit.back(),ts_ns,0,0);transit.pop_back();dispatch_ok=false;
           pid_x.reset();pid_y.reset();
+        } else if(config_.async_stages && !stages.enqueue(Stage::Execution, arrival, frame, 1)) {
+          ++output.stage_rejected;
         }
         if(std::hypot(ux,uy)>=config_.actuator_max_speed*config_.actuator_units_per_px) ++saturated_frames;
       } else if(feedback_fault && connected && config_.stop_request_delay_ms>0) {

@@ -110,6 +110,8 @@ std::vector<sim::ScenarioConfig> loadScenarios(const std::string& path) {
     config.encoder_transport=intOr(node,"encoder_transport",0)!=0;
     config.encoder_extrapolation=intOr(node,"encoder_extrapolation",0)!=0;
     config.velocity_feedforward=intOr(node,"velocity_feedforward",0)!=0;
+    config.encoder_delay_compensation=intOr(node,"encoder_delay_compensation",0)!=0;
+    config.async_stages=intOr(node,"async_stages",0)!=0;
     config.encoder_delay_ms=doubleOr(node,"encoder_delay_ms",0);
     config.encoder_drop_rate=doubleOr(node,"encoder_drop_rate",0);
     config.encoder_max_age_ms=doubleOr(node,"encoder_max_age_ms",200);
@@ -351,6 +353,19 @@ int main(int argc, char** argv) try {
             << ",\"encoder_transport\":" << (scenarios[i].encoder_transport?"true":"false")
             << ",\"encoder_extrapolation\":" << (scenarios[i].encoder_extrapolation?"true":"false")
             << ",\"velocity_feedforward\":" << (scenarios[i].velocity_feedforward?"true":"false")
+            << ",\"encoder_delay_compensation\":" << (scenarios[i].encoder_delay_compensation?"true":"false")
+            << ",\"effective\":{\"delay_compensation_active\":" << (result.effective.delay_compensation_active?"true":"false")
+            << ",\"measurement_sigma\":" << result.effective.measurement_sigma
+            << ",\"acceleration_sigma\":" << result.effective.acceleration_sigma
+            << ",\"maneuver_radius\":" << result.effective.maneuver_radius
+            << ",\"maneuver_acceleration\":" << result.effective.maneuver_acceleration
+            << ",\"covariance_limit\":" << result.effective.covariance_limit
+            << ",\"gate_covariance\":" << (result.effective.gate_uses_predicted_covariance?"\"predicted\"":"\"measurement\"")
+            << ",\"velocity_feedforward\":" << (result.effective.velocity_feedforward?"true":"false")
+            << ",\"encoder_extrapolation\":" << (result.effective.encoder_extrapolation?"true":"false")
+            << ",\"vertical_axis_enabled\":" << (result.effective.vertical_axis_enabled?"true":"false")
+            << "}"
+            << ",\"async_stages\":" << (scenarios[i].async_stages?"true":"false")
             << ",\"encoder_delay_ms\":" << scenarios[i].encoder_delay_ms
             << ",\"encoder_drop_rate\":" << scenarios[i].encoder_drop_rate
             << ",\"encoder_max_age_ms\":" << scenarios[i].encoder_max_age_ms

@@ -28,6 +28,11 @@ struct ScenarioConfig {
   bool encoder_compensation = false;
   bool encoder_transport = false;
   bool encoder_extrapolation=false,velocity_feedforward=false;
+  // Opt-in delay compensation. Off keeps the previous delayed-encoder law.
+  bool encoder_delay_compensation=false;
+  // Event schedule for capture, inference, feedback, and execution. Default
+  // stays on the fixed frame loop so existing runs remain comparable.
+  bool async_stages=false;
   double encoder_delay_ms=0,encoder_drop_rate=0,encoder_max_age_ms=200;
   int encoder_drop_end_frame=-1;
   bool feedback_prediction = false;
@@ -160,17 +165,37 @@ struct ObservationEvent {
   int frame;std::int64_t captured,ready,released=-1;
   double service_ms;std::string status="pending";
 };
+struct StageTrace {
+  std::string stage;
+  std::int64_t time_ns=0;
+  int frame=0;
+};
+struct EffectiveControl {
+  bool delay_compensation_active = false;
+  double measurement_sigma = 0;
+  double acceleration_sigma = 0;
+  double maneuver_radius = 0;
+  double maneuver_acceleration = 0;
+  double covariance_limit = 0;
+  bool gate_uses_predicted_covariance = true;
+  bool velocity_feedforward = false;
+  bool encoder_extrapolation = false;
+  bool vertical_axis_enabled = true;
+};
 struct ScenarioResult {
   std::string scene_id;
   Motion motion = Motion::Constant;
   TaskResult result = TaskResult::Running;
   Cause cause = Cause::None;
   int terminal_frame = -1;
+  EffectiveControl effective;
   Metrics metrics;
   std::vector<FrameRecord> frames;
   std::vector<CommandEvent> commands;
   std::vector<ObservationEvent> observations;
   std::vector<FeedbackTrace> feedback_messages;
+  std::vector<StageTrace> stages;
+  int stage_rejected=0;
 };
 
 struct ImageObservation {

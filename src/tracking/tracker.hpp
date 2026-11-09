@@ -19,6 +19,10 @@ struct Config {
     bool byteTrack = false;
     double highScore = 0.4;
     double lowScore = 0.1;
+    // Zero keeps the Mahalanobis gate unchanged. A positive radius may keep one
+    // confirmed track through a single unmatched detection after a reversal.
+    double maneuverRadius = 0;
+    double maneuverAccel = 0;
     static Config load(const std::string& path);
 };
 enum class State { Tentative, Confirmed, Lost };
