@@ -207,6 +207,11 @@ ScenarioResult Simulator::run() {
   float aim_x = config_.width * 0.5f;
   float aim_y = config_.height * 0.5f;
   float previous_aim_x = aim_x, previous_aim_y = aim_y;
+  AssistState assist_state=AssistState::Disabled;
+  bool assist_latched=false;
+  double assist_speed_x=0, assist_speed_y=0;
+  SimTime assist_resume_at=0;
+  std::size_t human_cursor=0;
   float last_est_x = aim_x;
   float last_est_y = aim_y;
   float last_pred_x = aim_x;
@@ -473,8 +478,11 @@ ScenarioResult Simulator::run() {
       applyDueCommands(ts_ns, connected);
       deliverFeedbackNow(ts_ns, frame, connected);
     } else if(config_.async_stages) {
-      if(config_.encoder_transport) encoder_channel.advance(ts_ns);
-      while(auto due=stages.popDue(ts_ns-1)) handleStage(*due);
+      // Older events must not observe an encoder clock already moved to this frame.
+      while(auto due=stages.popDue(ts_ns-1)) {
+        if(config_.encoder_transport) encoder_channel.advance(due->time_ns);
+        handleStage(*due);
+      }
     }
 
     if (config_.motion == Motion::Stop && frame >= config_.frames / 3) {
@@ -509,12 +517,34 @@ ScenarioResult Simulator::run() {
       if (world_y > max_y) { world_y = max_y; vy = -vy; }
     }
 
+    double human_dx=0, human_dy=0;
+    bool human_takeover_frame=false;
+    if(config_.assist_mode==AssistMode::HumanLed) {
+      while(human_cursor<config_.human_camera.size() && config_.human_camera[human_cursor].time_ns<=ts_ns) {
+        const auto& sample=config_.human_camera[human_cursor++];
+        human_dx+=sample.dx_px;
+        human_dy+=sample.dy_px;
+        if(sample.takeover || std::hypot(sample.dx_px,sample.dy_px)>=config_.human_turn_px)
+          human_takeover_frame=true;
+        if(config_.view_feedback) {
+          camera_x+=static_cast<float>(sample.dx_px);
+          camera_y+=static_cast<float>(sample.dy_px);
+          encoder_x+=sample.dx_px;
+          encoder_y+=sample.dy_px;
+        } else {
+          aim_x+=static_cast<float>(sample.dx_px);
+          aim_y+=static_cast<float>(sample.dy_px);
+        }
+      }
+    }
     const float truth_x = config_.view_feedback ? world_x-camera_x : clampf(world_x - camera_x,
                                  config_.target_w * 0.5f,
                                  static_cast<float>(config_.width) - config_.target_w * 0.5f);
     const float truth_y = config_.view_feedback ? world_y-camera_y : clampf(world_y,
                                  config_.target_h * 0.5f,
                                  static_cast<float>(config_.height) - config_.target_h * 0.5f);
+    // Later same-timestamp execution must not rewrite this sample's camera.
+    const float sample_camera_x=camera_x, sample_camera_y=camera_y;
     const bool occluded = config_.occlusion_start >= 0 &&
                           frame >= config_.occlusion_start && frame < occlusion_end;
 
@@ -605,9 +635,12 @@ ScenarioResult Simulator::run() {
     std::stable_sort(observations.begin(),observations.end(),[](const auto& a,const auto& b){return a.ready<b.ready;});
     if(config_.async_stages) {
       if(!stages.enqueue(Stage::Capture, ts_ns, frame)) ++output.stage_rejected;
-      if(!stages.enqueue(Stage::Inference, ready, frame)) ++output.stage_rejected;
+      if(!stages.enqueue(Stage::Inference, ready, frame)) {++output.stage_rejected; stages.release(frame);}
       if(!stages.enqueue(Stage::Feedback, ts_ns, frame)) ++output.stage_rejected;
-      while(auto due=stages.popDue(ts_ns)) handleStage(*due);
+      while(auto due=stages.popDue(ts_ns)) {
+        if(config_.encoder_transport) encoder_channel.advance(due->time_ns);
+        handleStage(*due);
+      }
     } else {
       while(!observations.empty() && observations.front().ready<=ts_ns)
         publishOne(observations.front().frame, ts_ns);
@@ -654,7 +687,8 @@ ScenarioResult Simulator::run() {
       }
     }
     const double track_speed=selected ? std::hypot(selected->x[2],selected->x[3]) : 0;
-    const bool auto_follow=delay_mode && !config_.velocity_feedforward && track_speed>5;
+    const bool legacy_chase=config_.assist_mode==AssistMode::Legacy;
+    const bool auto_follow=legacy_chase && delay_mode && !config_.velocity_feedforward && track_speed>5;
     if(auto_follow && !config_.encoder_extrapolation) {
       const double lead=config_.encoder_delay_ms*1e-3;
       for(auto& track:snapshot.tracks) {
@@ -727,10 +761,15 @@ ScenarioResult Simulator::run() {
                               covariance_trace <= config_.covariance_limit;
     std::pair<float,float> target{aim_x,aim_y};
     double command_lead_ms=-1;
+    double used_horizon=0;
+    bool assist_cancel_frame=false;
+    double assist_dx_frame=0, assist_dy_frame=0;
+    std::string assist_reason=config_.assist_mode==AssistMode::HumanLed ? "outside" : "legacy";
     if (controllable) {
       const float horizon = auto_follow ? 0.f : (config_.feedback_prediction || (delay_mode && !config_.velocity_feedforward)) ? float(feedbackDelay()) : config_.compensate_actuator_delay
                                 ? config_.actuator_delay_frames * dt
                                 : config_.command_horizon_s;
+      used_horizon=horizon;
       target.first = clampf(estimate_x + static_cast<float>(selected->x[2])*horizon, 0,
                             static_cast<float>(config_.width));
       target.second = clampf(estimate_y + static_cast<float>(selected->x[3])*horizon, 0,
@@ -743,7 +782,6 @@ ScenarioResult Simulator::run() {
         }
       }
     }
-    const bool legacy_chase=config_.assist_mode==AssistMode::Legacy;
     if(legacy_chase && config_.incremental_control) {
       if(controllable && connected && !feedback_fault && encoder_valid) {
         const double delay=std::max(0.0,config_.actuator_delay_frames*config_.dt_s+jitter(delay_rng)*.001);
@@ -776,6 +814,90 @@ ScenarioResult Simulator::run() {
         if(active_command.id) event(connected ? "cancelled" : "disconnected",active_command,ts_ns,0,0);
         active_command={};transit.clear();actuator.cancel();pid_x.reset();pid_y.reset();
       }
+    } else if(config_.assist_mode==AssistMode::HumanLed && config_.incremental_control) {
+      const double center_x=output.assist.center_x, center_y=output.assist.center_y;
+      const double image_dx=selected ? selected->x[0]-center_x : 0;
+      const double image_dy=selected ? selected->x[1]-center_y : 0;
+      const double distance=std::hypot(image_dx,image_dy);
+      auto stop_assist=[&]{
+        assist_speed_x=assist_speed_y=0;
+        pid_x.reset(); pid_y.reset();
+        if(!transit.empty() || active_command.id) {
+          for(const auto& c:transit) event("cancelled_in_transit",c,ts_ns,0,0);
+          if(active_command.id) event("cancelled",active_command,ts_ns,0,0);
+          active_command={}; transit.clear(); actuator.cancel();
+          assist_cancel_frame=true;
+        }
+      };
+      if(human_takeover_frame) {
+        assist_state=AssistState::HumanOverride;
+        assist_reason="human_turn";
+        assist_latched=false;
+        assist_resume_at=ts_ns+std::llround(config_.assist_resume_wait_s*1e9);
+        stop_assist();
+      } else if(assist_state==AssistState::HumanOverride && ts_ns<assist_resume_at) {
+        assist_reason="resume_wait";
+        stop_assist();
+      } else if(!controllable) {
+        assist_state=AssistState::Suspended;
+        assist_reason="unreliable";
+        assist_latched=false;
+        stop_assist();
+      } else {
+        if(!assist_latched && distance<=config_.assist_enter_px) assist_latched=true;
+        else if(assist_latched && distance>config_.assist_exit_px) assist_latched=false;
+        if(!assist_latched) {
+          assist_state=AssistState::Armed;
+          assist_reason="outside";
+          stop_assist();
+        } else if(distance<=config_.assist_deadzone_px) {
+          assist_state=AssistState::Assisting;
+          assist_reason="deadzone";
+          assist_speed_x=assist_speed_y=0;
+        } else if(active_command.id || !transit.empty()) {
+          // One limited step at a time. A step already on the way is not added again.
+          assist_state=AssistState::Assisting;
+          assist_reason="in_flight";
+        } else {
+          assist_state=AssistState::Assisting;
+          assist_reason="assisting";
+          const double room=distance-config_.assist_deadzone_px;
+          const double step_cap=std::min(config_.assist_max_step_px, config_.assist_max_speed_px_s*config_.dt_s);
+          const double correction=std::min(room, step_cap);
+          double vx=image_dx/distance*correction/config_.dt_s;
+          double vy=image_dy/distance*correction/config_.dt_s;
+          double dvx=vx-assist_speed_x, dvy=vy-assist_speed_y;
+          const double dv=std::hypot(dvx,dvy);
+          const double max_dv=config_.assist_max_accel_px_s2*config_.dt_s;
+          if(dv>max_dv && dv>0) {dvx*=max_dv/dv; dvy*=max_dv/dv;}
+          assist_speed_x+=dvx; assist_speed_y+=dvy;
+          const double speed=std::hypot(assist_speed_x,assist_speed_y);
+          if(speed>config_.assist_max_speed_px_s) {
+            assist_speed_x*=config_.assist_max_speed_px_s/speed;
+            assist_speed_y*=config_.assist_max_speed_px_s/speed;
+          }
+          assist_dx_frame=assist_speed_x*config_.dt_s;
+          assist_dy_frame=assist_speed_y*config_.dt_s;
+          const double step=std::hypot(assist_dx_frame,assist_dy_frame);
+          if(step>config_.assist_max_step_px) {
+            assist_dx_frame*=config_.assist_max_step_px/step;
+            assist_dy_frame*=config_.assist_max_step_px/step;
+          }
+          if(std::hypot(assist_dx_frame,assist_dy_frame)>1e-6 && connected && !feedback_fault && encoder_valid) {
+            const double delay=std::max(0.0,config_.actuator_delay_frames*config_.dt_s+jitter(delay_rng)*.001);
+            const auto arrival=ts_ns+std::llround(delay*1e9);
+            command_lead_ms=(arrival-ts_ns)*1e-6;
+            used_horizon=0;
+            transit.push_back({std::uint64_t(frame+1),std::uint64_t(frame),selected->id,
+                              ts_ns,arrival,arrival+std::llround(2*config_.dt_s*1e9),
+                              assist_dx_frame*config_.actuator_units_per_px,
+                              assist_dy_frame*config_.actuator_units_per_px});
+            event("generated",transit.back(),ts_ns,transit.back().dx,transit.back().dy);
+            if(config_.async_stages && !stages.enqueue(Stage::Execution, arrival, frame, 1))
+              ++output.stage_rejected;
+          }
+        }
+      }
     } else if(legacy_chase) {
     command_queue.push_back(target);
     std::pair<float,float> command{aim_x,aim_y};
@@ -797,10 +919,34 @@ ScenarioResult Simulator::run() {
     }
 
     }
+    if(config_.assist_mode==AssistMode::HumanLed && config_.incremental_control && !controllable) {
+      auto stop_assist=[&]{
+        assist_speed_x=assist_speed_y=0;
+        pid_x.reset(); pid_y.reset();
+        if(!transit.empty() || active_command.id) {
+          for(const auto& c:transit) event("cancelled_in_transit",c,ts_ns,0,0);
+          if(active_command.id) event("cancelled",active_command,ts_ns,0,0);
+          active_command={}; transit.clear(); actuator.cancel();
+          assist_cancel_frame=true;
+        }
+      };
+      if(human_takeover_frame) {
+        assist_state=AssistState::HumanOverride;
+        assist_reason="human_turn";
+        assist_latched=false;
+        assist_resume_at=ts_ns+std::llround(config_.assist_resume_wait_s*1e9);
+        stop_assist();
+      } else if(assist_state==AssistState::HumanOverride && ts_ns<assist_resume_at) {
+        assist_reason="resume_wait";
+        stop_assist();
+      } else {
+        assist_state=AssistState::Suspended;
+        assist_reason="unreliable";
+        assist_latched=false;
+        stop_assist();
+      }
+    }
 
-    const HumanCameraSample* delivered_human=nullptr;
-    for(const auto& sample:config_.human_camera)
-      if(sample.time_ns<=ts_ns) delivered_human=&sample;
     const float error_x = aim_x - truth_x;
     const float error_y = aim_y - truth_y;
     const float error_px = std::hypot(error_x, error_y);
@@ -826,7 +972,7 @@ ScenarioResult Simulator::run() {
     record.feedback_resynced=feedback_resynced;record.feedback_sync_attempts=feedback_sync_attempts;
     record.frame = frame;
     record.ts_ns = ts_ns;
-    record.camera_x=camera_x;record.camera_y=camera_y;
+    record.camera_x=sample_camera_x;record.camera_y=sample_camera_y;
     record.truth_x = truth_x;
     record.truth_y = truth_y;
     record.occluded = occluded;
@@ -856,20 +1002,25 @@ ScenarioResult Simulator::run() {
     record.covariance_trace = covariance_trace;
     record.detections = static_cast<int>(detections.size());
     record.false_positives = false_positive_this_frame ? 1 : 0;
-    record.assist_state=name(AssistState::Disabled);
-    record.assist_reason=config_.assist_mode==AssistMode::HumanLed ? "state_machine_pending" : "legacy";
-    record.assist_cancel=false;
-    record.assist_dx_px=0;
-    record.assist_dy_px=0;
-    if(delivered_human) {
-      record.human_dx_px=delivered_human->dx_px;
-      record.human_dy_px=delivered_human->dy_px;
-      record.human_takeover=delivered_human->takeover;
-    }
-    record.executed_dx_px=config_.view_feedback ? camera_x-previous_camera_x : aim_x-previous_aim_x;
-    record.executed_dy_px=config_.view_feedback ? camera_y-previous_camera_y : aim_y-previous_aim_y;
-    previous_camera_x=camera_x;
-    previous_camera_y=camera_y;
+    record.assist_state=name(assist_state);
+    record.assist_reason=assist_reason;
+    record.assist_cancel=assist_cancel_frame;
+    record.assist_dx_px=assist_dx_frame;
+    record.assist_dy_px=assist_dy_frame;
+    record.human_dx_px=human_dx;
+    record.human_dy_px=human_dy;
+    record.human_takeover=human_takeover_frame;
+    record.executed_dx_px=config_.view_feedback ? sample_camera_x-previous_camera_x : aim_x-previous_aim_x;
+    record.executed_dy_px=config_.view_feedback ? sample_camera_y-previous_camera_y : aim_y-previous_aim_y;
+    record.auto_follow=auto_follow;
+    record.feed_active=config_.velocity_feedforward || auto_follow;
+    record.used_horizon_s=used_horizon;
+    record.gate_transform=(auto_follow && !config_.encoder_extrapolation && config_.encoder_delay_ms>0)
+        ? "predicted_with_lead" : "predicted";
+    if(record.auto_follow) ++output.effective.auto_follow_frames;
+    if(record.feed_active) ++output.effective.feed_frames;
+    previous_camera_x=sample_camera_x;
+    previous_camera_y=sample_camera_y;
     previous_aim_x=aim_x;
     previous_aim_y=aim_y;
     output.frames.push_back(record);

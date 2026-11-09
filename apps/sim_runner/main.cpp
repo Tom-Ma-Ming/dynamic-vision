@@ -252,7 +252,11 @@ void writeFrame(std::ostream& out, const std::string& scene,
       << ",\"human_dx_px\":" << frame.human_dx_px
       << ",\"human_dy_px\":" << frame.human_dy_px
       << ",\"executed_dx_px\":" << frame.executed_dx_px
-      << ",\"executed_dy_px\":" << frame.executed_dy_px;
+      << ",\"executed_dy_px\":" << frame.executed_dy_px
+      << ",\"auto_follow\":" << (frame.auto_follow ? "true" : "false")
+      << ",\"feed_active\":" << (frame.feed_active ? "true" : "false")
+      << ",\"used_horizon_s\":" << frame.used_horizon_s
+      << ",\"gate_transform\":" << jsonString(frame.gate_transform);
   if(frame.has_modes) {
     out<<",\"mode_probabilities\":[";
     for(size_t j=0;j<3;++j) out<<(j?",":"")<<frame.mode_probabilities[j];
@@ -420,6 +424,8 @@ int main(int argc, char** argv) try {
             << ",\"covariance_limit\":" << result.effective.covariance_limit
             << ",\"gate_covariance\":" << (result.effective.gate_uses_predicted_covariance?"\"predicted\"":"\"measurement\"")
             << ",\"velocity_feedforward\":" << (result.effective.velocity_feedforward?"true":"false")
+            << ",\"auto_follow_frames\":" << result.effective.auto_follow_frames
+            << ",\"feed_frames\":" << result.effective.feed_frames
             << ",\"encoder_extrapolation\":" << (result.effective.encoder_extrapolation?"true":"false")
             << ",\"vertical_axis_enabled\":" << (result.effective.vertical_axis_enabled?"true":"false")
             << "}"

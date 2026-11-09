@@ -164,6 +164,10 @@ struct FrameRecord {
   double assist_dx_px = 0, assist_dy_px = 0;
   double human_dx_px = 0, human_dy_px = 0;
   double executed_dx_px = 0, executed_dy_px = 0;
+  bool auto_follow = false;
+  bool feed_active = false;
+  double used_horizon_s = 0;
+  std::string gate_transform = "predicted";
 };
 
 struct Metrics {
@@ -218,6 +222,8 @@ struct EffectiveControl {
   bool velocity_feedforward = false;
   bool encoder_extrapolation = false;
   bool vertical_axis_enabled = true;
+  int auto_follow_frames = 0;
+  int feed_frames = 0;
 };
 struct AssistContract {
   std::string mode = "legacy";

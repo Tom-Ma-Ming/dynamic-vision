@@ -286,10 +286,71 @@ int main(int argc, char** argv) try {
           human_led.assist.center_x==320 && human_led.assist.enter_px==48 &&
           human_led.assist.exit_px>=human_led.assist.enter_px,
           "human-led mode records the contract and does not chase a large offset");
-  require(human_led.frames.back().human_takeover && human_led.frames.back().human_dx_px==40 &&
-          human_led.frames.back().assist_dx_px==0 && human_led.frames.back().assist_dy_px==0 &&
-          human_led.frames.back().executed_dx_px==0 && human_led.frames.back().assist_reason=="state_machine_pending",
-          "delivered human input is visible while assist output stays at zero");
+  require(human_led.frames.front().human_takeover && human_led.frames.front().human_dx_px==40 &&
+          human_led.frames.front().executed_dx_px==40 &&
+          human_led.frames.back().human_dx_px==0 && human_led.frames.back().assist_dx_px==0 &&
+          human_led.frames.back().assist_dy_px==0 &&
+          std::abs(human_led.frames.back().camera_x-40)<1e-4,
+          "a human sample moves the camera once and does not pull a distant target inward");
+  auto inside=human_led_config;
+  inside.human_camera.clear();
+  inside.encoder_compensation=true;
+  inside.start_x=340;
+  inside.start_y=240;
+  inside.frames=60;
+  const auto inside_run=Simulator(inside,tracker).run();
+  double inside_assist=0;
+  for(const auto& frame:inside_run.frames) inside_assist+=frame.assist_dx_px;
+  require(inside_assist>10 && inside_run.frames.back().camera_x>10 &&
+          std::abs(inside_run.frames.back().error_px)<5 &&
+          inside_run.frames.back().assist_state=="assisting",
+          "a reliable target 20 px from center receives a limited trim");
+  auto trim_vertical=inside;
+  trim_vertical.start_x=320;
+  trim_vertical.start_y=260;
+  const auto trim_vertical_run=Simulator(trim_vertical,tracker).run();
+  double vertical_assist=0;
+  for(const auto& frame:trim_vertical_run.frames) vertical_assist+=frame.assist_dy_px;
+  require(vertical_assist>10 && trim_vertical_run.frames.back().camera_y>10 &&
+          std::abs(trim_vertical_run.frames.back().assist_dx_px)<1e-6,
+          "the same trim moves the vertical axis");
+  auto trim_diagonal=inside;
+  trim_diagonal.start_x=332;
+  trim_diagonal.start_y=252;
+  const auto trim_diagonal_run=Simulator(trim_diagonal,tracker).run();
+  bool both_axes=false;
+  for(const auto& frame:trim_diagonal_run.frames)
+    if(std::abs(frame.assist_dx_px)>0.2 && std::abs(frame.assist_dy_px)>0.2) both_axes=true;
+  require(both_axes, "a diagonal offset trims both axes");
+  auto far=inside;
+  far.start_x=120;
+  const auto far_run=Simulator(far,tracker).run();
+  bool far_still=true;
+  for(const auto& frame:far_run.frames)
+    if(std::abs(frame.assist_dx_px)>1e-9 || std::abs(frame.assist_dy_px)>1e-9 ||
+       std::abs(frame.camera_x)>1e-4) far_still=false;
+  require(far_still && far_run.frames.back().assist_state=="armed",
+          "outside the assist region the program does not move the camera");
+  auto waiting=inside;
+  waiting.start_x=380;
+  const auto waiting_run=Simulator(waiting,tracker).run();
+  bool waiting_still=true;
+  for(const auto& frame:waiting_run.frames)
+    if(std::abs(frame.assist_dx_px)>1e-9 || std::abs(frame.camera_x)>1e-4) waiting_still=false;
+  require(waiting_still, "between enter and exit the assist stays armed until it has entered");
+  auto yielded=inside;
+  yielded.human_camera.push_back({400000000,30,0,true});
+  const auto yielded_run=Simulator(yielded,tracker).run();
+  bool yielded_ok=yielded_run.frames[10].human_takeover &&
+                  yielded_run.frames[10].assist_reason=="human_turn" &&
+                  yielded_run.frames[11].assist_dx_px==0;
+  for(const auto& frame:yielded_run.frames)
+    if(std::hypot(frame.assist_dx_px,frame.assist_dy_px)>yielded.assist_max_step_px+1e-6)
+      yielded_ok=false;
+  int resumed_steps=0;
+  for(std::size_t i=16;i<yielded_run.frames.size();++i)
+    if(std::abs(yielded_run.frames[i].assist_dx_px)>0.2) ++resumed_steps;
+  require(yielded_ok && resumed_steps>0, "a human turn pauses assist and later steps stay inside the limit");
   {
     ControllerFlightLedger applied, idle;
     applied.issue(1, 0.25, -0.10, 1.0, -0.40);
@@ -391,6 +452,22 @@ int main(int argc, char** argv) try {
     const auto cmd=tie.popDue(5);
     require(cap && cap->stage==Stage::Capture && fb && fb->stage==Stage::Feedback,"feedback follows capture");
     require(stop && stop->frame==-1 && cmd && cmd->frame==3,"stop wins an equal-time execution");
+    StageScheduler clocks(4);
+    bool negative=false, rollback=false, inverted=false;
+    try { clocks.enqueue(Stage::Execution,-1,0); } catch(const std::invalid_argument&) { negative=true; }
+    require(clocks.enqueue(Stage::Execution,100,0) && clocks.popDue(100),"a later legal stage still runs");
+    try { clocks.enqueue(Stage::Execution,50,1); } catch(const std::invalid_argument&) { rollback=true; }
+    StageScheduler dependency(4);
+    require(dependency.enqueue(Stage::Inference,10,0),"queue an inference");
+    try { dependency.enqueue(Stage::Capture,20,0); } catch(const std::invalid_argument&) { inverted=true; }
+    require(negative && rollback && inverted,"negative, reversed, and inverted stage times are rejected");
+    StageScheduler reclaimed(2);
+    for(int frame=0; frame<30; ++frame) {
+      require(reclaimed.enqueue(Stage::Capture,frame,frame),"capture stays bounded");
+      require(reclaimed.enqueue(Stage::Inference,frame,frame),"inference stays bounded");
+      require(reclaimed.popDue(frame) && reclaimed.popDue(frame),"both stages complete");
+    }
+    require(reclaimed.retainedFrames()<=4,"completed capture metadata is released");
   }
   auto scheduled=feedback;
   scheduled.encoder_transport=true;
