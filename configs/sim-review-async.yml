@@ -1,0 +1,4 @@
+%YAML:1.0
+scenarios:
+  - {id: "async0", motion: "constant", frames: 120, start_x: 120., start_y: 240., vx: 0., noise_px: 0., pid_kp: 2., incremental_control: 1, acquire_single_confirmed: 1, view_feedback: 1, encoder_compensation: 1, async_stages: 0, observation_delay_ms: 50., success_after_frame: 50}
+  - {id: "async1", motion: "constant", frames: 120, start_x: 120., start_y: 240., vx: 0., noise_px: 0., pid_kp: 2., incremental_control: 1, acquire_single_confirmed: 1, view_feedback: 1, encoder_compensation: 1, async_stages: 1, observation_delay_ms: 50., success_after_frame: 50}
