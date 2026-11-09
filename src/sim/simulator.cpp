@@ -209,8 +209,10 @@ ScenarioResult Simulator::run() {
   float previous_aim_x = aim_x, previous_aim_y = aim_y;
   AssistState assist_state=AssistState::Disabled;
   bool assist_latched=false;
+  bool human_hold=false;
   double assist_speed_x=0, assist_speed_y=0;
   SimTime assist_resume_at=0;
+  SimTime assist_known_until=-1;
   std::size_t human_cursor=0;
   float last_est_x = aim_x;
   float last_est_y = aim_y;
@@ -518,14 +520,21 @@ ScenarioResult Simulator::run() {
     }
 
     double human_dx=0, human_dy=0;
-    bool human_takeover_frame=false;
+    bool human_explicit_frame=false, human_pulse_frame=false, human_release_frame=false;
     if(config_.assist_mode==AssistMode::HumanLed) {
       while(human_cursor<config_.human_camera.size() && config_.human_camera[human_cursor].time_ns<=ts_ns) {
         const auto& sample=config_.human_camera[human_cursor++];
         human_dx+=sample.dx_px;
         human_dy+=sample.dy_px;
-        if(sample.takeover || std::hypot(sample.dx_px,sample.dy_px)>=config_.human_turn_px)
-          human_takeover_frame=true;
+        const bool large_turn=std::hypot(sample.dx_px,sample.dy_px)>=config_.human_turn_px;
+        if(sample.takeover) {
+          human_hold=true;
+          human_explicit_frame=true;
+        } else if(human_hold) {
+          human_hold=false;
+          human_release_frame=true;
+        }
+        if(!sample.takeover && large_turn) human_pulse_frame=true;
         if(config_.view_feedback) {
           camera_x+=static_cast<float>(sample.dx_px);
           camera_y+=static_cast<float>(sample.dy_px);
@@ -782,6 +791,42 @@ ScenarioResult Simulator::run() {
         }
       }
     }
+    auto dispatch_incremental=[&](const IncrementCommand& command, double vx_cmd, double vy_cmd) {
+      transit.push_back(command);
+      event("generated",transit.back(),command.generated,command.dx,command.dy);
+      if(config_.dispatch_failure_rate>0 && failure(failure_rng)<config_.dispatch_failure_rate) {
+        event("dispatch_failed",transit.back(),command.generated,0,0);
+        transit.pop_back();
+        dispatch_ok=false;
+        pid_x.reset(); pid_y.reset();
+        return false;
+      }
+      if(config_.async_stages && !stages.enqueue(Stage::Execution, command.arrival, static_cast<int>(command.frame_id), 1))
+        ++output.stage_rejected;
+      if(std::hypot(vx_cmd,vy_cmd)>=config_.actuator_max_speed*config_.actuator_units_per_px) ++saturated_frames;
+      return true;
+    };
+    // Accepted assist commands are tracked by the deadline chosen at issue time.
+    // The assist branch does not read the actuator or active_command. A transport
+    // or delayed stop is queued; otherwise an already accepted command runs until
+    // that known deadline and is the residual motion.
+    auto withdraw_assist=[&]{
+      assist_speed_x=assist_speed_y=0;
+      pid_x.reset(); pid_y.reset();
+      for(auto it=transit.begin(); it!=transit.end();) {
+        if(it->arrival>ts_ns) {
+          event("cancelled_in_transit",*it,ts_ns,0,0);
+          if(it->expires==assist_known_until) assist_known_until=-1;
+          it=transit.erase(it);
+          assist_cancel_frame=true;
+        } else ++it;
+      }
+      const bool remote_stop=config_.feedback_transport || config_.stop_request_delay_ms>0;
+      if(remote_stop && assist_known_until>ts_ns && stop_request_ready<0) {
+        stop_request_ready=ts_ns+std::llround(std::max(0.0,config_.stop_request_delay_ms)*1e6);
+        assist_cancel_frame=true;
+      }
+    };
     if(legacy_chase && config_.incremental_control) {
       if(controllable && connected && !feedback_fault && encoder_valid) {
         const double delay=std::max(0.0,config_.actuator_delay_frames*config_.dt_s+jitter(delay_rng)*.001);
@@ -794,18 +839,11 @@ ScenarioResult Simulator::run() {
         const double fy=feed ? selected->x[3]*config_.actuator_units_per_px : 0;
         const double ux=pid_x.step((target.first-aim_x)*config_.actuator_units_per_px-pending.first,config_.dt_s,fx);
         const double uy=pid_y.step((target.second-aim_y)*config_.actuator_units_per_px-pending.second,config_.dt_s,fy);
-        transit.push_back({std::uint64_t(frame+1),std::uint64_t(frame),selected->id,
-                          ts_ns,arrival,arrival+std::llround(2*config_.dt_s*1e9),ux*config_.dt_s,uy*config_.dt_s});
+        IncrementCommand command{std::uint64_t(frame+1),std::uint64_t(frame),selected->id,
+                          ts_ns,arrival,arrival+std::llround(2*config_.dt_s*1e9),ux*config_.dt_s,uy*config_.dt_s};
         if(feed && delay_mode)
-          flight.issue(transit.back().id,(ux-fx)*config_.dt_s,(uy-fy)*config_.dt_s,ux*config_.dt_s,uy*config_.dt_s);
-        event("generated",transit.back(),ts_ns,ux*config_.dt_s,uy*config_.dt_s);
-        if(config_.dispatch_failure_rate>0 && failure(failure_rng)<config_.dispatch_failure_rate) {
-          event("dispatch_failed",transit.back(),ts_ns,0,0);transit.pop_back();dispatch_ok=false;
-          pid_x.reset();pid_y.reset();
-        } else if(config_.async_stages && !stages.enqueue(Stage::Execution, arrival, frame, 1)) {
-          ++output.stage_rejected;
-        }
-        if(std::hypot(ux,uy)>=config_.actuator_max_speed*config_.actuator_units_per_px) ++saturated_frames;
+          flight.issue(command.id,(ux-fx)*config_.dt_s,(uy-fy)*config_.dt_s,ux*config_.dt_s,uy*config_.dt_s);
+        dispatch_incremental(command,ux,uy);
       } else if(feedback_fault && connected && config_.stop_request_delay_ms>0) {
         // Block generation immediately; physical stop waits for transport.
         pid_x.reset();pid_y.reset();
@@ -819,43 +857,39 @@ ScenarioResult Simulator::run() {
       const double image_dx=selected ? selected->x[0]-center_x : 0;
       const double image_dy=selected ? selected->x[1]-center_y : 0;
       const double distance=std::hypot(image_dx,image_dy);
-      auto stop_assist=[&]{
-        assist_speed_x=assist_speed_y=0;
-        pid_x.reset(); pid_y.reset();
-        if(!transit.empty() || active_command.id) {
-          for(const auto& c:transit) event("cancelled_in_transit",c,ts_ns,0,0);
-          if(active_command.id) event("cancelled",active_command,ts_ns,0,0);
-          active_command={}; transit.clear(); actuator.cancel();
-          assist_cancel_frame=true;
-        }
-      };
-      if(human_takeover_frame) {
+      if(human_hold) {
         assist_state=AssistState::HumanOverride;
-        assist_reason="human_turn";
+        assist_reason=human_explicit_frame ? "human_turn" : "human_hold";
+        assist_latched=false;
+        withdraw_assist();
+      } else if(human_release_frame || human_pulse_frame) {
+        assist_state=AssistState::HumanOverride;
+        assist_reason=human_pulse_frame && !human_release_frame ? "human_turn" : "resume_wait";
         assist_latched=false;
         assist_resume_at=ts_ns+std::llround(config_.assist_resume_wait_s*1e9);
-        stop_assist();
+        withdraw_assist();
       } else if(assist_state==AssistState::HumanOverride && ts_ns<assist_resume_at) {
         assist_reason="resume_wait";
-        stop_assist();
+        withdraw_assist();
       } else if(!controllable) {
         assist_state=AssistState::Suspended;
         assist_reason="unreliable";
         assist_latched=false;
-        stop_assist();
+        withdraw_assist();
       } else {
         if(!assist_latched && distance<=config_.assist_enter_px) assist_latched=true;
         else if(assist_latched && distance>config_.assist_exit_px) assist_latched=false;
         if(!assist_latched) {
           assist_state=AssistState::Armed;
           assist_reason="outside";
-          stop_assist();
+          withdraw_assist();
         } else if(distance<=config_.assist_deadzone_px) {
           assist_state=AssistState::Assisting;
           assist_reason="deadzone";
           assist_speed_x=assist_speed_y=0;
-        } else if(active_command.id || !transit.empty()) {
-          // One limited step at a time. A step already on the way is not added again.
+        } else if(assist_known_until>ts_ns) {
+          // The deadline was chosen when the command was issued. Hidden device
+          // progress does not change this decision.
           assist_state=AssistState::Assisting;
           assist_reason="in_flight";
         } else {
@@ -888,13 +922,12 @@ ScenarioResult Simulator::run() {
             const auto arrival=ts_ns+std::llround(delay*1e9);
             command_lead_ms=(arrival-ts_ns)*1e-6;
             used_horizon=0;
-            transit.push_back({std::uint64_t(frame+1),std::uint64_t(frame),selected->id,
+            IncrementCommand command{std::uint64_t(frame+1),std::uint64_t(frame),selected->id,
                               ts_ns,arrival,arrival+std::llround(2*config_.dt_s*1e9),
                               assist_dx_frame*config_.actuator_units_per_px,
-                              assist_dy_frame*config_.actuator_units_per_px});
-            event("generated",transit.back(),ts_ns,transit.back().dx,transit.back().dy);
-            if(config_.async_stages && !stages.enqueue(Stage::Execution, arrival, frame, 1))
-              ++output.stage_rejected;
+                              assist_dy_frame*config_.actuator_units_per_px};
+            if(dispatch_incremental(command,command.dx/config_.dt_s,command.dy/config_.dt_s))
+              assist_known_until=command.expires;
           }
         }
       }
@@ -918,33 +951,6 @@ ScenarioResult Simulator::run() {
       aim_y = command.second;
     }
 
-    }
-    if(config_.assist_mode==AssistMode::HumanLed && config_.incremental_control && !controllable) {
-      auto stop_assist=[&]{
-        assist_speed_x=assist_speed_y=0;
-        pid_x.reset(); pid_y.reset();
-        if(!transit.empty() || active_command.id) {
-          for(const auto& c:transit) event("cancelled_in_transit",c,ts_ns,0,0);
-          if(active_command.id) event("cancelled",active_command,ts_ns,0,0);
-          active_command={}; transit.clear(); actuator.cancel();
-          assist_cancel_frame=true;
-        }
-      };
-      if(human_takeover_frame) {
-        assist_state=AssistState::HumanOverride;
-        assist_reason="human_turn";
-        assist_latched=false;
-        assist_resume_at=ts_ns+std::llround(config_.assist_resume_wait_s*1e9);
-        stop_assist();
-      } else if(assist_state==AssistState::HumanOverride && ts_ns<assist_resume_at) {
-        assist_reason="resume_wait";
-        stop_assist();
-      } else {
-        assist_state=AssistState::Suspended;
-        assist_reason="unreliable";
-        assist_latched=false;
-        stop_assist();
-      }
     }
 
     const float error_x = aim_x - truth_x;
@@ -1009,7 +1015,7 @@ ScenarioResult Simulator::run() {
     record.assist_dy_px=assist_dy_frame;
     record.human_dx_px=human_dx;
     record.human_dy_px=human_dy;
-    record.human_takeover=human_takeover_frame;
+    record.human_takeover=human_explicit_frame || human_pulse_frame;
     record.executed_dx_px=config_.view_feedback ? sample_camera_x-previous_camera_x : aim_x-previous_aim_x;
     record.executed_dy_px=config_.view_feedback ? sample_camera_y-previous_camera_y : aim_y-previous_aim_y;
     record.auto_follow=auto_follow;

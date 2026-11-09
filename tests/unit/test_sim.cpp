@@ -339,7 +339,7 @@ int main(int argc, char** argv) try {
     if(std::abs(frame.assist_dx_px)>1e-9 || std::abs(frame.camera_x)>1e-4) waiting_still=false;
   require(waiting_still, "between enter and exit the assist stays armed until it has entered");
   auto yielded=inside;
-  yielded.human_camera.push_back({400000000,30,0,true});
+  yielded.human_camera.push_back({400000000,30,0,false});
   const auto yielded_run=Simulator(yielded,tracker).run();
   bool yielded_ok=yielded_run.frames[10].human_takeover &&
                   yielded_run.frames[10].assist_reason=="human_turn" &&
@@ -350,7 +350,62 @@ int main(int argc, char** argv) try {
   int resumed_steps=0;
   for(std::size_t i=16;i<yielded_run.frames.size();++i)
     if(std::abs(yielded_run.frames[i].assist_dx_px)>0.2) ++resumed_steps;
-  require(yielded_ok && resumed_steps>0, "a human turn pauses assist and later steps stay inside the limit");
+  require(yielded_ok && resumed_steps>0, "a large human turn pauses assist and later steps stay inside the limit");
+  auto hold_takeover=inside;
+  hold_takeover.human_camera.push_back({400000000,0,0,true});
+  const auto hold_run=Simulator(hold_takeover,tracker).run();
+  int held_commands=0;
+  for(const auto& command:hold_run.commands)
+    if(command.kind=="generated" && command.frame_id>=10) ++held_commands;
+  require(held_commands==0 && hold_run.frames.back().assist_state=="human_override" &&
+          hold_run.frames.back().camera_x<8,
+          "explicit takeover stays latched until a release sample");
+  auto released=hold_takeover;
+  released.human_camera.push_back({800000000,0,0,false});
+  const auto released_run=Simulator(released,tracker).run();
+  int released_steps=0;
+  for(std::size_t i=26;i<released_run.frames.size();++i)
+    if(std::abs(released_run.frames[i].assist_dx_px)>0.2) ++released_steps;
+  require(released_run.frames[20].assist_reason=="resume_wait" && released_steps>0,
+          "assist resumes only after an explicit release and the wait");
+  auto retaken=released;
+  retaken.human_camera.push_back({900000000,0,0,true});
+  const auto retaken_run=Simulator(retaken,tracker).run();
+  int retaken_commands=0;
+  for(const auto& command:retaken_run.commands)
+    if(command.kind=="generated" && command.frame_id>=23) ++retaken_commands;
+  require(retaken_commands==0 && retaken_run.frames.back().assist_reason=="human_hold",
+          "a new takeover during the release wait latches again");
+  auto failed_dispatch=inside;
+  failed_dispatch.dispatch_failure_rate=1;
+  const auto failed_run=Simulator(failed_dispatch,tracker).run();
+  int failed_applied=0, failed_marked=0;
+  for(const auto& command:failed_run.commands) {
+    if(command.kind=="applied") ++failed_applied;
+    if(command.kind=="dispatch_failed") ++failed_marked;
+  }
+  require(failed_applied==0 && failed_marked>0 && std::abs(failed_run.frames.back().camera_x)<1e-4,
+          "a failed dispatch does not reach the actuator");
+  auto assist_delayed=inside;
+  assist_delayed.frames=30;
+  assist_delayed.feedback_transport=true;
+  assist_delayed.feedback_delay_ms=2000;
+  assist_delayed.feedback_timeout_ms=5000;
+  auto assist_dropped=assist_delayed;
+  assist_dropped.feedback_drop_rate=1;
+  const auto assist_delayed_run=Simulator(assist_delayed,tracker).run();
+  const auto assist_dropped_run=Simulator(assist_dropped,tracker).run();
+  bool same_commands=assist_delayed_run.commands.size()==assist_dropped_run.commands.size();
+  if(same_commands) {
+    for(std::size_t i=0;i<assist_delayed_run.commands.size();++i) {
+      const auto& a=assist_delayed_run.commands[i];
+      const auto& b=assist_dropped_run.commands[i];
+      if(a.kind!=b.kind || a.frame_id!=b.frame_id || std::abs(a.dx-b.dx)>1e-9 || std::abs(a.dy-b.dy)>1e-9)
+        same_commands=false;
+    }
+  }
+  require(same_commands && !assist_delayed_run.commands.empty(),
+          "hidden feedback delivery does not change assist commands");
   {
     ControllerFlightLedger applied, idle;
     applied.issue(1, 0.25, -0.10, 1.0, -0.40);
@@ -461,6 +516,20 @@ int main(int argc, char** argv) try {
     require(dependency.enqueue(Stage::Inference,10,0),"queue an inference");
     try { dependency.enqueue(Stage::Capture,20,0); } catch(const std::invalid_argument&) { inverted=true; }
     require(negative && rollback && inverted,"negative, reversed, and inverted stage times are rejected");
+    StageScheduler cross(4);
+    require(cross.enqueue(Stage::Execution,100,0) && cross.popDue(100),"pop the later execution");
+    bool cross_rejected=false;
+    try { cross.enqueue(Stage::Capture,50,1); } catch(const std::invalid_argument&) { cross_rejected=true; }
+    require(cross_rejected && !cross.popDue(100),"a shared clock cannot move from execution back to capture");
+    StageScheduler orphan(4);
+    require(orphan.enqueue(Stage::Inference,0,0),"queue an inference that will be abandoned");
+    orphan.release(0);
+    require(orphan.queued(Stage::Inference)==0,"release removes the abandoned inference");
+    require(orphan.enqueue(Stage::Capture,10,1) && orphan.enqueue(Stage::Inference,10,1),"queue the next frame");
+    const auto orphan_capture=orphan.popDue(10);
+    const auto orphan_inference=orphan.popDue(10);
+    require(orphan_capture && orphan_capture->frame==1 && orphan_inference && orphan_inference->frame==1 &&
+            orphan.queued(Stage::Inference)==0,"an abandoned inference does not block the next frame");
     StageScheduler reclaimed(2);
     for(int frame=0; frame<30; ++frame) {
       require(reclaimed.enqueue(Stage::Capture,frame,frame),"capture stays bounded");

@@ -45,10 +45,12 @@ class StageScheduler {
 
   // rank 0 is popped before rank 1 at the same stage and time. A full queue
   // rejects the new event; nothing already queued is dropped. Negative time,
-  // a stage clock moving backwards, and an inference scheduled before its
-  // capture are rejected instead of being reordered later.
+  // a shared or per-stage clock moving backwards, and an inference scheduled
+  // before its capture are rejected instead of being reordered later.
   bool enqueue(Stage stage, std::int64_t time_ns, int frame, int rank = 0) {
     if (time_ns < 0) throw std::invalid_argument("Stage time cannot be negative");
+    if (processed_ns_ >= 0 && time_ns < processed_ns_)
+      throw std::invalid_argument("Stage time moved backwards");
     if (clocks_[index(stage)] >= 0 && time_ns < clocks_[index(stage)])
       throw std::invalid_argument("Stage time moved backwards");
     if (frame >= 0 && stage == Stage::Inference) {
@@ -98,16 +100,21 @@ class StageScheduler {
       captured_[event.frame] = event.time_ns;
       while (captured_.size() > capacity_) captured_.erase(captured_.begin());
     }
-    if (event.stage == Stage::Inference && event.frame >= 0) release(event.frame);
+    if (event.stage == Stage::Inference && event.frame >= 0) forget(event.frame);
     clocks_[index(event.stage)] = event.time_ns;
+    processed_ns_ = event.time_ns;
     return event;
   }
 
-  // Drop capture dependency metadata once its inference completes or is abandoned.
+  // Drop the frame's metadata and any event still queued for it. An abandoned
+  // inference must not remain at the head of the queue and block a later frame.
   void release(int frame) {
-    scheduled_capture_.erase(frame);
-    scheduled_inference_.erase(frame);
-    captured_.erase(frame);
+    for (auto& queue : queues_) {
+      queue.erase(std::remove_if(queue.begin(), queue.end(), [&](const StageEvent& event) {
+        return event.frame == frame;
+      }), queue.end());
+    }
+    forget(frame);
   }
 
   std::size_t retainedFrames() const {
@@ -121,6 +128,11 @@ class StageScheduler {
  private:
   static int index(Stage stage) { return static_cast<int>(stage); }
   bool captured(int frame) const { return frame >= 0 && captured_.count(frame) != 0; }
+  void forget(int frame) {
+    scheduled_capture_.erase(frame);
+    scheduled_inference_.erase(frame);
+    captured_.erase(frame);
+  }
   static bool earlier(const StageEvent& a, const StageEvent& b) {
     if (a.time_ns != b.time_ns) return a.time_ns < b.time_ns;
     if (a.stage != b.stage) return static_cast<int>(a.stage) < static_cast<int>(b.stage);
@@ -134,6 +146,7 @@ class StageScheduler {
   std::map<int, std::int64_t> scheduled_capture_, scheduled_inference_, captured_;
   std::array<std::uint64_t, 4> rejected_{};
   std::array<std::int64_t, 4> clocks_{};
+  std::int64_t processed_ns_ = -1;
 };
 
 }  // namespace sim
