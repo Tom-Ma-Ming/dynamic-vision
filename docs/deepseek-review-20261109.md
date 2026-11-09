@@ -67,3 +67,21 @@ $env:PYTHONUTF8 = '1'
 ```
 
 当前检查明确失败：旧补偿关闭的垂直偏移和固定时钟对照通过，新补偿的两个垂直用例不产生纵向命令，async1出现39帧坐标不一致、最大16px。这套检查只覆盖本轮两个可执行反例；即使后续全部通过，反馈因果、协方差自洽、多人身份恢复、真正异步链路和总体路线图仍需单独验收。
+
+## 阶段时钟防御性检查补充
+
+独立编译tests/review/stage_scheduler_probe.cpp直接调用当前StageScheduler，确认三项均未防护：
+
+1. Execution时刻100已出队后，再入队Execution50仍成功，随后出队50，阶段时钟倒退。
+2. Inference10等待Capture20，捕获出队后返回Inference10，依赖解除造成全局事件时间倒退。
+3. Execution时间-1未拒绝。
+
+这说明调度器没有拒绝无效输入/过期事件的时钟契约；不是声称所有正常配置都会触发。测试不修改现有算法，返回1表示反例未修复。依赖时刻冲突应拒绝或明确修正且记录，不能把较早的计划时刻直接当作较晚实际处理的时间。该探针只验证不倒退和负时间拒绝，不替代队列活性/公平性/有界内存验收。
+
+```powershell
+cmake -S tests/review -B out/review-stage-clock -G "Visual Studio 16 2019" -A x64
+cmake --build out/review-stage-clock --config Release
+./out/review-stage-clock/Release/stage_scheduler_probe.exe
+```
+
+本机实测输出execution_clock=100 -> 50、dependency_clock=20 -> 10，三个检查均false，退出码1。构建只依赖C++17及待评审的StageScheduler.hpp，仍须将该头文件纳入交付。

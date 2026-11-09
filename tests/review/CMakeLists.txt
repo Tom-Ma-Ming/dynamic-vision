@@ -1,0 +1,5 @@
+cmake_minimum_required(VERSION 3.20)
+project(stage_scheduler_review LANGUAGES CXX)
+add_executable(stage_scheduler_probe stage_scheduler_probe.cpp)
+target_compile_features(stage_scheduler_probe PRIVATE cxx_std_17)
+target_include_directories(stage_scheduler_probe PRIVATE ../../include)
