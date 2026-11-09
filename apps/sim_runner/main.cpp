@@ -26,6 +26,12 @@ struct Group {
   double mae_sum = 0;
 };
 
+sim::AssistMode parseAssistMode(const std::string& value) {
+  if (value == "legacy") return sim::AssistMode::Legacy;
+  if (value == "human_led") return sim::AssistMode::HumanLed;
+  throw std::runtime_error("Unknown assist mode: " + value);
+}
+
 sim::Motion parseMotion(const std::string& value) {
   if (value == "constant") return sim::Motion::Constant;
   if (value == "stop") return sim::Motion::Stop;
@@ -140,6 +146,29 @@ std::vector<sim::ScenarioConfig> loadScenarios(const std::string& path) {
     config.observation_delay_ms=doubleOr(node,"observation_delay_ms",config.observation_delay_ms);
     config.delay_jitter_ms=doubleOr(node,"delay_jitter_ms",config.delay_jitter_ms);
     config.seed = static_cast<std::uint32_t>(intOr(node, "seed", 1));
+    config.assist_mode = parseAssistMode(stringOr(node, "assist_mode", "legacy"));
+    config.assist_enter_px = doubleOr(node, "assist_enter_px", config.assist_enter_px);
+    config.assist_exit_px = doubleOr(node, "assist_exit_px", config.assist_exit_px);
+    config.assist_deadzone_px = doubleOr(node, "assist_deadzone_px", config.assist_deadzone_px);
+    config.assist_max_step_px = doubleOr(node, "assist_max_step_px", config.assist_max_step_px);
+    config.assist_max_speed_px_s = doubleOr(node, "assist_max_speed_px_s", config.assist_max_speed_px_s);
+    config.assist_max_accel_px_s2 = doubleOr(node, "assist_max_accel_px_s2", config.assist_max_accel_px_s2);
+    config.human_turn_px = doubleOr(node, "human_turn_px", config.human_turn_px);
+    config.assist_resume_wait_s = doubleOr(node, "assist_resume_wait_s", config.assist_resume_wait_s);
+    config.assist_center_x = doubleOr(node, "assist_center_x", config.assist_center_x);
+    config.assist_center_y = doubleOr(node, "assist_center_y", config.assist_center_y);
+    const cv::FileNode human = node["human_camera"];
+    if (!human.empty()) {
+      if (!human.isSeq()) throw std::runtime_error("human_camera must be a sequence");
+      for (auto sample = human.begin(); sample != human.end(); ++sample) {
+        sim::HumanCameraSample input;
+        input.time_ns = std::llround(doubleOr(*sample, "t_ns", 0));
+        input.dx_px = doubleOr(*sample, "dx_px", 0);
+        input.dy_px = doubleOr(*sample, "dy_px", 0);
+        input.takeover = intOr(*sample, "takeover", 0) != 0;
+        config.human_camera.push_back(input);
+      }
+    }
     result.push_back(config);
   }
   if (result.empty()) throw std::runtime_error("Simulation config has no scenarios");
@@ -213,7 +242,17 @@ void writeFrame(std::ostream& out, const std::string& scene,
       << ",\"age_ms\":" << frame.age_ms
       << ",\"covariance_trace\":" << frame.covariance_trace
       << ",\"detections\":" << frame.detections
-      << ",\"false_positives\":" << frame.false_positives;
+      << ",\"false_positives\":" << frame.false_positives
+      << ",\"assist_state\":" << jsonString(frame.assist_state)
+      << ",\"assist_reason\":" << jsonString(frame.assist_reason)
+      << ",\"assist_cancel\":" << (frame.assist_cancel ? "true" : "false")
+      << ",\"assist_dx_px\":" << frame.assist_dx_px
+      << ",\"assist_dy_px\":" << frame.assist_dy_px
+      << ",\"human_takeover\":" << (frame.human_takeover ? "true" : "false")
+      << ",\"human_dx_px\":" << frame.human_dx_px
+      << ",\"human_dy_px\":" << frame.human_dy_px
+      << ",\"executed_dx_px\":" << frame.executed_dx_px
+      << ",\"executed_dy_px\":" << frame.executed_dy_px;
   if(frame.has_modes) {
     out<<",\"mode_probabilities\":[";
     for(size_t j=0;j<3;++j) out<<(j?",":"")<<frame.mode_probabilities[j];
@@ -354,6 +393,25 @@ int main(int argc, char** argv) try {
             << ",\"encoder_extrapolation\":" << (scenarios[i].encoder_extrapolation?"true":"false")
             << ",\"velocity_feedforward\":" << (scenarios[i].velocity_feedforward?"true":"false")
             << ",\"encoder_delay_compensation\":" << (scenarios[i].encoder_delay_compensation?"true":"false")
+            << ",\"assist\":{\"mode\":" << jsonString(result.assist.mode)
+            << ",\"protocol\":" << jsonString(result.assist.protocol)
+            << ",\"parameters_experimental\":" << (result.assist.parameters_experimental?"true":"false")
+            << ",\"center_x\":" << result.assist.center_x
+            << ",\"center_y\":" << result.assist.center_y
+            << ",\"enter_px\":" << result.assist.enter_px
+            << ",\"exit_px\":" << result.assist.exit_px
+            << ",\"deadzone_px\":" << result.assist.deadzone_px
+            << ",\"max_step_px\":" << result.assist.max_step_px
+            << ",\"max_speed_px_s\":" << result.assist.max_speed_px_s
+            << ",\"max_accel_px_s2\":" << result.assist.max_accel_px_s2
+            << ",\"human_turn_px\":" << result.assist.human_turn_px
+            << ",\"resume_wait_s\":" << result.assist.resume_wait_s
+            << ",\"human_samples\":" << result.assist.human_samples
+            << ",\"displacement_unit\":" << jsonString(result.assist.displacement_unit)
+            << ",\"speed_unit\":" << jsonString(result.assist.speed_unit)
+            << ",\"acceleration_unit\":" << jsonString(result.assist.acceleration_unit)
+            << ",\"time_unit\":" << jsonString(result.assist.time_unit)
+            << "}"
             << ",\"effective\":{\"delay_compensation_active\":" << (result.effective.delay_compensation_active?"true":"false")
             << ",\"measurement_sigma\":" << result.effective.measurement_sigma
             << ",\"acceleration_sigma\":" << result.effective.acceleration_sigma

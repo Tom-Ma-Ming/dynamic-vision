@@ -14,6 +14,19 @@ namespace sim {
 enum class Motion { Constant, Stop, Turn, Squat, Occlusion, CameraPan };
 enum class TaskResult { Running, Success, Failed, Unknown };
 enum class Cause { None, Detection, Association, Prediction, Control, Timeout };
+// Legacy keeps the existing diagnostic controller. HumanLed is the product
+// contract: a person makes large turns, and assist may only trim near center.
+enum class AssistMode { Legacy, HumanLed };
+enum class AssistState { Disabled, Armed, Assisting, HumanOverride, Suspended };
+
+// External human camera input. Displacements are control-image pixels.
+// The controller may read a sample only at or after time_ns.
+struct HumanCameraSample {
+  std::int64_t time_ns = 0;
+  double dx_px = 0;
+  double dy_px = 0;
+  bool takeover = false;
+};
 
 struct ScenarioConfig {
   std::string scene_id = "scene";
@@ -77,6 +90,22 @@ struct ScenarioConfig {
   float command_horizon_s = 0.1f;
   int unknown_grace_frames = 50;
   std::uint32_t seed = 1;
+  // Experimental assist limits. They are not a confirmed product standard.
+  // Distances are control-image pixels, speed is px/s, acceleration is px/s^2,
+  // and human sample times are nanoseconds.
+  AssistMode assist_mode = AssistMode::Legacy;
+  double assist_enter_px = 48;
+  double assist_exit_px = 72;
+  double assist_deadzone_px = 1;
+  double assist_max_step_px = 2;
+  double assist_max_speed_px_s = 50;
+  double assist_max_accel_px_s2 = 500;
+  double human_turn_px = 12;
+  double assist_resume_wait_s = 0.2;
+  // Negative center means the image center. HumanLed must set both explicitly.
+  double assist_center_x = -1;
+  double assist_center_y = -1;
+  std::vector<HumanCameraSample> human_camera;
 };
 
 struct FrameRecord {
@@ -127,6 +156,14 @@ struct FrameRecord {
   double covariance_trace = 0;
   int detections = 0;
   int false_positives = 0;
+  // Assist output is separate from human input and from what the actuator did.
+  std::string assist_state = "disabled";
+  std::string assist_reason = "legacy";
+  bool assist_cancel = false;
+  bool human_takeover = false;
+  double assist_dx_px = 0, assist_dy_px = 0;
+  double human_dx_px = 0, human_dy_px = 0;
+  double executed_dx_px = 0, executed_dy_px = 0;
 };
 
 struct Metrics {
@@ -182,6 +219,20 @@ struct EffectiveControl {
   bool encoder_extrapolation = false;
   bool vertical_axis_enabled = true;
 };
+struct AssistContract {
+  std::string mode = "legacy";
+  std::string protocol = "legacy";
+  bool parameters_experimental = true;
+  double center_x = 0, center_y = 0;
+  double enter_px = 0, exit_px = 0, deadzone_px = 0;
+  double max_step_px = 0, max_speed_px_s = 0, max_accel_px_s2 = 0;
+  double human_turn_px = 0, resume_wait_s = 0;
+  int human_samples = 0;
+  std::string displacement_unit = "control_image_px";
+  std::string speed_unit = "px/s";
+  std::string acceleration_unit = "px/s^2";
+  std::string time_unit = "ns";
+};
 struct ScenarioResult {
   std::string scene_id;
   Motion motion = Motion::Constant;
@@ -189,6 +240,7 @@ struct ScenarioResult {
   Cause cause = Cause::None;
   int terminal_frame = -1;
   EffectiveControl effective;
+  AssistContract assist;
   Metrics metrics;
   std::vector<FrameRecord> frames;
   std::vector<CommandEvent> commands;

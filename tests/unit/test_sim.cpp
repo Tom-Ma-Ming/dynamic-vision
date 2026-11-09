@@ -233,6 +233,63 @@ int main(int argc, char** argv) try {
   require(omitted_run.commands.size()==vertical_off.commands.size() &&
           omitted_run.metrics.mae_px==vertical_off.metrics.mae_px,
           "leaving compensation unset matches turning it off");
+  require(ScenarioConfig{}.assist_mode==AssistMode::Legacy,"assist defaults to the legacy diagnostic mode");
+  auto reject_assist=[&](ScenarioConfig config,const char* message) {
+    bool rejected=false;
+    try {Simulator(config,tracker);} catch(const std::invalid_argument&) {rejected=true;}
+    require(rejected,message);
+  };
+  auto bad_region=ScenarioConfig{};
+  bad_region.assist_exit_px=10;
+  reject_assist(bad_region,"exit boundary must not sit inside the enter boundary");
+  auto bad_deadzone=ScenarioConfig{};
+  bad_deadzone.assist_deadzone_px=48;
+  reject_assist(bad_deadzone,"deadzone must stay inside the assist region");
+  auto bad_speed=ScenarioConfig{};
+  bad_speed.assist_max_speed_px_s=-1;
+  reject_assist(bad_speed,"assist speed limit must be positive");
+  auto bad_clock=ScenarioConfig{};
+  bad_clock.human_camera.push_back({100,1,0,false});
+  bad_clock.human_camera.push_back({50,1,0,false});
+  reject_assist(bad_clock,"human input cannot move backwards in time");
+  auto missing_center=ScenarioConfig{};
+  missing_center.assist_mode=AssistMode::HumanLed;
+  reject_assist(missing_center,"human-led assist requires an explicit center");
+  auto outside=ScenarioConfig{};
+  outside.assist_center_x=1000;
+  outside.assist_center_y=240;
+  reject_assist(outside,"assist center must lie inside the control image");
+  auto legacy_offset=constant;
+  legacy_offset.frames=30;
+  legacy_offset.start_x=200;
+  legacy_offset.vx=0;
+  legacy_offset.noise_px=0;
+  legacy_offset.incremental_control=true;
+  legacy_offset.view_feedback=true;
+  legacy_offset.acquire_single_confirmed=true;
+  const auto legacy_chase=Simulator(legacy_offset,tracker).run();
+  int legacy_commands=0;
+  for(const auto& command:legacy_chase.commands)
+    if(command.kind=="generated" && std::abs(command.dx)>1e-9) ++legacy_commands;
+  require(legacy_commands>0 && legacy_chase.assist.mode=="legacy" &&
+          legacy_chase.frames.back().assist_reason=="legacy" &&
+          legacy_chase.frames.back().assist_dx_px==0,
+          "legacy mode still records its diagnostic chase separately from assist");
+  auto human_led_config=legacy_offset;
+  human_led_config.assist_mode=AssistMode::HumanLed;
+  human_led_config.assist_center_x=320;
+  human_led_config.assist_center_y=240;
+  human_led_config.human_camera.push_back({0,40,0,true});
+  const auto human_led=Simulator(human_led_config,tracker).run();
+  require(human_led.commands.empty() && human_led.assist.protocol=="human-led-v1" &&
+          human_led.assist.parameters_experimental && human_led.assist.human_samples==1 &&
+          human_led.assist.center_x==320 && human_led.assist.enter_px==48 &&
+          human_led.assist.exit_px>=human_led.assist.enter_px,
+          "human-led mode records the contract and does not chase a large offset");
+  require(human_led.frames.back().human_takeover && human_led.frames.back().human_dx_px==40 &&
+          human_led.frames.back().assist_dx_px==0 && human_led.frames.back().assist_dy_px==0 &&
+          human_led.frames.back().executed_dx_px==0 && human_led.frames.back().assist_reason=="state_machine_pending",
+          "delivered human input is visible while assist output stays at zero");
   {
     ControllerFlightLedger applied, idle;
     applied.issue(1, 0.25, -0.10, 1.0, -0.40);

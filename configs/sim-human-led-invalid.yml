@@ -1,0 +1,4 @@
+%YAML:1.0
+# Invalid on purpose: the exit boundary is inside the enter boundary.
+scenarios:
+  - {id: "bad-region", motion: "constant", frames: 5, assist_mode: "human_led", assist_center_x: 320., assist_center_y: 240., assist_enter_px: 48., assist_exit_px: 10.}
