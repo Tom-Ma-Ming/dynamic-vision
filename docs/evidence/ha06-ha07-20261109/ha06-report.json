@@ -1,0 +1,296 @@
+{
+  "protocol": "ha06-v1",
+  "status": "passed",
+  "parameters_experimental": true,
+  "experimental_note": "assist enter/exit, deadzone, step, speed, acceleration, human-turn threshold and resume wait are experimental tunables. They are not a confirmed product standard.",
+  "deferred": [
+    "reid",
+    "person_recall_95",
+    "remote_ci"
+  ],
+  "groups": {
+    "compare": {
+      "scenes": [
+        {
+          "id": "shared-static",
+          "human_same": true,
+          "on_assist_px": 12.4,
+          "off_assist_px": 0.0,
+          "on_final_error_px": 1,
+          "off_final_error_px": 12,
+          "on_enabled": true,
+          "off_enabled": true,
+          "parameters_experimental": true
+        },
+        {
+          "id": "shared-drift",
+          "human_same": true,
+          "on_assist_px": 53.691741059,
+          "off_assist_px": 0.0,
+          "on_final_error_px": 1.99951172,
+          "off_final_error_px": 31.9995117,
+          "on_enabled": true,
+          "off_enabled": true,
+          "parameters_experimental": true
+        },
+        {
+          "id": "shared-yield",
+          "human_same": true,
+          "on_assist_px": 16.0,
+          "off_assist_px": 0.0,
+          "on_final_error_px": 1,
+          "off_final_error_px": 10,
+          "on_enabled": true,
+          "off_enabled": true,
+          "parameters_experimental": true
+        }
+      ],
+      "gates": {
+        "same_human_trajectory": true,
+        "assist_off_silent": true,
+        "on_arm_enabled": true,
+        "experimental_marked": true,
+        "static_on_closer": true,
+        "drift_on_closer": true,
+        "yield_human_matches": true
+      }
+    },
+    "multi": {
+      "scenes": [
+        {
+          "switches": 0,
+          "final_track_id": 1,
+          "final_error_px": 1,
+          "assist_px": 20.4,
+          "ambiguous_commands": 0,
+          "wrong_person_commands": 0,
+          "legacy_result": "FAILED",
+          "id": "separated",
+          "experimental": {
+            "parameters_experimental": true,
+            "enabled": true,
+            "enter_px": 48,
+            "exit_px": 72,
+            "deadzone_px": 1,
+            "max_step_px": 2,
+            "max_speed_px_s": 50,
+            "max_accel_px_s2": 500,
+            "resume_wait_s": 0.2,
+            "human_turn_px": 12
+          }
+        },
+        {
+          "switches": 0,
+          "final_track_id": 1,
+          "final_error_px": 1,
+          "assist_px": 20.0,
+          "ambiguous_commands": 0,
+          "wrong_person_commands": 0,
+          "legacy_result": "FAILED",
+          "id": "cross",
+          "experimental": {
+            "parameters_experimental": true,
+            "enabled": true,
+            "enter_px": 48,
+            "exit_px": 72,
+            "deadzone_px": 1,
+            "max_step_px": 2,
+            "max_speed_px_s": 50,
+            "max_accel_px_s2": 500,
+            "resume_wait_s": 0.2,
+            "human_turn_px": 12
+          }
+        }
+      ],
+      "gates": {
+        "separated_keeps_selection": true,
+        "cross_keeps_selection_id": true,
+        "cross_stops_when_ambiguous": true,
+        "cross_does_not_assist_wrong_person": true,
+        "experimental_marked": true
+      }
+    },
+    "faults": {
+      "scenes": [
+        {
+          "id": "delay-0",
+          "result": "FAILED",
+          "cause": "timeout",
+          "final_error_px": 1,
+          "assist_px": 12.4,
+          "experimental": {
+            "parameters_experimental": true,
+            "enabled": true,
+            "enter_px": 48,
+            "exit_px": 72,
+            "deadzone_px": 1,
+            "max_step_px": 2,
+            "max_speed_px_s": 50,
+            "max_accel_px_s2": 500,
+            "resume_wait_s": 0.2,
+            "human_turn_px": 12
+          }
+        },
+        {
+          "id": "delay-80",
+          "result": "FAILED",
+          "cause": "timeout",
+          "final_error_px": 1,
+          "assist_px": 12.4,
+          "experimental": {
+            "parameters_experimental": true,
+            "enabled": true,
+            "enter_px": 48,
+            "exit_px": 72,
+            "deadzone_px": 1,
+            "max_step_px": 2,
+            "max_speed_px_s": 50,
+            "max_accel_px_s2": 500,
+            "resume_wait_s": 0.2,
+            "human_turn_px": 12
+          }
+        },
+        {
+          "id": "dispatch-fail",
+          "result": "UNKNOWN",
+          "cause": "control",
+          "final_error_px": 20,
+          "assist_px": 156.4,
+          "experimental": {
+            "parameters_experimental": true,
+            "enabled": true,
+            "enter_px": 48,
+            "exit_px": 72,
+            "deadzone_px": 1,
+            "max_step_px": 2,
+            "max_speed_px_s": 50,
+            "max_accel_px_s2": 500,
+            "resume_wait_s": 0.2,
+            "human_turn_px": 12
+          }
+        },
+        {
+          "id": "feedback-drop",
+          "result": "UNKNOWN",
+          "cause": "control",
+          "final_error_px": 20,
+          "assist_px": 2.4000000000000004,
+          "experimental": {
+            "parameters_experimental": true,
+            "enabled": true,
+            "enter_px": 48,
+            "exit_px": 72,
+            "deadzone_px": 1,
+            "max_step_px": 2,
+            "max_speed_px_s": 50,
+            "max_accel_px_s2": 500,
+            "resume_wait_s": 0.2,
+            "human_turn_px": 12
+          }
+        },
+        {
+          "id": "encoder-drop",
+          "result": "FAILED",
+          "cause": "detection",
+          "final_error_px": 20,
+          "assist_px": 0.0,
+          "experimental": {
+            "parameters_experimental": true,
+            "enabled": true,
+            "enter_px": 48,
+            "exit_px": 72,
+            "deadzone_px": 1,
+            "max_step_px": 2,
+            "max_speed_px_s": 50,
+            "max_accel_px_s2": 500,
+            "resume_wait_s": 0.2,
+            "human_turn_px": 12
+          }
+        }
+      ],
+      "gates": {
+        "delay_pair_same_human": true,
+        "delay_recorded": true,
+        "delay_does_not_improve_on_stale_observation": true,
+        "dispatch_failure_does_not_move": true,
+        "feedback_drop_stops_and_is_unknown": true,
+        "encoder_drop_blocks_commands": true,
+        "experimental_marked": true
+      },
+      "retained_results": [
+        "FAILED",
+        "FAILED",
+        "UNKNOWN",
+        "UNKNOWN",
+        "FAILED"
+      ]
+    },
+    "image": {
+      "scenes": [
+        {
+          "id": "pixel-on",
+          "final_error_px": 1,
+          "assist_px": 20.4,
+          "result": "FAILED"
+        },
+        {
+          "id": "pixel-off",
+          "final_error_px": 20,
+          "assist_px": 0.0,
+          "result": "FAILED"
+        }
+      ],
+      "gates": {
+        "pixel_detector_recorded": true,
+        "pixel_on_closer": true,
+        "pixel_off_silent": true,
+        "experimental_marked": true,
+        "not_claimed_as_tensorrt": true
+      },
+      "scope": "cpu_pixel_closed_loop_not_yolo"
+    }
+  },
+  "tensorrt_image_closed_loop": {
+    "status": "not_run",
+    "result": "UNKNOWN",
+    "reason": "TensorRT image leg was not executed. VISION_WITH_TRT is Windows-only in this repo, and this run did not receive an engine, vision_sim_image, sprite and background together.",
+    "on_command": [
+      "vision_sim_image",
+      "<engine>",
+      "<sprite>",
+      "<background>",
+      "configs/tracker-body-primary.yml",
+      "/workspace/artifacts/human-led-assist/ha06-ha07-20261109/HA06/tensorrt-on",
+      "<target-x>",
+      "<target-y>",
+      "<target-w>",
+      "<target-h>",
+      "1",
+      "1",
+      "0",
+      "0",
+      "0",
+      "0",
+      "human_led"
+    ],
+    "off_command": [
+      "vision_sim_image",
+      "<engine>",
+      "<sprite>",
+      "<background>",
+      "configs/tracker-body-primary.yml",
+      "/workspace/artifacts/human-led-assist/ha06-ha07-20261109/HA06/tensorrt-on",
+      "<target-x>",
+      "<target-y>",
+      "<target-w>",
+      "<target-h>",
+      "1",
+      "1",
+      "0",
+      "0",
+      "0",
+      "0",
+      "human_led_off"
+    ]
+  }
+}

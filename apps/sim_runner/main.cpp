@@ -2,6 +2,7 @@
 
 #include <opencv2/core.hpp>
 #include <opencv2/core/persistence.hpp>
+#include <opencv2/imgproc.hpp>
 
 #include <cmath>
 #include <filesystem>
@@ -66,6 +67,22 @@ std::vector<sim::ScenarioConfig> loadScenarios(const std::string& path) {
   if (scenarios.empty() || !scenarios.isSeq()) {
     throw std::runtime_error("Simulation config needs a scenarios sequence");
   }
+  const cv::FileNode defaults = file["assist_defaults"];
+  auto pickDouble = [&](const cv::FileNode& node, const char* key, double fallback) {
+    if (!node[key].empty()) return static_cast<double>(node[key]);
+    if (!defaults.empty() && !defaults[key].empty()) return static_cast<double>(defaults[key]);
+    return fallback;
+  };
+  auto pickInt = [&](const cv::FileNode& node, const char* key, int fallback) {
+    if (!node[key].empty()) return static_cast<int>(node[key]);
+    if (!defaults.empty() && !defaults[key].empty()) return static_cast<int>(defaults[key]);
+    return fallback;
+  };
+  auto pickString = [&](const cv::FileNode& node, const char* key, const std::string& fallback) {
+    if (!node[key].empty()) return static_cast<std::string>(node[key]);
+    if (!defaults.empty() && !defaults[key].empty()) return static_cast<std::string>(defaults[key]);
+    return fallback;
+  };
   std::vector<sim::ScenarioConfig> result;
   for (auto it = scenarios.begin(); it != scenarios.end(); ++it) {
     const cv::FileNode node = *it;
@@ -146,17 +163,26 @@ std::vector<sim::ScenarioConfig> loadScenarios(const std::string& path) {
     config.observation_delay_ms=doubleOr(node,"observation_delay_ms",config.observation_delay_ms);
     config.delay_jitter_ms=doubleOr(node,"delay_jitter_ms",config.delay_jitter_ms);
     config.seed = static_cast<std::uint32_t>(intOr(node, "seed", 1));
-    config.assist_mode = parseAssistMode(stringOr(node, "assist_mode", "legacy"));
-    config.assist_enter_px = doubleOr(node, "assist_enter_px", config.assist_enter_px);
-    config.assist_exit_px = doubleOr(node, "assist_exit_px", config.assist_exit_px);
-    config.assist_deadzone_px = doubleOr(node, "assist_deadzone_px", config.assist_deadzone_px);
-    config.assist_max_step_px = doubleOr(node, "assist_max_step_px", config.assist_max_step_px);
-    config.assist_max_speed_px_s = doubleOr(node, "assist_max_speed_px_s", config.assist_max_speed_px_s);
-    config.assist_max_accel_px_s2 = doubleOr(node, "assist_max_accel_px_s2", config.assist_max_accel_px_s2);
-    config.human_turn_px = doubleOr(node, "human_turn_px", config.human_turn_px);
-    config.assist_resume_wait_s = doubleOr(node, "assist_resume_wait_s", config.assist_resume_wait_s);
-    config.assist_center_x = doubleOr(node, "assist_center_x", config.assist_center_x);
-    config.assist_center_y = doubleOr(node, "assist_center_y", config.assist_center_y);
+    config.assist_mode = parseAssistMode(pickString(node, "assist_mode", "legacy"));
+    config.assist_enter_px = pickDouble(node, "assist_enter_px", config.assist_enter_px);
+    config.assist_exit_px = pickDouble(node, "assist_exit_px", config.assist_exit_px);
+    config.assist_deadzone_px = pickDouble(node, "assist_deadzone_px", config.assist_deadzone_px);
+    config.assist_max_step_px = pickDouble(node, "assist_max_step_px", config.assist_max_step_px);
+    config.assist_max_speed_px_s = pickDouble(node, "assist_max_speed_px_s", config.assist_max_speed_px_s);
+    config.assist_max_accel_px_s2 = pickDouble(node, "assist_max_accel_px_s2", config.assist_max_accel_px_s2);
+    config.human_turn_px = pickDouble(node, "human_turn_px", config.human_turn_px);
+    config.assist_resume_wait_s = pickDouble(node, "assist_resume_wait_s", config.assist_resume_wait_s);
+    config.assist_center_x = pickDouble(node, "assist_center_x", config.assist_center_x);
+    config.assist_center_y = pickDouble(node, "assist_center_y", config.assist_center_y);
+    config.assist_enabled = pickInt(node, "assist_enabled", config.assist_enabled ? 1 : 0) != 0;
+    config.distractor = pickInt(node, "distractor", 0) != 0;
+    config.distractor_x = static_cast<float>(pickDouble(node, "distractor_x", config.distractor_x));
+    config.distractor_y = static_cast<float>(pickDouble(node, "distractor_y", config.distractor_y));
+    config.distractor_vx = static_cast<float>(pickDouble(node, "distractor_vx", config.distractor_vx));
+    config.distractor_vy = static_cast<float>(pickDouble(node, "distractor_vy", config.distractor_vy));
+    config.distractor_w = static_cast<float>(pickDouble(node, "distractor_w", config.distractor_w));
+    config.distractor_h = static_cast<float>(pickDouble(node, "distractor_h", config.distractor_h));
+    config.image_detector = stringOr(node, "image_detector", "");
     const cv::FileNode human = node["human_camera"];
     if (!human.empty()) {
       if (!human.isSeq()) throw std::runtime_error("human_camera must be a sequence");
@@ -337,7 +363,22 @@ int main(int argc, char** argv) try {
   bool all_terminal = true;
 
   for (const auto& scenario : scenarios) {
-    sim::Simulator simulator(scenario, tracker_config);
+    sim::ImageObservation images;
+    if (scenario.image_detector == "pixel") {
+      images.sprite = cv::Mat(std::max(1, cvRound(scenario.target_h)),
+                              std::max(1, cvRound(scenario.target_w)), CV_8UC3, cv::Scalar(0, 255, 0));
+      images.background = cv::Mat(scenario.height, scenario.width, CV_8UC3, cv::Scalar(40, 40, 40));
+      images.detect = [](const cv::Mat& image, int, std::int64_t) {
+        cv::Mat mask;
+        cv::inRange(image, cv::Scalar(0, 180, 0), cv::Scalar(80, 255, 80), mask);
+        std::vector<cv::Point> points;
+        cv::findNonZero(mask, points);
+        std::vector<mot::Detection> boxes;
+        if (!points.empty()) boxes.push_back({1, 0.99f, cv::Rect2f(cv::boundingRect(points))});
+        return boxes;
+      };
+    }
+    sim::Simulator simulator(scenario, tracker_config, images);
     sim::ScenarioResult result = simulator.run();
     for (const auto& frame : result.frames) {
       writeFrame(runs, result.scene_id, frame);
@@ -414,6 +455,7 @@ int main(int argc, char** argv) try {
             << ",\"human_turn_px\":" << result.assist.human_turn_px
             << ",\"resume_wait_s\":" << result.assist.resume_wait_s
             << ",\"human_samples\":" << result.assist.human_samples
+            << ",\"enabled\":" << (result.assist.enabled ? "true" : "false")
             << ",\"displacement_unit\":" << jsonString(result.assist.displacement_unit)
             << ",\"speed_unit\":" << jsonString(result.assist.speed_unit)
             << ",\"acceleration_unit\":" << jsonString(result.assist.acceleration_unit)
@@ -452,6 +494,8 @@ int main(int argc, char** argv) try {
             << ",\"pid_ki\":" << scenarios[i].pid_ki
             << ",\"pid_kd\":" << scenarios[i].pid_kd
             << ",\"actuator_units_per_px\":" << scenarios[i].actuator_units_per_px
+            << ",\"distractor\":" << (scenarios[i].distractor ? "true" : "false")
+            << ",\"image_detector\":" << jsonString(scenarios[i].image_detector)
             << ",\"planned_frames\":" << scenarios[i].frames
             << ",\"success_after_frame\":" << scenarios[i].success_after_frame
             << ",\"settle_frames\":" << scenarios[i].settle_frames

@@ -2,6 +2,7 @@
 # HA05 human-led scoring fixture. Distances are control-image pixels.
 # Enter 48, exit 72, deadzone 1, step 2, speed 50, acceleration 500 and the
 # 0.2 s resume wait are experimental, not a confirmed product standard.
+# Tune them here, or share one copy through assist_defaults as in the HA06 configs.
 # The independent auditor recomputes eligibility. The old SUCCESS latch is not
 # this protocol: outside the region, zero assist is a pass.
 scenarios:

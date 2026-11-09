@@ -255,6 +255,12 @@ int main(int argc, char** argv) try {
   auto missing_center=ScenarioConfig{};
   missing_center.assist_mode=AssistMode::HumanLed;
   reject_assist(missing_center,"human-led assist requires an explicit center");
+  auto bad_detector=ScenarioConfig{};
+  bad_detector.image_detector="yolo";
+  reject_assist(bad_detector,"only the pixel image detector is a built-in closed loop");
+  auto pixel_without_image=ScenarioConfig{};
+  pixel_without_image.image_detector="pixel";
+  reject_assist(pixel_without_image,"pixel mode requires a rendered observation");
   auto outside=ScenarioConfig{};
   outside.assist_center_x=1000;
   outside.assist_center_y=240;
@@ -425,6 +431,119 @@ int main(int argc, char** argv) try {
   }
   require(same_commands && !assist_delayed_run.commands.empty(),
           "hidden feedback delivery does not change assist commands");
+  auto faulted=inside;
+  faulted.frames=40;
+  faulted.feedback_drop_rate=1;
+  faulted.feedback_timeout_ms=200;
+  const auto faulted_run=Simulator(faulted,tracker).run();
+  int faulted_output=0;
+  for(const auto& frame:faulted_run.frames)
+    if(frame.feedback_fault && std::hypot(frame.assist_dx_px,frame.assist_dy_px)>1e-6) ++faulted_output;
+  require(faulted_output==0 && faulted_run.frames.back().control_gate=="feedback_timeout" &&
+          faulted_run.frames.back().assist_reason=="feedback_fault",
+          "a known feedback fault stops new assist output");
+  auto shared=inside;
+  shared.human_camera.push_back({0,8,0,false});
+  auto shared_off=shared;
+  shared_off.assist_enabled=false;
+  const auto shared_on=Simulator(shared,tracker).run();
+  const auto shared_off_run=Simulator(shared_off,tracker).run();
+  double off_assist=0;
+  require(shared_on.frames.size()==shared_off_run.frames.size(),"on and off run the same length");
+  for(std::size_t i=0;i<shared_on.frames.size();++i) {
+    require(shared_on.frames[i].human_dx_px==shared_off_run.frames[i].human_dx_px &&
+            shared_on.frames[i].human_dy_px==shared_off_run.frames[i].human_dy_px,
+            "fine-tune on and off consume the same human trajectory");
+    off_assist+=std::hypot(shared_off_run.frames[i].assist_dx_px, shared_off_run.frames[i].assist_dy_px);
+  }
+  require(shared_on.assist.enabled && !shared_off_run.assist.enabled &&
+          shared_off_run.assist.parameters_experimental && off_assist<1e-6 &&
+          shared_on.frames.back().error_px+1<shared_off_run.frames.back().error_px,
+          "the same human trajectory ends closer to center when trim is on");
+  auto drift=inside;
+  drift.start_x=320;
+  drift.start_y=240;
+  drift.vx=10;
+  drift.frames=80;
+  drift.actuator_delay_frames=0;
+  auto drift_off=drift;
+  drift_off.assist_enabled=false;
+  const auto drift_on=Simulator(drift,tracker).run();
+  const auto drift_off_run=Simulator(drift_off,tracker).run();
+  require(drift_on.frames.back().error_px<8 &&
+          drift_on.frames.back().error_px+5<drift_off_run.frames.back().error_px,
+          "a slow walk inside the region stays nearer center while trim is on");
+  auto separated=inside;
+  separated.acquire_single_confirmed=false;
+  separated.selected_track_id=1;
+  separated.distractor=true;
+  separated.distractor_x=80;
+  separated.distractor_y=400;
+  separated.frames=50;
+  const auto separated_run=Simulator(separated,tracker).run();
+  int separated_switches=0;
+  std::uint64_t separated_previous=0;
+  bool separated_assisted=false;
+  for(const auto& frame:separated_run.frames) {
+    if(separated_previous && frame.track_id && frame.track_id!=separated_previous) ++separated_switches;
+    if(frame.track_id) separated_previous=frame.track_id;
+    if(std::abs(frame.assist_dx_px)>0.2) separated_assisted=true;
+    if(frame.control_gate=="ambiguous")
+      require(std::hypot(frame.assist_dx_px,frame.assist_dy_px)<1e-6,"ambiguous frames do not command");
+  }
+  require(separated_switches==0 && separated_assisted && separated_run.frames.back().track_id==1 &&
+          separated_run.frames.back().error_px<5,
+          "a second person away from the target does not take the selection");
+  auto crossed=separated;
+  crossed.start_x=320;
+  crossed.distractor_x=180;
+  crossed.distractor_y=240;
+  crossed.distractor_vx=120;
+  crossed.frames=70;
+  const auto crossed_run=Simulator(crossed,tracker).run();
+  int crossed_switches=0, wrong_person=0;
+  std::uint64_t crossed_previous=0;
+  for(const auto& frame:crossed_run.frames) {
+    if(crossed_previous && frame.track_id && frame.track_id!=crossed_previous) ++crossed_switches;
+    if(frame.track_id) crossed_previous=frame.track_id;
+    if(frame.control_gate=="ambiguous")
+      require(std::hypot(frame.assist_dx_px,frame.assist_dy_px)<1e-6,"a crossing person stops assist while ambiguous");
+    if(std::hypot(frame.assist_dx_px,frame.assist_dy_px)>0.2 &&
+       std::hypot(frame.est_x-frame.truth_x, frame.est_y-frame.truth_y)>40) ++wrong_person;
+  }
+  require(crossed_switches==0 && wrong_person==0,
+          "a crossing person does not become the assisted target");
+  auto pixel_cfg=inside;
+  pixel_cfg.width=320;
+  pixel_cfg.height=320;
+  pixel_cfg.assist_center_x=160;
+  pixel_cfg.assist_center_y=160;
+  pixel_cfg.start_x=180;
+  pixel_cfg.start_y=160;
+  pixel_cfg.frames=40;
+  pixel_cfg.actuator_delay_frames=0;
+  pixel_cfg.target_w=24;
+  pixel_cfg.target_h=48;
+  pixel_cfg.image_detector="pixel";
+  sim::ImageObservation pixel_images;
+  pixel_images.sprite=cv::Mat(48,24,CV_8UC3,cv::Scalar(0,255,0));
+  pixel_images.background=cv::Mat(320,320,CV_8UC3,cv::Scalar(40,40,40));
+  pixel_images.detect=[](const cv::Mat& image,int,std::int64_t) {
+    cv::Mat mask;
+    cv::inRange(image,cv::Scalar(0,180,0),cv::Scalar(80,255,80),mask);
+    std::vector<cv::Point> points;
+    cv::findNonZero(mask,points);
+    std::vector<mot::Detection> boxes;
+    if(!points.empty()) boxes.push_back({1,.99f,cv::Rect2f(cv::boundingRect(points))});
+    return boxes;
+  };
+  auto pixel_off_cfg=pixel_cfg;
+  pixel_off_cfg.assist_enabled=false;
+  const auto pixel_on=Simulator(pixel_cfg,tracker,pixel_images).run();
+  const auto pixel_off=Simulator(pixel_off_cfg,tracker,pixel_images).run();
+  require(pixel_on.assist.enabled && pixel_on.frames.back().error_px<5 &&
+          pixel_on.frames.back().error_px+1<pixel_off.frames.back().error_px,
+          "a rendered detection closes the trim loop toward center");
   {
     ControllerFlightLedger applied, idle;
     applied.issue(1, 0.25, -0.10, 1.0, -0.40);

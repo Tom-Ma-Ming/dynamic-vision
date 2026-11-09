@@ -77,3 +77,7 @@ CPU27/27；固定80ms测试验证前两帧不可见结果、后续来源帧为�
 ImageObservation 可提供刚结束检测的 service_time_ms 回调。图像程序可在 observation-delay-ms 后追加 measured-service（0/1），再追加 observation-jitter-ms。实测推理时长被送入服务时间模型；这不是异步真实运行时钟，也不包括渲染、视频写入和操作反馈的全部壁钟耗时。实测模式受调度影响，不宣称字节可重复。observations.jsonl 逐帧记录capture/ready/released、service_ms及published/stale/overflow/pending。
 
 CPU27/27，覆盖乱序不回退、发布因果、过载结果缓冲容量。observed-service-v1 用80ms基础发布延迟、±80ms抖动和实际推理耗时：100结果=61 published+35 stale+4 pending，因果/单调性审计通过；最大单次服务38.5294ms，MAE8.99388、FAILED。仅是模型驱动诊断，不是全链路实时验收。
+
+## 人主导微调入口
+
+`vision_sim_image` 最后可再追加一个参数：`legacy`（默认，保持旧追逐）、`human_led` 或 `human_led_off`。`human_led` 把标注目标放到画面中心右侧 20 px，使用与仿真相同的实验区域和步长，只在区内微调。`human_led_off` 走同一放置、不发微调，供开/关对照。feedback.jsonl 增加 assist 状态和步长，summary 记录实验参数。本批没有 Windows Engine，这条命令没有执行，HA06 报告记 UNKNOWN。已执行的是 CPU 像素闭环，见 docs/ha06-experiments.md。
