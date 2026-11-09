@@ -211,6 +211,11 @@ static cv::Point2f measurementAnchor(const Track& t,const Observation& o) {
 static void recoverManeuvers(std::vector<Track>& live,const std::vector<Observation>& obs,
                              std::vector<bool>& used,Time ts,const Config& cfg) {
     if(cfg.maneuverRadius<=0) return;
+    // A second established track means this detection can belong to someone else.
+    // Keeping the old id would not make that association the same person.
+    int established=0;
+    for(const auto& t:live) if(t.state!=State::Tentative) ++established;
+    if(established!=1) return;
     struct Pair { size_t track, observation; };
     std::vector<int> trackCount(live.size()), observationCount(obs.size());
     std::vector<Pair> pairs;
@@ -243,11 +248,24 @@ static void recoverManeuvers(std::vector<Track>& live,const std::vector<Observat
         }
         const double position=cfg.maneuverRadius*cfg.maneuverRadius;
         const double velocity=cfg.maneuverAccel*cfg.maneuverAccel;
-        t.covariance(0,0)+=position; t.covariance(1,1)+=position;
-        t.covariance(2,2)+=velocity; t.covariance(3,3)+=velocity;
+        if(t.imm) {
+            for(auto& model:t.imm->models) {
+                model.covariance(0,0)+=position; model.covariance(1,1)+=position;
+                model.covariance(2,2)+=velocity; model.covariance(3,3)+=velocity;
+            }
+        } else {
+            t.covariance(0,0)+=position; t.covariance(1,1)+=position;
+            t.covariance(2,2)+=velocity; t.covariance(3,3)+=velocity;
+        }
         auto c=candidate(t,o,cfg);
         correct(t,c);
         t.x[2]=vx; t.x[3]=vy;
+        if(t.imm) {
+            for(auto& model:t.imm->models) {model.mean[2]=vx; model.mean[3]=vy;}
+            auto fused=t.imm->fused();
+            t.x=fused.mean; t.covariance=fused.covariance;
+            t.x[2]=vx; t.x[3]=vy;
+        }
         if(!t.body && o.d.cls==1) {
             auto bodyAnchor=o.head.value_or(cv::Point2f(center(o.d.box).x,o.d.box.y+t.size.height/2));
             auto offset=center(o.d.box)-bodyAnchor;
@@ -265,14 +283,6 @@ static void recoverManeuvers(std::vector<Track>& live,const std::vector<Observat
         recordHead(t,o,ts);
         t.lastSeen=ts;
         if(++t.hits>=cfg.minHits) t.state=State::Confirmed;
-        // The acceptance inflation is only for this update. Leaving it in place
-        // makes the track fail the control covariance gate.
-        t.covariance=cv::Matx44d::zeros();
-        t.covariance(0,0)=cfg.sigma*cfg.sigma;
-        t.covariance(1,1)=cfg.sigma*cfg.sigma;
-        t.covariance(2,2)=cfg.initialSpeed*cfg.initialSpeed;
-        t.covariance(3,3)=cfg.initialSpeed*cfg.initialSpeed;
-        if(t.imm) t.imm->initialize(t.x,t.covariance);
         used[pair.observation]=true;
     }
 }

@@ -1,4 +1,5 @@
 #include "tracker.hpp"
+#include <cmath>
 #include <iostream>
 #include <fstream>
 #include <stdexcept>
@@ -167,7 +168,10 @@ int main(int argc,char** argv) try {
             return tracker.snapshot();
         };
         const auto lost=run(plain);
-        const auto kept=run(maneuver);
+        Tracker maneuverTracker(maneuver);
+        for(int i=0;i<8;++i) require(maneuverTracker.update(i,step*i,{person(40+4.f*i)}),"approach");
+        require(maneuverTracker.update(8,step*8,{person(0)}),"reversal");
+        const auto kept=maneuverTracker.snapshot();
         bool confirmed_original=false, birthed=false;
         for(const auto& t:lost.tracks) {
             if(t.id==1 && t.state==State::Confirmed) confirmed_original=true;
@@ -177,6 +181,29 @@ int main(int argc,char** argv) try {
         require(kept.tracks.size()==1 && kept.tracks[0].id==1 && kept.tracks[0].state==State::Confirmed,
                 "a unique detection inside the maneuver radius keeps the track id");
         require(kept.tracks[0].x[2]<0,"maneuver velocity follows the reversal");
+        require(kept.tracks[0].covariance(2,2)>maneuver.initialSpeed*maneuver.initialSpeed,
+                "recovery must not replace velocity uncertainty with the birth prior");
+        const auto at_control=maneuverTracker.predictAt(step*9).tracks[0].covariance(0,0);
+        require(at_control>kept.tracks[0].covariance(0,0),
+                "control-time prediction is wider than the measurement-time covariance");
+        Tracker calm(cfg);
+        for(int i=0;i<11;++i) require(calm.update(i,step*i,{person(40+4.f*i)}),"calm approach");
+        const auto future=calm.predictAt(step*11).tracks[0];
+        const double miss=std::abs(future.x[0]-(40+4*11));
+        require(miss<=3*std::sqrt(future.covariance(0,0)),
+                "one-step prediction error stays inside the predicted 3-sigma interval");
+        Tracker crowd(maneuver);
+        for(int i=0;i<8;++i)
+            require(crowd.update(i,step*i,{person(40+4.f*i),person(400+4.f*i)}),"two people");
+        require(crowd.update(8,step*8,{person(432),person(100)}),"occluded person beside a new detection");
+        bool stolen=false, original_lost=false, stranger=false;
+        for(const auto& t:crowd.snapshot().tracks) {
+            if(t.id==1 && std::abs(t.x[0]-100)<5) stolen=true;
+            if(t.id==1 && t.state==State::Lost && std::abs(t.x[0]-72)<15) original_lost=true;
+            if(t.id!=1 && std::abs(t.x[0]-100)<5) stranger=true;
+        }
+        require(!stolen && original_lost && stranger,
+                "a nearby new person must not inherit the lost track id");
     }
     std::cout<<"Synthetic sequences passed: 1/2/5/10 people, crossing, head-only, occlusion, selection, stale results, bytetrack\n";
     return 0;

@@ -109,6 +109,59 @@ class CommandFeedback {
   double delay_;
 };
 
+// Feedback portion of issued commands. Hidden device execution never enters this
+// ledger: only issue, local retire, and legally delivered cumulative snapshots do.
+class ControllerFlightLedger {
+ public:
+  void issue(std::uint64_t id, double feedback_x, double feedback_y, double total_x, double total_y) {
+    if (!id || parts_.count(id)) throw std::invalid_argument("Invalid flight issue");
+    for (double value : {feedback_x, feedback_y, total_x, total_y})
+      if (!std::isfinite(value)) throw std::invalid_argument("Invalid flight issue");
+    parts_.emplace(id, Part{feedback_x, feedback_y, total_x, total_y, 0, 0});
+  }
+  void deliver(std::uint64_t id, double applied_x, double applied_y, bool terminal) {
+    auto it = parts_.find(id);
+    if (it == parts_.end()) return;
+    if (!std::isfinite(applied_x) || !std::isfinite(applied_y))
+      throw std::invalid_argument("Invalid delivered application");
+    auto& part = it->second;
+    consume(applied_x - part.seen_x, part.feedback_x, part.total_x);
+    consume(applied_y - part.seen_y, part.feedback_y, part.total_y);
+    part.seen_x = applied_x;
+    part.seen_y = applied_y;
+    if (terminal || (std::abs(part.total_x) < 1e-9 && std::abs(part.total_y) < 1e-9))
+      parts_.erase(it);
+  }
+  void deliverIncrement(std::uint64_t id, double dx, double dy, bool terminal) {
+    auto it = parts_.find(id);
+    if (it == parts_.end()) return;
+    deliver(id, it->second.seen_x + dx, it->second.seen_y + dy, terminal);
+  }
+  void retire(std::uint64_t id) { parts_.erase(id); }
+  void clear() { parts_.clear(); }
+  std::pair<double, double> pending() const {
+    std::pair<double, double> sum{};
+    for (const auto& item : parts_) {
+      sum.first += item.second.feedback_x;
+      sum.second += item.second.feedback_y;
+    }
+    return sum;
+  }
+ private:
+  struct Part {
+    double feedback_x, feedback_y, total_x, total_y, seen_x, seen_y;
+  };
+  static void consume(double amount, double& feedback, double& total) {
+    if (total == 0) return;
+    double fraction = amount / total;
+    if (fraction < 0) fraction = 0;
+    if (fraction > 1) fraction = 1;
+    feedback *= 1 - fraction;
+    total *= 1 - fraction;
+  }
+  std::map<std::uint64_t, Part> parts_;
+};
+
 // Gains use seconds; output is actuator units/second after coordinate calibration.
 class PidAxis {
  public:

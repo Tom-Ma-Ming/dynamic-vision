@@ -138,22 +138,13 @@ ScenarioResult Simulator::run() {
   if(config_.encoder_compensation) tracker_config.cameraMotion.enabled=true;
   const bool delay_mode=config_.encoder_delay_compensation && config_.encoder_transport &&
       config_.encoder_delay_ms>0 && !config_.feedback_prediction;
-  if(delay_mode && !tracker_config.byteTrack) {
-    if(tracker_config.maneuverRadius==0) {
-      tracker_config.maneuverRadius=96;
-      tracker_config.maneuverAccel=900;
-    }
-    // Steady motion should average the detector noise. Reversals still use the
-    // one-step maneuver update below, so this does not change tracker.yml.
-    if(tracker_config.accel>10) tracker_config.accel=10;
-  }
   output.effective.delay_compensation_active=delay_mode;
   output.effective.measurement_sigma=tracker_config.sigma;
   output.effective.acceleration_sigma=tracker_config.accel;
   output.effective.maneuver_radius=tracker_config.maneuverRadius;
   output.effective.maneuver_acceleration=tracker_config.maneuverAccel;
   output.effective.covariance_limit=config_.covariance_limit;
-  output.effective.gate_uses_predicted_covariance=!delay_mode;
+  output.effective.gate_uses_predicted_covariance=true;
   output.effective.velocity_feedforward=config_.velocity_feedforward;
   output.effective.encoder_extrapolation=config_.encoder_extrapolation;
   output.effective.vertical_axis_enabled=true;
@@ -218,31 +209,9 @@ ScenarioResult Simulator::run() {
     return within_window && config_.feedback_drop_rate>0 && failure(feedback_rng)<config_.feedback_drop_rate;
   };
   IncrementCommand active_command;
-  struct InFlight { double fb_x=0, fb_y=0, total_x=0, total_y=0; };
-  std::map<std::uint64_t, InFlight> feedback_parts;
-  auto settleFlight=[&](const std::string& type, const IncrementCommand& c, double dx, double dy) {
-    auto it=feedback_parts.find(c.id);
-    if(it==feedback_parts.end()) return;
-    if(type=="applied") {
-      auto& part=it->second;
-      auto take=[&](double amount, double& fb, double& total) {
-        if(total==0) return;
-        double fraction=amount/total;
-        if(fraction<0) fraction=0;
-        if(fraction>1) fraction=1;
-        fb*=1-fraction;
-        total*=1-fraction;
-      };
-      take(dx, part.fb_x, part.total_x);
-      take(dy, part.fb_y, part.total_y);
-      if(std::abs(part.total_x)<1e-9 && std::abs(part.total_y)<1e-9) feedback_parts.erase(it);
-    } else if(type!="generated" && type!="accepted") {
-      feedback_parts.erase(it);
-    }
-  };
+  ControllerFlightLedger flight;
   auto event=[&](const char* kind,const IncrementCommand& c,SimTime time,double dx,double dy) {
     const std::string type(kind);
-    settleFlight(type,c,dx,dy);
     const bool remote=type=="accepted" || type=="applied" || type=="expired" || type=="replaced" || type=="rejected";
     const bool dropped=remote && dropFeedback(time);
     if(dropped) ++feedback_dropped;
@@ -252,6 +221,17 @@ ScenarioResult Simulator::run() {
     else if(type=="accepted") feedback.acknowledged(c.id,time);
     else if(type=="applied") feedback.applied(c.id,dx,dy);
     else feedback.retire(c.id);
+    // Same visibility as the controller ledger. A dropped or still-queued device
+    // event must not change the in-flight feedback portion.
+    if(type!="generated") {
+      if(config_.feedback_transport) {
+        if(!remote) flight.retire(c.id);
+      } else if(!dropped && type=="applied") {
+        flight.deliverIncrement(c.id,dx,dy,false);
+      } else if(!dropped && type!="accepted") {
+        flight.retire(c.id);
+      }
+    }
     output.commands.push_back({kind,c.id,c.frame_id,c.track_id,time,c.generated,c.arrival,c.expires,dx,dy});
   };
   auto apply=[&](SimTime t) {
@@ -339,7 +319,13 @@ ScenarioResult Simulator::run() {
       apply(now);
     };
     auto deliverFeedbackNow=[&](SimTime now, int event_frame, bool link_up) {
-      if(config_.feedback_transport) feedback_channel.deliver(now);
+      if(config_.feedback_transport) {
+        feedback_channel.deliver(now);
+        for(const auto& trace:feedback_channel.traces()) {
+          if(trace.received==now && trace.status=="applied")
+            flight.deliver(trace.snapshot.command_id,trace.snapshot.applied_x,trace.snapshot.applied_y,trace.snapshot.terminal);
+        }
+      }
       const bool feedback_overdue=config_.feedback_timeout_ms>0 && (config_.feedback_transport ?
         feedback_channel.overdue(now,std::llround(config_.feedback_timeout_ms*1e6)) :
         feedback.overdue(now,std::llround(config_.feedback_timeout_ms*1e6)));
@@ -351,7 +337,7 @@ ScenarioResult Simulator::run() {
           if(config_.async_stages && !stages.enqueue(Stage::Execution,stop_request_ready,event_frame,0))
             ++output.stage_rejected;
         }
-        feedback_fault=true;feedback.clear();
+        feedback_fault=true;feedback.clear();flight.clear();
         if(config_.feedback_transport) feedback_channel.newEpoch(now);
       }
       // Explicit recovery request; a received idle snapshot confirms the model
@@ -391,7 +377,7 @@ ScenarioResult Simulator::run() {
           else confirmed=idle_snapshot;
         }
         if(confirmed) {
-          feedback.clear();pid_x.reset();pid_y.reset();
+          feedback.clear();flight.clear();pid_x.reset();pid_y.reset();
           if(config_.feedback_transport) feedback_channel.newEpoch(now);
           feedback_fault=false;feedback_resynced=true;
           feedback_capacity_fault=false;
@@ -641,16 +627,19 @@ ScenarioResult Simulator::run() {
     const bool ambiguous = selected ? selected->ambiguous : true;
     const float age_ms =
         selected ? static_cast<float>((ts_ns - selected->lastSeen) * 1e-6) : 0;
-    double covariance_trace =
-        selected ? selected->covariance(0, 0) + selected->covariance(1, 1) : 0;
-    // Predicting across the encoder delay spreads velocity variance into
-    // position and trips the control gate on an otherwise confirmed track.
-    // The gate uses the covariance at the measurement that was actually fused.
-    if(delay_mode && selected) {
-      for(const auto& raw:tracker.snapshot().tracks) if(raw.id==selected->id) {
-        covariance_trace=raw.covariance(0,0)+raw.covariance(1,1);
-        break;
-      }
+    double covariance_trace = 0;
+    if(selected) {
+      // x' = x - lead*vx when the command uses that shifted estimate. The gate
+      // sees that estimate's variance at the control instant, not the earlier
+      // measurement covariance.
+      const double lead=(auto_follow && !config_.encoder_extrapolation) ? config_.encoder_delay_ms*1e-3 : 0;
+      auto axis=[&](int position, int velocity) {
+        const double var=selected->covariance(position,position)
+            -2*lead*selected->covariance(position,velocity)
+            +lead*lead*selected->covariance(velocity,velocity);
+        return var>0 ? var : 0;
+      };
+      covariance_trace=axis(0,2)+axis(1,3);
     }
 
     float estimate_x = last_est_x;
@@ -714,23 +703,15 @@ ScenarioResult Simulator::run() {
         command_lead_ms=(arrival-ts_ns)*1e-6;
         const bool account_pending=config_.feedback_prediction || (delay_mode && !auto_follow && !config_.velocity_feedforward);
         const bool feed=config_.velocity_feedforward || auto_follow;
-        std::pair<double,double> split_pending{};
-        if(feed && delay_mode) {
-          for(const auto& item:feedback_parts) {
-            split_pending.first+=item.second.fb_x;
-            split_pending.second+=item.second.fb_y;
-          }
-        }
-        const auto pending=(feed && delay_mode) ? split_pending : account_pending ? (config_.feedback_transport?feedback_channel.pending():feedback.pending()) : std::pair<double,double>{};
+        const auto pending=(feed && delay_mode) ? flight.pending() : account_pending ? (config_.feedback_transport?feedback_channel.pending():feedback.pending()) : std::pair<double,double>{};
         const double fx=feed ? selected->x[2]*config_.actuator_units_per_px : 0;
         const double fy=feed ? selected->x[3]*config_.actuator_units_per_px : 0;
         const double ux=pid_x.step((target.first-aim_x)*config_.actuator_units_per_px-pending.first,config_.dt_s,fx);
         const double uy=pid_y.step((target.second-aim_y)*config_.actuator_units_per_px-pending.second,config_.dt_s,fy);
         transit.push_back({std::uint64_t(frame+1),std::uint64_t(frame),selected->id,
                           ts_ns,arrival,arrival+std::llround(2*config_.dt_s*1e9),ux*config_.dt_s,uy*config_.dt_s});
-        if(feed && delay_mode) {
-          feedback_parts[transit.back().id]={(ux-fx)*config_.dt_s,(uy-fy)*config_.dt_s,ux*config_.dt_s,uy*config_.dt_s};
-        }
+        if(feed && delay_mode)
+          flight.issue(transit.back().id,(ux-fx)*config_.dt_s,(uy-fy)*config_.dt_s,ux*config_.dt_s,uy*config_.dt_s);
         event("generated",transit.back(),ts_ns,ux*config_.dt_s,uy*config_.dt_s);
         if(config_.dispatch_failure_rate>0 && failure(failure_rng)<config_.dispatch_failure_rate) {
           event("dispatch_failed",transit.back(),ts_ns,0,0);transit.pop_back();dispatch_ok=false;

@@ -19,8 +19,10 @@ struct Config {
     bool byteTrack = false;
     double highScore = 0.4;
     double lowScore = 0.1;
-    // Zero keeps the Mahalanobis gate unchanged. A positive radius may keep one
-    // confirmed track through a single unmatched detection after a reversal.
+    // Zero keeps the Mahalanobis gate unchanged. A positive radius may keep the
+    // only established track through one unmatched detection after a reversal.
+    // It does not run while another established track is present, and it does
+    // not replace the updated covariance with the birth prior.
     double maneuverRadius = 0;
     double maneuverAccel = 0;
     static Config load(const std::string& path);

@@ -2,6 +2,7 @@
 #include "vision/sim/Simulator.hpp"
 #include "vision/sim/StageScheduler.hpp"
 
+#include <algorithm>
 #include <cmath>
 #include <iostream>
 #include <stdexcept>
@@ -202,10 +203,11 @@ int main(int argc, char** argv) try {
   require(vertical_on_commands>0 && vertical_on.metrics.end_stable &&
           vertical_on.effective.delay_compensation_active &&
           vertical_on.effective.vertical_axis_enabled &&
+          vertical_on.effective.gate_uses_predicted_covariance &&
           vertical_on.effective.measurement_sigma==tracker.sigma &&
-          vertical_on.effective.acceleration_sigma==10 &&
-          vertical_on.effective.maneuver_radius==96,
-          "opt-in compensation still controls both axes and records the tracker it uses");
+          vertical_on.effective.acceleration_sigma==tracker.accel &&
+          vertical_on.effective.maneuver_radius==tracker.maneuverRadius,
+          "opt-in compensation still controls both axes and keeps the configured tracker");
   auto diagonal=vertical;
   diagonal.vx=40; diagonal.vy=30; diagonal.frames=80; diagonal.success_after_frame=40;
   const auto diag=Simulator(diagonal,tracker).run();
@@ -231,6 +233,85 @@ int main(int argc, char** argv) try {
   require(omitted_run.commands.size()==vertical_off.commands.size() &&
           omitted_run.metrics.mae_px==vertical_off.metrics.mae_px,
           "leaving compensation unset matches turning it off");
+  {
+    ControllerFlightLedger applied, idle;
+    applied.issue(1, 0.25, -0.10, 1.0, -0.40);
+    idle.issue(1, 0.25, -0.10, 1.0, -0.40);
+    require(applied.pending()==idle.pending(),
+            "same issued command starts from the same ledger before any device event");
+    applied.deliver(1, 0, 0, false);
+    idle.deliver(1, 0, 0, false);
+    require(applied.pending()==idle.pending(),
+            "identical delivered snapshots keep the ledgers equal");
+    applied.deliver(1, 0.40, -0.10, false);
+    idle.deliver(1, 0.40, -0.10, false);
+    require(applied.pending()==idle.pending() && applied.pending().first<0.25,
+            "a delivered application changes both ledgers together");
+    applied.deliver(1, 1.0, -0.40, false);
+    require(applied.pending()!=idle.pending(),
+            "hidden execution is visible only after its snapshot is delivered");
+    idle.deliver(1, 1.0, -0.40, true);
+    require(idle.pending().first==0 && idle.pending().second==0,
+            "a delivered terminal snapshot retires the remainder");
+  }
+  auto causal=clocks;
+  causal.encoder_drop_rate=0;
+  causal.encoder_delay_compensation=true;
+  causal.feedback_transport=true;
+  causal.feedback_delay_ms=500;
+  causal.feedback_jitter_ms=0;
+  causal.feedback_timeout_ms=2000;
+  causal.frames=8;
+  const auto undelivered=Simulator(causal,tracker).run();
+  require(undelivered.frames.back().feedback_delivered==0,"the delayed feedback has not reached the controller");
+  bool hidden_apply=false;
+  for(const auto& event:undelivered.commands) if(event.kind=="applied") hidden_apply=true;
+  require(hidden_apply,"the device executes before the controller is told");
+  const double limit=causal.actuator_max_speed*causal.actuator_units_per_px;
+  double pending_x=0, pending_y=0;
+  int checked_commands=0;
+  for(const auto& frame:undelivered.frames) {
+    const CommandEvent* command=nullptr;
+    for(const auto& event:undelivered.commands)
+      if(event.kind=="generated" && event.frame_id==std::uint64_t(frame.frame)) command=&event;
+    if(!command) continue;
+    const double target_x=std::clamp(double(frame.est_x),0.0,double(causal.width));
+    const double target_y=std::clamp(double(frame.est_y),0.0,double(causal.height));
+    const double feed_x=frame.est_vx*causal.actuator_units_per_px;
+    const double feed_y=frame.est_vy*causal.actuator_units_per_px;
+    const double ux=std::clamp(feed_x+causal.pid_kp*((target_x-causal.width*0.5)*causal.actuator_units_per_px-pending_x),-limit,limit);
+    const double uy=std::clamp(feed_y+causal.pid_kp*((target_y-causal.height*0.5)*causal.actuator_units_per_px-pending_y),-limit,limit);
+    require(std::abs(command->dx-ux*causal.dt_s)<1e-6 && std::abs(command->dy-uy*causal.dt_s)<1e-6,
+            "commands follow delivered feedback only while device execution stays hidden");
+    pending_x+=command->dx-feed_x*causal.dt_s;
+    pending_y+=command->dy-feed_y*causal.dt_s;
+    ++checked_commands;
+  }
+  require(checked_commands>2,"hidden-execution counterexample needs more than one command");
+  auto uncertain=causal;
+  uncertain.frames=40;
+  uncertain.observation_delay_ms=80;
+  uncertain.covariance_limit=50;
+  uncertain.vx=0;
+  uncertain.start_x=200;
+  uncertain.velocity_feedforward=false;
+  uncertain.encoder_extrapolation=false;
+  auto wide=tracker;
+  wide.accel=2000;
+  const auto gated=Simulator(uncertain,wide).run();
+  require(gated.effective.acceleration_sigma==2000 && gated.effective.gate_uses_predicted_covariance,
+          "delay compensation records the configured process noise and predicted gate");
+  int uncertain_frames=0;
+  for(const auto& frame:gated.frames) {
+    if(frame.control_gate=="uncertain") {
+      require(frame.covariance_trace>uncertain.covariance_limit,"uncertain gate uses the trace it compared");
+      ++uncertain_frames;
+    }
+    if(frame.observation_age_ms>70 && frame.track_state=="Confirmed")
+      require(frame.covariance_trace>2*wide.sigma*wide.sigma,
+              "control-time variance exceeds the fresh measurement variance");
+  }
+  require(uncertain_frames>0,"predicted covariance across the observation delay must be able to close the gate");
   {
     StageScheduler bounded(1);
     require(bounded.enqueue(Stage::Capture,0,0),"stage accepts the first event");
