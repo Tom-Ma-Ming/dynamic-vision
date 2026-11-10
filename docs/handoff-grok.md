@@ -1,5 +1,9 @@
 # Grok 工程交接 · 当前入口更新 2026-11-09
 
+> 2026-11-10 固件核对更新：先读 [serial-protocol-baseline.md](serial-protocol-baseline.md)。用户提供的 .ino 无OK/STOP/序号，实际开发按legacy_m_noack；不能等待OK，不迁移CFG/F/S/A，不自动刷固件。主机完整写入与设备执行结果分开，SA01记录源文件与SHA。
+
+> 2026-11-10 新增串口与PID实施任务：先读 [serial-assist-implementation-plan.md](serial-assist-implementation-plan.md) 和 openspec/changes/serial-assist/。先交 SA01–SA04，协议/设备不明时不猜测；新项目Engine已在本机生成并验证，不能继续以云端缺权重代替本机验收。远程基础CI已运行，GPU/串口验收另列。
+
 > **接手先读 [human-led-assist-handoff.md](human-led-assist-handoff.md)**：用户已明确“人负责大幅转向，程序只在中心附近做有限微调”。按该文档及 openspec/changes/human-led-assist/ 执行；不要继续把大范围自动追到目标当作主交付。以下保留历史进展，不代表最新验收状态。Grok 修复，Codex 独立复审；目前无需新增用户材料。
 
 > 当前总计划见 docs/task-roadmap.md。最新镜头平移实验已完成，默认关闭：CPU 26/26、SDK 6/6、Python 20/20；开关兼容与两段 10800 帧回放通过，诊断片段二 IDSW 24→15，片段一 HOTA 略降，质量覆盖有限。见 docs/camera-motion-experiment.md。下方历史“镜头补偿未实现”已由本条更新为“平移实验完成，复杂运动及最终验收待做”。
