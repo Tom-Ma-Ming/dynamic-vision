@@ -1,0 +1,31 @@
+{
+  "protocol": "yolo-onnx-closed-loop-v1",
+  "status": "passed",
+  "gates": {
+    "backend_is_yolo_onnx": true,
+    "graph_ran": true,
+    "scenes_request_yolo": true,
+    "off_has_no_trim": true,
+    "on_closer_than_off": true,
+    "on_inside_experimental_region": true,
+    "parameters_experimental": true,
+    "not_tensorrt": true
+  },
+  "model_sha256": "8726dd29e8439519c8986d830d5d732fe483ab8ab90cbb965f57fa1b8b97c505",
+  "detector_backend": "yolo-onnx",
+  "yolo_channels": 84,
+  "yolo_anchors": 2100,
+  "yolo_input_px": 320,
+  "yolo_project_contract": false,
+  "yolo_person_frames": 120,
+  "on_final_error_px": 1,
+  "off_final_error_px": 24,
+  "on_legacy_result": "SUCCESS",
+  "off_legacy_result": "FAILED",
+  "experimental_note": "enter/exit, deadzone, step and resume wait are experimental tunables.",
+  "tensorrt": {
+    "status": "blocked",
+    "result": "UNKNOWN",
+    "reason": "This machine has no NVIDIA GPU (no /dev/nvidia* and no nvidia-smi). TensorRT cannot execute a model here. The Windows recipe remains vision_sim_image <engine> ... human_led."
+  }
+}

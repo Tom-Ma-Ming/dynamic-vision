@@ -91,8 +91,9 @@ struct ScenarioConfig {
   int unknown_grace_frames = 50;
   std::uint32_t seed = 1;
   // Experimental assist limits. They are not a confirmed product standard.
+  // Tune them per scenario or through assist_defaults in the scenario file.
   // Distances are control-image pixels, speed is px/s, acceleration is px/s^2,
-  // and human sample times are nanoseconds.
+  // resume wait is seconds, and human sample times are nanoseconds.
   AssistMode assist_mode = AssistMode::Legacy;
   double assist_enter_px = 48;
   double assist_exit_px = 72;
@@ -105,6 +106,28 @@ struct ScenarioConfig {
   // Negative center means the image center. HumanLed must set both explicitly.
   double assist_center_x = -1;
   double assist_center_y = -1;
+  // HumanLed trim switch. False keeps the same human trajectory and scene, and
+  // issues no assist command. Legacy chase ignores this flag.
+  bool assist_enabled = true;
+  // Optional second person. Synthetic detections only; not a ReID model.
+  // The selector does not move to this person. Empty image_detector required.
+  bool distractor = false;
+  float distractor_x = 80;
+  float distractor_y = 240;
+  float distractor_vx = 0;
+  float distractor_vy = 0;
+  float distractor_w = 24;
+  float distractor_h = 48;
+  // Empty keeps the synthetic box observer. "pixel" is a color box, not YOLO.
+  // "yolo" renders sprite_image and closes the loop on an ONNX YOLO graph.
+  std::string image_detector;
+  std::string sprite_image;
+  std::string background_image;
+  // Person rectangle inside sprite_image. Required for the yolo detector.
+  float sprite_x = 0;
+  float sprite_y = 0;
+  float sprite_w = 0;
+  float sprite_h = 0;
   std::vector<HumanCameraSample> human_camera;
 };
 
@@ -237,6 +260,9 @@ struct AssistContract {
   double max_step_px = 0, max_speed_px_s = 0, max_accel_px_s2 = 0;
   double human_turn_px = 0, resume_wait_s = 0;
   int human_samples = 0;
+  // True only when human-led trim is allowed to command. Region, deadzone,
+  // step and resume wait stay experimental tunables either way.
+  bool enabled = false;
   std::string displacement_unit = "control_image_px";
   std::string speed_unit = "px/s";
   std::string acceleration_unit = "px/s^2";
