@@ -9,7 +9,7 @@
 #include <chrono>
 
 int main(int argc,char** argv) try {
-  if(argc!=6 && (argc<10 || argc>16)) throw std::runtime_error("usage: vision_sim_image engine sprite background tracker new-output [target-x target-y target-width target-height [selected-track-id [units-per-pixel [subpixel-render-0-or-1 [observation-delay-ms [measured-service-0-or-1 [observation-jitter-ms]]]]]]]");
+  if(argc!=6 && (argc<10 || argc>17)) throw std::runtime_error("usage: vision_sim_image engine sprite background tracker new-output [target-x target-y target-width target-height [selected-track-id [units-per-pixel [subpixel-render-0-or-1 [observation-delay-ms [measured-service-0-or-1 [observation-jitter-ms [legacy|human_led|human_led_off]]]]]]]]");
   const std::filesystem::path output(argv[5]);
   if(std::filesystem::exists(output)) throw std::runtime_error("Output must be new");
   Detector detector(argv[1]);
@@ -50,6 +50,25 @@ int main(int argc,char** argv) try {
   if(argc>=13) {const int flag=std::stoi(argv[12]);if(flag!=0 && flag!=1) throw std::invalid_argument("Invalid subpixel flag");config.subpixel_render=flag!=0;}
   if(argc>=14) config.observation_delay_ms=std::stod(argv[13]);
   if(argc>=16) config.observation_jitter_ms=std::stod(argv[15]);
+  if(argc>=17) {
+    const std::string assist_arg=argv[16];
+    if(assist_arg!="legacy" && assist_arg!="human_led" && assist_arg!="human_led_off")
+      throw std::invalid_argument("assist mode must be legacy, human_led, or human_led_off");
+    if(assist_arg!="legacy") {
+      // Experimental region/deadzone/step/resume stay on ScenarioConfig defaults.
+      // human_led places the annotated target 20 px right of center so the trim
+      // has an inside-region error to remove. It does not chase a far target.
+      config.assist_mode=sim::AssistMode::HumanLed;
+      config.assist_enabled=assist_arg=="human_led";
+      config.assist_center_x=config.width*0.5;
+      config.assist_center_y=config.height*0.5;
+      config.actuator_delay_frames=0;
+      config.start_x=static_cast<float>(config.assist_center_x+20);
+      config.start_y=static_cast<float>(config.assist_center_y);
+      config.vx=0;
+      config.vy=0;
+    }
+  }
   config.view_feedback=true;config.encoder_compensation=true;config.pid_kp=2;
   auto result=sim::Simulator(config,mot::Config::load(argv[4]),images).run();
   std::ofstream frames(output/"feedback.jsonl");frames.exceptions(std::ios::badbit|std::ios::failbit);
@@ -60,7 +79,9 @@ int main(int argc,char** argv) try {
       <<",\"truth_x\":"<<f.truth_x<<",\"truth_y\":"<<f.truth_y<<",\"error_px\":"<<f.error_px
       <<",\"track_id\":"<<f.track_id<<",\"track_state\":\""<<f.track_state
       <<"\",\"control_gate\":\""<<f.control_gate<<"\",\"covariance_trace\":"<<f.covariance_trace
-      <<",\"est_x\":"<<f.est_x<<",\"est_y\":"<<f.est_y<<"}\n";
+      <<",\"est_x\":"<<f.est_x<<",\"est_y\":"<<f.est_y
+      <<",\"assist_state\":\""<<f.assist_state<<"\",\"assist_reason\":\""<<f.assist_reason
+      <<"\",\"assist_dx_px\":"<<f.assist_dx_px<<",\"assist_dy_px\":"<<f.assist_dy_px<<"}\n";
   }
   std::ofstream commands(output/"commands.jsonl");commands.exceptions(std::ios::badbit|std::ios::failbit);
   commands.precision(17);
@@ -86,7 +107,15 @@ int main(int argc,char** argv) try {
     <<",\"observation_delay_ms\":"<<config.observation_delay_ms
     <<",\"measured_service\":"<<(images.service_time_ms?"true":"false")<<",\"observation_jitter_ms\":"<<config.observation_jitter_ms
     <<",\"units_per_px\":"<<config.actuator_units_per_px<<",\"subpixel_render\":"<<(config.subpixel_render?"true":"false")
-    <<",\"clock\":\"fixed_simulation_step_not_wall_time\",\"encoder_feedback\":true,\"gates\":{";
+    <<",\"clock\":\"fixed_simulation_step_not_wall_time\",\"encoder_feedback\":true"
+    <<",\"assist\":{\"mode\":\""<<result.assist.mode<<"\",\"protocol\":\""<<result.assist.protocol
+    <<"\",\"parameters_experimental\":"<<(result.assist.parameters_experimental?"true":"false")
+    <<",\"enabled\":"<<(result.assist.enabled?"true":"false")
+    <<",\"center_x\":"<<result.assist.center_x<<",\"center_y\":"<<result.assist.center_y
+    <<",\"enter_px\":"<<result.assist.enter_px<<",\"exit_px\":"<<result.assist.exit_px
+    <<",\"deadzone_px\":"<<result.assist.deadzone_px<<",\"max_step_px\":"<<result.assist.max_step_px
+    <<",\"resume_wait_s\":"<<result.assist.resume_wait_s
+    <<",\"note\":\"region_deadzone_step_resume_are_experimental\"},\"gates\":{";
   bool first=true;
   for(const auto& g:gates) {summary<<(first?"":",")<<"\""<<g.first<<"\":"<<g.second;first=false;}
   summary<<"}}\n";

@@ -1,0 +1,20 @@
+{
+  "source_image": "https://github.com/ultralytics/yolov5/raw/master/data/images/zidane.jpg",
+  "crop_xywh": [
+    700,
+    0,
+    520,
+    720
+  ],
+  "note": "One person from the Ultralytics demo photo. The rectangle is the YOLO11n person box on this crop, frozen as the simulation truth anchor. It is not a label from the project training set.",
+  "sprite_xywh": [
+    19.0,
+    42.4,
+    431.2,
+    674.9
+  ],
+  "image_size_wh": [
+    520,
+    720
+  ]
+}

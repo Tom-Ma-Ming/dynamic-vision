@@ -1,0 +1,20 @@
+%YAML:1.0
+# Real YOLO closed loop. image_detector yolo runs models/yolo11n-coco-320.onnx.
+# The sprite is one person from the Ultralytics demo photo. sprite_x/y/w/h is
+# that person's frozen box and is the truth anchor, not a color threshold.
+# Enter, exit, deadzone, step and resume wait are experimental.
+assist_defaults:
+  assist_mode: "human_led"
+  assist_center_x: 160.
+  assist_center_y: 160.
+  assist_enter_px: 48.
+  assist_exit_px: 72.
+  assist_deadzone_px: 1.
+  assist_max_step_px: 2.
+  assist_max_speed_px_s: 50.
+  assist_max_accel_px_s2: 500.
+  human_turn_px: 12.
+  assist_resume_wait_s: 0.2
+scenarios:
+  - {id: "yolo-on", motion: "constant", frames: 60, width: 320, height: 320, start_x: 184., start_y: 160., vx: 0., vy: 0., noise_px: 0., target_w: 160., target_h: 250., actuator_delay_frames: 0, image_detector: "yolo", sprite_image: "models/yolo-loop/person.jpg", sprite_x: 19., sprite_y: 42.4, sprite_w: 431.2, sprite_h: 674.9, assist_enabled: 1, incremental_control: 1, acquire_single_confirmed: 1, view_feedback: 1, encoder_compensation: 1}
+  - {id: "yolo-off", motion: "constant", frames: 60, width: 320, height: 320, start_x: 184., start_y: 160., vx: 0., vy: 0., noise_px: 0., target_w: 160., target_h: 250., actuator_delay_frames: 0, image_detector: "yolo", sprite_image: "models/yolo-loop/person.jpg", sprite_x: 19., sprite_y: 42.4, sprite_w: 431.2, sprite_h: 674.9, assist_enabled: 0, incremental_control: 1, acquire_single_confirmed: 1, view_feedback: 1, encoder_compensation: 1}

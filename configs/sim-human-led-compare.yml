@@ -1,0 +1,23 @@
+%YAML:1.0
+# HA06 on/off comparison. One human trajectory, two runs.
+# Change assist_enabled in assist_defaults to 0 for the off arm, or let
+# tools/run_ha06.py write that copy. Region, deadzone, step, speed,
+# acceleration and resume wait are experimental tunables, not a product standard.
+# Units: control-image px, px/s, px/s^2, seconds. Human times are nanoseconds.
+assist_defaults:
+  assist_mode: "human_led"
+  assist_enabled: 1
+  assist_center_x: 320.
+  assist_center_y: 240.
+  assist_enter_px: 48.
+  assist_exit_px: 72.
+  assist_deadzone_px: 1.
+  assist_max_step_px: 2.
+  assist_max_speed_px_s: 50.
+  assist_max_accel_px_s2: 500.
+  human_turn_px: 12.
+  assist_resume_wait_s: 0.2
+scenarios:
+  - {id: "shared-static", motion: "constant", frames: 60, start_x: 340., start_y: 240., vx: 0., vy: 0., noise_px: 0., incremental_control: 1, acquire_single_confirmed: 1, view_feedback: 1, encoder_compensation: 1, human_camera: [{t_ns: 0, dx_px: 8., dy_px: 0., takeover: 0}]}
+  - {id: "shared-drift", motion: "constant", frames: 80, start_x: 320., start_y: 240., vx: 10., vy: 0., noise_px: 0., actuator_delay_frames: 0, incremental_control: 1, acquire_single_confirmed: 1, view_feedback: 1, encoder_compensation: 1}
+  - {id: "shared-yield", motion: "constant", frames: 60, start_x: 340., start_y: 240., vx: 0., vy: 0., noise_px: 0., incremental_control: 1, acquire_single_confirmed: 1, view_feedback: 1, encoder_compensation: 1, human_camera: [{t_ns: 400000000, dx_px: 30., dy_px: 0., takeover: 0}]}

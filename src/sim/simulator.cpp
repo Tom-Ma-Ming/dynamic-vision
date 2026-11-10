@@ -45,6 +45,14 @@ bool validate(const ScenarioConfig& config) {
   if(center_set && !(config.assist_center_x>=0 && config.assist_center_x<=config.width &&
                      config.assist_center_y>=0 && config.assist_center_y<=config.height)) return false;
   if(config.assist_mode==AssistMode::HumanLed && !center_set) return false;
+  if(!config.image_detector.empty() && config.image_detector!="pixel" && config.image_detector!="yolo") return false;
+  if(config.image_detector=="yolo" && config.sprite_image.empty()) return false;
+  if(config.image_detector=="yolo" && !(config.sprite_w>0 && config.sprite_h>0 &&
+      config.sprite_x>=0 && config.sprite_y>=0)) return false;
+  if(config.distractor && !config.image_detector.empty()) return false;
+  if(config.distractor && !(config.distractor_w>0 && config.distractor_h>0 &&
+      std::isfinite(config.distractor_x) && std::isfinite(config.distractor_y) &&
+      std::isfinite(config.distractor_vx) && std::isfinite(config.distractor_vy))) return false;
   std::int64_t previous_input=-1;
   for(const auto& sample:config.human_camera) {
     if(sample.time_ns<0 || sample.time_ns<previous_input ||
@@ -144,6 +152,8 @@ Simulator::Simulator(ScenarioConfig config, mot::Config tracker, ImageObservatio
   if(images_.detect && (images_.sprite.empty() || images_.background.empty() ||
       images_.sprite.type()!=CV_8UC3 || images_.background.type()!=CV_8UC3))
     throw std::invalid_argument("Image observation requires BGR sprite and background");
+  if((config_.image_detector=="pixel" || config_.image_detector=="yolo") && !images_.detect)
+    throw std::invalid_argument("image_detector requires an image observation");
   if(images_.detect) {
     if(images_.sprite_target==cv::Rect2f{}) images_.sprite_target={0,0,float(images_.sprite.cols),float(images_.sprite.rows)};
     const auto b=images_.sprite_target;
@@ -194,11 +204,14 @@ ScenarioResult Simulator::run() {
   output.assist.human_turn_px=config_.human_turn_px;
   output.assist.resume_wait_s=config_.assist_resume_wait_s;
   output.assist.human_samples=static_cast<int>(config_.human_camera.size());
+  output.assist.enabled=config_.assist_mode==AssistMode::HumanLed && config_.assist_enabled;
   mot::Tracker tracker(tracker_config);
   mot::Selection selection;
 
   float world_x = config_.start_x;
   float world_y = config_.start_y;
+  float distractor_x = config_.distractor_x;
+  float distractor_y = config_.distractor_y;
   float vx = config_.vx;
   float vy = config_.vy;
   float height = config_.target_h;
@@ -507,6 +520,10 @@ ScenarioResult Simulator::run() {
 
     world_x += vx * dt;
     world_y += vy * dt;
+    if(config_.distractor) {
+      distractor_x += config_.distractor_vx * dt;
+      distractor_y += config_.distractor_vy * dt;
+    }
 
     if (config_.motion != Motion::CameraPan) {
       const float min_x = config_.target_w * 0.5f;
@@ -625,6 +642,21 @@ ScenarioResult Simulator::run() {
                             {fp_x - 10.0f, fp_y - 20.0f, 20.0f, 40.0f}});
       ++total_false_positives;
       false_positive_this_frame = true;
+    }
+    if(!images_.detect && config_.distractor) {
+      const float sx = config_.view_feedback ? distractor_x-camera_x : distractor_x;
+      const float sy = config_.view_feedback ? distractor_y-camera_y : distractor_y;
+      const float box_w=config_.distractor_w, box_h=config_.distractor_h;
+      const bool other_in_view=sx+box_w*.5f>0 && sx-box_w*.5f<config_.width &&
+                               sy+box_h*.5f>0 && sy-box_h*.5f<config_.height;
+      if(other_in_view) {
+        detections.push_back({1, 0.85f, {sx-box_w*.5f, sy-box_h*.5f, box_w, box_h}});
+        const float head_h=std::max(6.0f, box_h*0.22f);
+        const float head_w=std::max(4.0f, box_w*0.45f);
+        const float head_cy=sy-box_h*.5f+head_h*0.55f;
+        detections.push_back({0, 0.85f, {sx-head_w*.5f, head_cy-head_h*.5f, head_w, head_h}});
+        detected=true;
+      }
     }
 
     total_detections += static_cast<int>(detections.size());
@@ -857,6 +889,11 @@ ScenarioResult Simulator::run() {
         if(active_command.id) event(connected ? "cancelled" : "disconnected",active_command,ts_ns,0,0);
         active_command={};transit.clear();actuator.cancel();pid_x.reset();pid_y.reset();
       }
+    } else if(config_.assist_mode==AssistMode::HumanLed && config_.incremental_control && !config_.assist_enabled) {
+      assist_state=AssistState::Disabled;
+      assist_reason="assist_off";
+      assist_latched=false;
+      withdraw_assist();
     } else if(config_.assist_mode==AssistMode::HumanLed && config_.incremental_control) {
       const double center_x=output.assist.center_x, center_y=output.assist.center_y;
       const double image_dx=selected ? selected->x[0]-center_x : 0;
@@ -876,9 +913,10 @@ ScenarioResult Simulator::run() {
       } else if(assist_state==AssistState::HumanOverride && ts_ns<assist_resume_at) {
         assist_reason="resume_wait";
         withdraw_assist();
-      } else if(!controllable) {
+      } else if(!controllable || feedback_fault || !connected || !encoder_valid) {
         assist_state=AssistState::Suspended;
-        assist_reason="unreliable";
+        assist_reason=feedback_fault ? "feedback_fault" : !encoder_valid ? "encoder_unavailable" :
+            !connected ? "disconnected" : "unreliable";
         assist_latched=false;
         withdraw_assist();
       } else {
@@ -888,10 +926,6 @@ ScenarioResult Simulator::run() {
           assist_state=AssistState::Armed;
           assist_reason="outside";
           withdraw_assist();
-        } else if(distance<=config_.assist_deadzone_px) {
-          assist_state=AssistState::Assisting;
-          assist_reason="deadzone";
-          assist_speed_x=assist_speed_y=0;
         } else if(assist_known_until>ts_ns) {
           // The deadline was chosen when the command was issued. Hidden device
           // progress does not change this decision.
@@ -899,40 +933,56 @@ ScenarioResult Simulator::run() {
           assist_reason="in_flight";
         } else {
           assist_state=AssistState::Assisting;
-          assist_reason="assisting";
-          const double room=distance-config_.assist_deadzone_px;
-          const double step_cap=std::min(config_.assist_max_step_px, config_.assist_max_speed_px_s*config_.dt_s);
-          const double correction=std::min(room, step_cap);
-          double vx=image_dx/distance*correction/config_.dt_s;
-          double vy=image_dy/distance*correction/config_.dt_s;
-          double dvx=vx-assist_speed_x, dvy=vy-assist_speed_y;
-          const double dv=std::hypot(dvx,dvy);
-          const double max_dv=config_.assist_max_accel_px_s2*config_.dt_s;
-          if(dv>max_dv && dv>0) {dvx*=max_dv/dv; dvy*=max_dv/dv;}
-          assist_speed_x+=dvx; assist_speed_y+=dvy;
-          const double speed=std::hypot(assist_speed_x,assist_speed_y);
-          if(speed>config_.assist_max_speed_px_s) {
-            assist_speed_x*=config_.assist_max_speed_px_s/speed;
-            assist_speed_y*=config_.assist_max_speed_px_s/speed;
-          }
-          assist_dx_frame=assist_speed_x*config_.dt_s;
-          assist_dy_frame=assist_speed_y*config_.dt_s;
-          const double step=std::hypot(assist_dx_frame,assist_dy_frame);
-          if(step>config_.assist_max_step_px) {
-            assist_dx_frame*=config_.assist_max_step_px/step;
-            assist_dy_frame*=config_.assist_max_step_px/step;
-          }
-          if(std::hypot(assist_dx_frame,assist_dy_frame)>1e-6 && connected && !feedback_fault && encoder_valid) {
-            const double delay=std::max(0.0,config_.actuator_delay_frames*config_.dt_s+jitter(delay_rng)*.001);
-            const auto arrival=ts_ns+std::llround(delay*1e9);
-            command_lead_ms=(arrival-ts_ns)*1e-6;
-            used_horizon=0;
-            IncrementCommand command{std::uint64_t(frame+1),std::uint64_t(frame),selected->id,
-                              ts_ns,arrival,arrival+std::llround(2*config_.dt_s*1e9),
-                              assist_dx_frame*config_.actuator_units_per_px,
-                              assist_dy_frame*config_.actuator_units_per_px};
-            if(dispatch_incremental(command,command.dx/config_.dt_s,command.dy/config_.dt_s))
-              assist_known_until=command.expires;
+          const double dt=config_.dt_s;
+          const double room=std::max(0.0, distance-config_.assist_deadzone_px);
+          const double step_cap=std::min(config_.assist_max_step_px, config_.assist_max_speed_px_s*dt);
+          const double correction=distance>1e-9 ? std::min(room, step_cap) : 0;
+          const double ux=distance>1e-9 ? image_dx/distance : 0;
+          const double uy=distance>1e-9 ? image_dy/distance : 0;
+          // Add the track's image velocity, then clamp to the same experimental
+          // step. A slow walk inside the region stays near center; the step
+          // still cannot grow into a chase.
+          double want_x=ux*correction+selected->x[2]*dt;
+          double want_y=uy*correction+selected->x[3]*dt;
+          const double want=std::hypot(want_x,want_y);
+          if(want>step_cap && want>0) {want_x*=step_cap/want; want_y*=step_cap/want;}
+          if(room<=0 && want<0.05) {
+            assist_reason="deadzone";
+            assist_speed_x=assist_speed_y=0;
+          } else {
+            assist_reason=room<=0 ? "hold_velocity" : "assisting";
+            double vx_cmd=want_x/dt, vy_cmd=want_y/dt;
+            double dvx=vx_cmd-assist_speed_x, dvy=vy_cmd-assist_speed_y;
+            const double dv=std::hypot(dvx,dvy);
+            const double max_dv=config_.assist_max_accel_px_s2*dt;
+            if(dv>max_dv && dv>0) {dvx*=max_dv/dv; dvy*=max_dv/dv;}
+            assist_speed_x+=dvx; assist_speed_y+=dvy;
+            const double speed=std::hypot(assist_speed_x,assist_speed_y);
+            if(speed>config_.assist_max_speed_px_s) {
+              assist_speed_x*=config_.assist_max_speed_px_s/speed;
+              assist_speed_y*=config_.assist_max_speed_px_s/speed;
+            }
+            assist_dx_frame=assist_speed_x*dt;
+            assist_dy_frame=assist_speed_y*dt;
+            const double step=std::hypot(assist_dx_frame,assist_dy_frame);
+            if(step>config_.assist_max_step_px) {
+              assist_dx_frame*=config_.assist_max_step_px/step;
+              assist_dy_frame*=config_.assist_max_step_px/step;
+            }
+            if(std::hypot(assist_dx_frame,assist_dy_frame)>1e-6 && connected && !feedback_fault && encoder_valid) {
+              const double delay=std::max(0.0,config_.actuator_delay_frames*config_.dt_s+jitter(delay_rng)*.001);
+              const auto arrival=ts_ns+std::llround(delay*1e9);
+              command_lead_ms=(arrival-ts_ns)*1e-6;
+              used_horizon=0;
+              // Keep the existing two-step lifetime so an in-flight trim can
+              // still be stopped. The device itself is not read.
+              IncrementCommand command{std::uint64_t(frame+1),std::uint64_t(frame),selected->id,
+                                ts_ns,arrival,arrival+std::llround(2*config_.dt_s*1e9),
+                                assist_dx_frame*config_.actuator_units_per_px,
+                                assist_dy_frame*config_.actuator_units_per_px};
+              if(dispatch_incremental(command,command.dx/config_.dt_s,command.dy/config_.dt_s))
+                assist_known_until=command.expires;
+            }
           }
         }
       }
