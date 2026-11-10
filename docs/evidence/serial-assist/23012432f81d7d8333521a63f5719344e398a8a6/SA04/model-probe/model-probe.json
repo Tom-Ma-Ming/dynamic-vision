@@ -1,0 +1,45 @@
+{
+  "passed": false,
+  "unknown_counted_as_pass": false,
+  "overall": "UNKNOWN",
+  "cpu_onnx": {
+    "status": "executed",
+    "result": "executed_coco_graph_not_project_contract",
+    "provider": "CPUExecutionProvider",
+    "model": "/agent/repos/dynamic-vision/models/yolo11n-coco-320.onnx",
+    "model_sha256": "8726dd29e8439519c8986d830d5d732fe483ab8ab90cbb965f57fa1b8b97c505",
+    "image": "/agent/repos/dynamic-vision/models/yolo-loop/person.jpg",
+    "input_shape": [
+      1,
+      3,
+      320,
+      320
+    ],
+    "output_shape": [
+      1,
+      84,
+      2100
+    ],
+    "output_finite": true,
+    "project_contract": false,
+    "note": "Public COCO YOLO11n. The project head/person best.onnx is not in this checkout."
+  },
+  "project_onnx": {
+    "path": "/agent/repos/dynamic-vision/artifacts/runs/yolo11n-v002-retrain-20261110-320/weights/best.onnx",
+    "status": "MISSING",
+    "sha256": null
+  },
+  "project_engine": {
+    "path": "/agent/repos/dynamic-vision/artifacts/engines/yolo11n-v002-retrain-20261110-fp32/best-fp32.engine",
+    "status": "MISSING",
+    "sha256": null
+  },
+  "tensorrt": {
+    "status": "blocked",
+    "result": "UNKNOWN",
+    "gpu_present": false,
+    "reason": "This machine has no NVIDIA GPU node. CMake refuses VISION_WITH_TRT off Windows. The project engine file is not in this checkout. CPU ONNX is not a TensorRT pass.",
+    "windows_command": "cmake --build --preset windows-sdk --target vision_sim_image\nout\\windows-sdk\\apps\\trt_infer\\Release\\vision_sim_image.exe artifacts\\engines\\yolo11n-v002-retrain-20261110-fp32\\best-fp32.engine <sprite> <background> configs\\tracker-body-primary.yml <NEW_DIR> 19 42.4 431.2 674.9 1 1 0 0 0 0 human_led",
+    "windows_command_note": "vision_sim_image human_led is the existing trim, not this round's fixed_pid comparison. The off twin replaces the last word with human_led_off. Neither command was executed here."
+  }
+}

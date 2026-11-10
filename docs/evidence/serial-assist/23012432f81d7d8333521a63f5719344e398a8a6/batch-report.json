@@ -1,0 +1,25 @@
+{
+  "commit": "23012432f81d7d8333521a63f5719344e398a8a6",
+  "passed": false,
+  "unknown_counted_as_pass": false,
+  "overall": "UNKNOWN",
+  "commands": [
+    {
+      "command": "/agent/repos/dynamic-vision/out/linux-cpu/serial_assist inventory --root /agent/repos/dynamic-vision --out docs/evidence/serial-assist/23012432f81d7d8333521a63f5719344e398a8a6/SA01/inventory --commit 23012432f81d7d8333521a63f5719344e398a8a6 --dirty 0",
+      "exit_code": 0
+    },
+    {
+      "command": "/agent/repos/dynamic-vision/out/linux-cpu/serial_assist run --root /agent/repos/dynamic-vision --config configs/serial/assist.json --out docs/evidence/serial-assist/23012432f81d7d8333521a63f5719344e398a8a6/SA02-SA04/suite --commit 23012432f81d7d8333521a63f5719344e398a8a6 --dirty 0",
+      "exit_code": 2
+    },
+    {
+      "command": "/usr/bin/python3 tools/audit_serial_assist.py docs/evidence/serial-assist/23012432f81d7d8333521a63f5719344e398a8a6/SA02-SA04/suite --tree --acceptance configs/serial/acceptance-profile.json --out docs/evidence/serial-assist/23012432f81d7d8333521a63f5719344e398a8a6/SA03/audit-summary.json",
+      "exit_code": 2
+    },
+    {
+      "command": "/usr/bin/python3 tools/probe_serial_model.py --root /agent/repos/dynamic-vision --out docs/evidence/serial-assist/23012432f81d7d8333521a63f5719344e398a8a6/SA04/model-probe",
+      "exit_code": 2
+    }
+  ],
+  "note": "Exit 2 means completed with UNKNOWN device/TensorRT status. It is not a pass. Exit 0 from inventory only means the freeze file was written."
+}

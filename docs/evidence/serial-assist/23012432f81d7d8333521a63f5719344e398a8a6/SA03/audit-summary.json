@@ -1,0 +1,2975 @@
+{
+  "protocol": "serial-assist-audit-v1",
+  "status": "UNKNOWN",
+  "passed": false,
+  "unknown_counted_as_pass": false,
+  "failures": [],
+  "runs": [
+    {
+      "protocol": "serial-assist-audit-v1",
+      "directory": "docs/evidence/serial-assist/23012432f81d7d8333521a63f5719344e398a8a6/SA02-SA04/suite/backends/dry/seed-1/limited_step",
+      "status": "UNKNOWN",
+      "passed": false,
+      "unknown_counted_as_pass": false,
+      "failures": [],
+      "unknowns": [
+        "flashed_firmware_identity",
+        "flashed_firmware_matches_source",
+        "device_model",
+        "com_port",
+        "end_to_end_latency_ms",
+        "device_counts_per_px",
+        "usb_hid_queue_depth",
+        "partial_write_recovery",
+        "device_watchdog",
+        "ok_semantics_on_device",
+        "device_execution_confirmation",
+        "remote_stop_confirmation",
+        "tensorrt_execution"
+      ],
+      "metrics": {
+        "end_max_truth_error_px": 20.0,
+        "coverage": 0.95,
+        "demand_frames": 20
+      }
+    },
+    {
+      "protocol": "serial-assist-audit-v1",
+      "directory": "docs/evidence/serial-assist/23012432f81d7d8333521a63f5719344e398a8a6/SA02-SA04/suite/backends/mock/seed-1/limited_step",
+      "status": "UNKNOWN",
+      "passed": false,
+      "unknown_counted_as_pass": false,
+      "failures": [],
+      "unknowns": [
+        "flashed_firmware_identity",
+        "flashed_firmware_matches_source",
+        "device_model",
+        "com_port",
+        "end_to_end_latency_ms",
+        "device_counts_per_px",
+        "usb_hid_queue_depth",
+        "partial_write_recovery",
+        "device_watchdog",
+        "ok_semantics_on_device",
+        "device_execution_confirmation",
+        "remote_stop_confirmation",
+        "tensorrt_execution"
+      ],
+      "metrics": {
+        "end_max_truth_error_px": 20.0,
+        "coverage": 0.95,
+        "demand_frames": 20
+      }
+    },
+    {
+      "protocol": "serial-assist-audit-v1",
+      "directory": "docs/evidence/serial-assist/23012432f81d7d8333521a63f5719344e398a8a6/SA02-SA04/suite/backends/partial/seed-1/limited_step",
+      "status": "UNKNOWN",
+      "passed": false,
+      "unknown_counted_as_pass": false,
+      "failures": [],
+      "unknowns": [
+        "flashed_firmware_identity",
+        "flashed_firmware_matches_source",
+        "device_model",
+        "com_port",
+        "end_to_end_latency_ms",
+        "device_counts_per_px",
+        "usb_hid_queue_depth",
+        "partial_write_recovery",
+        "device_watchdog",
+        "ok_semantics_on_device",
+        "device_execution_confirmation",
+        "remote_stop_confirmation",
+        "tensorrt_execution"
+      ],
+      "metrics": {
+        "end_max_truth_error_px": 20.0,
+        "coverage": 0.9166666666666666,
+        "demand_frames": 12
+      }
+    },
+    {
+      "protocol": "serial-assist-audit-v1",
+      "directory": "docs/evidence/serial-assist/23012432f81d7d8333521a63f5719344e398a8a6/SA02-SA04/suite/backends/send-fail/seed-1/limited_step",
+      "status": "UNKNOWN",
+      "passed": false,
+      "unknown_counted_as_pass": false,
+      "failures": [],
+      "unknowns": [
+        "flashed_firmware_identity",
+        "flashed_firmware_matches_source",
+        "device_model",
+        "com_port",
+        "end_to_end_latency_ms",
+        "device_counts_per_px",
+        "usb_hid_queue_depth",
+        "partial_write_recovery",
+        "device_watchdog",
+        "ok_semantics_on_device",
+        "device_execution_confirmation",
+        "remote_stop_confirmation",
+        "tensorrt_execution"
+      ],
+      "metrics": {
+        "end_max_truth_error_px": 20.0,
+        "coverage": 0.9166666666666666,
+        "demand_frames": 12
+      }
+    },
+    {
+      "protocol": "serial-assist-audit-v1",
+      "directory": "docs/evidence/serial-assist/23012432f81d7d8333521a63f5719344e398a8a6/SA02-SA04/suite/backends/serial-refused/seed-1/limited_step",
+      "status": "UNKNOWN",
+      "passed": false,
+      "unknown_counted_as_pass": false,
+      "failures": [],
+      "unknowns": [
+        "flashed_firmware_identity",
+        "flashed_firmware_matches_source",
+        "device_model",
+        "com_port",
+        "end_to_end_latency_ms",
+        "device_counts_per_px",
+        "usb_hid_queue_depth",
+        "partial_write_recovery",
+        "device_watchdog",
+        "ok_semantics_on_device",
+        "device_execution_confirmation",
+        "remote_stop_confirmation",
+        "tensorrt_execution"
+      ],
+      "metrics": {
+        "end_max_truth_error_px": 20.0,
+        "coverage": 0.875,
+        "demand_frames": 8
+      }
+    },
+    {
+      "protocol": "serial-assist-audit-v1",
+      "directory": "docs/evidence/serial-assist/23012432f81d7d8333521a63f5719344e398a8a6/SA02-SA04/suite/compare/between/seed-1/fixed_pid",
+      "status": "UNKNOWN",
+      "passed": false,
+      "unknown_counted_as_pass": false,
+      "failures": [],
+      "unknowns": [
+        "flashed_firmware_identity",
+        "flashed_firmware_matches_source",
+        "device_model",
+        "com_port",
+        "end_to_end_latency_ms",
+        "device_counts_per_px",
+        "usb_hid_queue_depth",
+        "partial_write_recovery",
+        "device_watchdog",
+        "ok_semantics_on_device",
+        "device_execution_confirmation",
+        "remote_stop_confirmation",
+        "tensorrt_execution"
+      ],
+      "metrics": {
+        "end_max_truth_error_px": 60.0,
+        "coverage": null,
+        "demand_frames": 0
+      }
+    },
+    {
+      "protocol": "serial-assist-audit-v1",
+      "directory": "docs/evidence/serial-assist/23012432f81d7d8333521a63f5719344e398a8a6/SA02-SA04/suite/compare/between/seed-1/limited_step",
+      "status": "UNKNOWN",
+      "passed": false,
+      "unknown_counted_as_pass": false,
+      "failures": [],
+      "unknowns": [
+        "flashed_firmware_identity",
+        "flashed_firmware_matches_source",
+        "device_model",
+        "com_port",
+        "end_to_end_latency_ms",
+        "device_counts_per_px",
+        "usb_hid_queue_depth",
+        "partial_write_recovery",
+        "device_watchdog",
+        "ok_semantics_on_device",
+        "device_execution_confirmation",
+        "remote_stop_confirmation",
+        "tensorrt_execution"
+      ],
+      "metrics": {
+        "end_max_truth_error_px": 60.0,
+        "coverage": null,
+        "demand_frames": 0
+      }
+    },
+    {
+      "protocol": "serial-assist-audit-v1",
+      "directory": "docs/evidence/serial-assist/23012432f81d7d8333521a63f5719344e398a8a6/SA02-SA04/suite/compare/between/seed-1/off",
+      "status": "UNKNOWN",
+      "passed": false,
+      "unknown_counted_as_pass": false,
+      "failures": [],
+      "unknowns": [
+        "flashed_firmware_identity",
+        "flashed_firmware_matches_source",
+        "device_model",
+        "com_port",
+        "end_to_end_latency_ms",
+        "device_counts_per_px",
+        "usb_hid_queue_depth",
+        "partial_write_recovery",
+        "device_watchdog",
+        "ok_semantics_on_device",
+        "device_execution_confirmation",
+        "remote_stop_confirmation",
+        "tensorrt_execution"
+      ],
+      "metrics": {
+        "end_max_truth_error_px": 60.0,
+        "coverage": null,
+        "demand_frames": 0
+      }
+    },
+    {
+      "protocol": "serial-assist-audit-v1",
+      "directory": "docs/evidence/serial-assist/23012432f81d7d8333521a63f5719344e398a8a6/SA02-SA04/suite/compare/diag-nn/seed-11/fixed_pid",
+      "status": "UNKNOWN",
+      "passed": false,
+      "unknown_counted_as_pass": false,
+      "failures": [],
+      "unknowns": [
+        "flashed_firmware_identity",
+        "flashed_firmware_matches_source",
+        "device_model",
+        "com_port",
+        "end_to_end_latency_ms",
+        "device_counts_per_px",
+        "usb_hid_queue_depth",
+        "partial_write_recovery",
+        "device_watchdog",
+        "ok_semantics_on_device",
+        "device_execution_confirmation",
+        "remote_stop_confirmation",
+        "tensorrt_execution"
+      ],
+      "metrics": {
+        "end_max_truth_error_px": 0.0,
+        "coverage": 0.9583333333333334,
+        "demand_frames": 24
+      }
+    },
+    {
+      "protocol": "serial-assist-audit-v1",
+      "directory": "docs/evidence/serial-assist/23012432f81d7d8333521a63f5719344e398a8a6/SA02-SA04/suite/compare/diag-nn/seed-11/limited_step",
+      "status": "UNKNOWN",
+      "passed": false,
+      "unknown_counted_as_pass": false,
+      "failures": [],
+      "unknowns": [
+        "flashed_firmware_identity",
+        "flashed_firmware_matches_source",
+        "device_model",
+        "com_port",
+        "end_to_end_latency_ms",
+        "device_counts_per_px",
+        "usb_hid_queue_depth",
+        "partial_write_recovery",
+        "device_watchdog",
+        "ok_semantics_on_device",
+        "device_execution_confirmation",
+        "remote_stop_confirmation",
+        "tensorrt_execution"
+      ],
+      "metrics": {
+        "end_max_truth_error_px": 0.0,
+        "coverage": 0.9473684210526315,
+        "demand_frames": 19
+      }
+    },
+    {
+      "protocol": "serial-assist-audit-v1",
+      "directory": "docs/evidence/serial-assist/23012432f81d7d8333521a63f5719344e398a8a6/SA02-SA04/suite/compare/diag-nn/seed-11/off",
+      "status": "UNKNOWN",
+      "passed": false,
+      "unknown_counted_as_pass": false,
+      "failures": [],
+      "unknowns": [
+        "flashed_firmware_identity",
+        "flashed_firmware_matches_source",
+        "device_model",
+        "com_port",
+        "end_to_end_latency_ms",
+        "device_counts_per_px",
+        "usb_hid_queue_depth",
+        "partial_write_recovery",
+        "device_watchdog",
+        "ok_semantics_on_device",
+        "device_execution_confirmation",
+        "remote_stop_confirmation",
+        "tensorrt_execution"
+      ],
+      "metrics": {
+        "end_max_truth_error_px": 16.97056274847714,
+        "coverage": 0.0,
+        "demand_frames": 80
+      }
+    },
+    {
+      "protocol": "serial-assist-audit-v1",
+      "directory": "docs/evidence/serial-assist/23012432f81d7d8333521a63f5719344e398a8a6/SA02-SA04/suite/compare/diag-nn/seed-22/fixed_pid",
+      "status": "UNKNOWN",
+      "passed": false,
+      "unknown_counted_as_pass": false,
+      "failures": [],
+      "unknowns": [
+        "flashed_firmware_identity",
+        "flashed_firmware_matches_source",
+        "device_model",
+        "com_port",
+        "end_to_end_latency_ms",
+        "device_counts_per_px",
+        "usb_hid_queue_depth",
+        "partial_write_recovery",
+        "device_watchdog",
+        "ok_semantics_on_device",
+        "device_execution_confirmation",
+        "remote_stop_confirmation",
+        "tensorrt_execution"
+      ],
+      "metrics": {
+        "end_max_truth_error_px": 0.0,
+        "coverage": 0.9583333333333334,
+        "demand_frames": 24
+      }
+    },
+    {
+      "protocol": "serial-assist-audit-v1",
+      "directory": "docs/evidence/serial-assist/23012432f81d7d8333521a63f5719344e398a8a6/SA02-SA04/suite/compare/diag-nn/seed-22/limited_step",
+      "status": "UNKNOWN",
+      "passed": false,
+      "unknown_counted_as_pass": false,
+      "failures": [],
+      "unknowns": [
+        "flashed_firmware_identity",
+        "flashed_firmware_matches_source",
+        "device_model",
+        "com_port",
+        "end_to_end_latency_ms",
+        "device_counts_per_px",
+        "usb_hid_queue_depth",
+        "partial_write_recovery",
+        "device_watchdog",
+        "ok_semantics_on_device",
+        "device_execution_confirmation",
+        "remote_stop_confirmation",
+        "tensorrt_execution"
+      ],
+      "metrics": {
+        "end_max_truth_error_px": 0.0,
+        "coverage": 0.9473684210526315,
+        "demand_frames": 19
+      }
+    },
+    {
+      "protocol": "serial-assist-audit-v1",
+      "directory": "docs/evidence/serial-assist/23012432f81d7d8333521a63f5719344e398a8a6/SA02-SA04/suite/compare/diag-nn/seed-22/off",
+      "status": "UNKNOWN",
+      "passed": false,
+      "unknown_counted_as_pass": false,
+      "failures": [],
+      "unknowns": [
+        "flashed_firmware_identity",
+        "flashed_firmware_matches_source",
+        "device_model",
+        "com_port",
+        "end_to_end_latency_ms",
+        "device_counts_per_px",
+        "usb_hid_queue_depth",
+        "partial_write_recovery",
+        "device_watchdog",
+        "ok_semantics_on_device",
+        "device_execution_confirmation",
+        "remote_stop_confirmation",
+        "tensorrt_execution"
+      ],
+      "metrics": {
+        "end_max_truth_error_px": 16.97056274847714,
+        "coverage": 0.0,
+        "demand_frames": 80
+      }
+    },
+    {
+      "protocol": "serial-assist-audit-v1",
+      "directory": "docs/evidence/serial-assist/23012432f81d7d8333521a63f5719344e398a8a6/SA02-SA04/suite/compare/diag-nn/seed-33/fixed_pid",
+      "status": "UNKNOWN",
+      "passed": false,
+      "unknown_counted_as_pass": false,
+      "failures": [],
+      "unknowns": [
+        "flashed_firmware_identity",
+        "flashed_firmware_matches_source",
+        "device_model",
+        "com_port",
+        "end_to_end_latency_ms",
+        "device_counts_per_px",
+        "usb_hid_queue_depth",
+        "partial_write_recovery",
+        "device_watchdog",
+        "ok_semantics_on_device",
+        "device_execution_confirmation",
+        "remote_stop_confirmation",
+        "tensorrt_execution"
+      ],
+      "metrics": {
+        "end_max_truth_error_px": 0.0,
+        "coverage": 0.9583333333333334,
+        "demand_frames": 24
+      }
+    },
+    {
+      "protocol": "serial-assist-audit-v1",
+      "directory": "docs/evidence/serial-assist/23012432f81d7d8333521a63f5719344e398a8a6/SA02-SA04/suite/compare/diag-nn/seed-33/limited_step",
+      "status": "UNKNOWN",
+      "passed": false,
+      "unknown_counted_as_pass": false,
+      "failures": [],
+      "unknowns": [
+        "flashed_firmware_identity",
+        "flashed_firmware_matches_source",
+        "device_model",
+        "com_port",
+        "end_to_end_latency_ms",
+        "device_counts_per_px",
+        "usb_hid_queue_depth",
+        "partial_write_recovery",
+        "device_watchdog",
+        "ok_semantics_on_device",
+        "device_execution_confirmation",
+        "remote_stop_confirmation",
+        "tensorrt_execution"
+      ],
+      "metrics": {
+        "end_max_truth_error_px": 0.0,
+        "coverage": 0.9473684210526315,
+        "demand_frames": 19
+      }
+    },
+    {
+      "protocol": "serial-assist-audit-v1",
+      "directory": "docs/evidence/serial-assist/23012432f81d7d8333521a63f5719344e398a8a6/SA02-SA04/suite/compare/diag-nn/seed-33/off",
+      "status": "UNKNOWN",
+      "passed": false,
+      "unknown_counted_as_pass": false,
+      "failures": [],
+      "unknowns": [
+        "flashed_firmware_identity",
+        "flashed_firmware_matches_source",
+        "device_model",
+        "com_port",
+        "end_to_end_latency_ms",
+        "device_counts_per_px",
+        "usb_hid_queue_depth",
+        "partial_write_recovery",
+        "device_watchdog",
+        "ok_semantics_on_device",
+        "device_execution_confirmation",
+        "remote_stop_confirmation",
+        "tensorrt_execution"
+      ],
+      "metrics": {
+        "end_max_truth_error_px": 16.97056274847714,
+        "coverage": 0.0,
+        "demand_frames": 80
+      }
+    },
+    {
+      "protocol": "serial-assist-audit-v1",
+      "directory": "docs/evidence/serial-assist/23012432f81d7d8333521a63f5719344e398a8a6/SA02-SA04/suite/compare/diag-np/seed-11/fixed_pid",
+      "status": "UNKNOWN",
+      "passed": false,
+      "unknown_counted_as_pass": false,
+      "failures": [],
+      "unknowns": [
+        "flashed_firmware_identity",
+        "flashed_firmware_matches_source",
+        "device_model",
+        "com_port",
+        "end_to_end_latency_ms",
+        "device_counts_per_px",
+        "usb_hid_queue_depth",
+        "partial_write_recovery",
+        "device_watchdog",
+        "ok_semantics_on_device",
+        "device_execution_confirmation",
+        "remote_stop_confirmation",
+        "tensorrt_execution"
+      ],
+      "metrics": {
+        "end_max_truth_error_px": 0.0,
+        "coverage": 0.9583333333333334,
+        "demand_frames": 24
+      }
+    },
+    {
+      "protocol": "serial-assist-audit-v1",
+      "directory": "docs/evidence/serial-assist/23012432f81d7d8333521a63f5719344e398a8a6/SA02-SA04/suite/compare/diag-np/seed-11/limited_step",
+      "status": "UNKNOWN",
+      "passed": false,
+      "unknown_counted_as_pass": false,
+      "failures": [],
+      "unknowns": [
+        "flashed_firmware_identity",
+        "flashed_firmware_matches_source",
+        "device_model",
+        "com_port",
+        "end_to_end_latency_ms",
+        "device_counts_per_px",
+        "usb_hid_queue_depth",
+        "partial_write_recovery",
+        "device_watchdog",
+        "ok_semantics_on_device",
+        "device_execution_confirmation",
+        "remote_stop_confirmation",
+        "tensorrt_execution"
+      ],
+      "metrics": {
+        "end_max_truth_error_px": 0.0,
+        "coverage": 0.9473684210526315,
+        "demand_frames": 19
+      }
+    },
+    {
+      "protocol": "serial-assist-audit-v1",
+      "directory": "docs/evidence/serial-assist/23012432f81d7d8333521a63f5719344e398a8a6/SA02-SA04/suite/compare/diag-np/seed-11/off",
+      "status": "UNKNOWN",
+      "passed": false,
+      "unknown_counted_as_pass": false,
+      "failures": [],
+      "unknowns": [
+        "flashed_firmware_identity",
+        "flashed_firmware_matches_source",
+        "device_model",
+        "com_port",
+        "end_to_end_latency_ms",
+        "device_counts_per_px",
+        "usb_hid_queue_depth",
+        "partial_write_recovery",
+        "device_watchdog",
+        "ok_semantics_on_device",
+        "device_execution_confirmation",
+        "remote_stop_confirmation",
+        "tensorrt_execution"
+      ],
+      "metrics": {
+        "end_max_truth_error_px": 16.97056274847714,
+        "coverage": 0.0,
+        "demand_frames": 80
+      }
+    },
+    {
+      "protocol": "serial-assist-audit-v1",
+      "directory": "docs/evidence/serial-assist/23012432f81d7d8333521a63f5719344e398a8a6/SA02-SA04/suite/compare/diag-np/seed-22/fixed_pid",
+      "status": "UNKNOWN",
+      "passed": false,
+      "unknown_counted_as_pass": false,
+      "failures": [],
+      "unknowns": [
+        "flashed_firmware_identity",
+        "flashed_firmware_matches_source",
+        "device_model",
+        "com_port",
+        "end_to_end_latency_ms",
+        "device_counts_per_px",
+        "usb_hid_queue_depth",
+        "partial_write_recovery",
+        "device_watchdog",
+        "ok_semantics_on_device",
+        "device_execution_confirmation",
+        "remote_stop_confirmation",
+        "tensorrt_execution"
+      ],
+      "metrics": {
+        "end_max_truth_error_px": 0.0,
+        "coverage": 0.9583333333333334,
+        "demand_frames": 24
+      }
+    },
+    {
+      "protocol": "serial-assist-audit-v1",
+      "directory": "docs/evidence/serial-assist/23012432f81d7d8333521a63f5719344e398a8a6/SA02-SA04/suite/compare/diag-np/seed-22/limited_step",
+      "status": "UNKNOWN",
+      "passed": false,
+      "unknown_counted_as_pass": false,
+      "failures": [],
+      "unknowns": [
+        "flashed_firmware_identity",
+        "flashed_firmware_matches_source",
+        "device_model",
+        "com_port",
+        "end_to_end_latency_ms",
+        "device_counts_per_px",
+        "usb_hid_queue_depth",
+        "partial_write_recovery",
+        "device_watchdog",
+        "ok_semantics_on_device",
+        "device_execution_confirmation",
+        "remote_stop_confirmation",
+        "tensorrt_execution"
+      ],
+      "metrics": {
+        "end_max_truth_error_px": 0.0,
+        "coverage": 0.9473684210526315,
+        "demand_frames": 19
+      }
+    },
+    {
+      "protocol": "serial-assist-audit-v1",
+      "directory": "docs/evidence/serial-assist/23012432f81d7d8333521a63f5719344e398a8a6/SA02-SA04/suite/compare/diag-np/seed-22/off",
+      "status": "UNKNOWN",
+      "passed": false,
+      "unknown_counted_as_pass": false,
+      "failures": [],
+      "unknowns": [
+        "flashed_firmware_identity",
+        "flashed_firmware_matches_source",
+        "device_model",
+        "com_port",
+        "end_to_end_latency_ms",
+        "device_counts_per_px",
+        "usb_hid_queue_depth",
+        "partial_write_recovery",
+        "device_watchdog",
+        "ok_semantics_on_device",
+        "device_execution_confirmation",
+        "remote_stop_confirmation",
+        "tensorrt_execution"
+      ],
+      "metrics": {
+        "end_max_truth_error_px": 16.97056274847714,
+        "coverage": 0.0,
+        "demand_frames": 80
+      }
+    },
+    {
+      "protocol": "serial-assist-audit-v1",
+      "directory": "docs/evidence/serial-assist/23012432f81d7d8333521a63f5719344e398a8a6/SA02-SA04/suite/compare/diag-np/seed-33/fixed_pid",
+      "status": "UNKNOWN",
+      "passed": false,
+      "unknown_counted_as_pass": false,
+      "failures": [],
+      "unknowns": [
+        "flashed_firmware_identity",
+        "flashed_firmware_matches_source",
+        "device_model",
+        "com_port",
+        "end_to_end_latency_ms",
+        "device_counts_per_px",
+        "usb_hid_queue_depth",
+        "partial_write_recovery",
+        "device_watchdog",
+        "ok_semantics_on_device",
+        "device_execution_confirmation",
+        "remote_stop_confirmation",
+        "tensorrt_execution"
+      ],
+      "metrics": {
+        "end_max_truth_error_px": 0.0,
+        "coverage": 0.9583333333333334,
+        "demand_frames": 24
+      }
+    },
+    {
+      "protocol": "serial-assist-audit-v1",
+      "directory": "docs/evidence/serial-assist/23012432f81d7d8333521a63f5719344e398a8a6/SA02-SA04/suite/compare/diag-np/seed-33/limited_step",
+      "status": "UNKNOWN",
+      "passed": false,
+      "unknown_counted_as_pass": false,
+      "failures": [],
+      "unknowns": [
+        "flashed_firmware_identity",
+        "flashed_firmware_matches_source",
+        "device_model",
+        "com_port",
+        "end_to_end_latency_ms",
+        "device_counts_per_px",
+        "usb_hid_queue_depth",
+        "partial_write_recovery",
+        "device_watchdog",
+        "ok_semantics_on_device",
+        "device_execution_confirmation",
+        "remote_stop_confirmation",
+        "tensorrt_execution"
+      ],
+      "metrics": {
+        "end_max_truth_error_px": 0.0,
+        "coverage": 0.9473684210526315,
+        "demand_frames": 19
+      }
+    },
+    {
+      "protocol": "serial-assist-audit-v1",
+      "directory": "docs/evidence/serial-assist/23012432f81d7d8333521a63f5719344e398a8a6/SA02-SA04/suite/compare/diag-np/seed-33/off",
+      "status": "UNKNOWN",
+      "passed": false,
+      "unknown_counted_as_pass": false,
+      "failures": [],
+      "unknowns": [
+        "flashed_firmware_identity",
+        "flashed_firmware_matches_source",
+        "device_model",
+        "com_port",
+        "end_to_end_latency_ms",
+        "device_counts_per_px",
+        "usb_hid_queue_depth",
+        "partial_write_recovery",
+        "device_watchdog",
+        "ok_semantics_on_device",
+        "device_execution_confirmation",
+        "remote_stop_confirmation",
+        "tensorrt_execution"
+      ],
+      "metrics": {
+        "end_max_truth_error_px": 16.97056274847714,
+        "coverage": 0.0,
+        "demand_frames": 80
+      }
+    },
+    {
+      "protocol": "serial-assist-audit-v1",
+      "directory": "docs/evidence/serial-assist/23012432f81d7d8333521a63f5719344e398a8a6/SA02-SA04/suite/compare/diag-pn/seed-11/fixed_pid",
+      "status": "UNKNOWN",
+      "passed": false,
+      "unknown_counted_as_pass": false,
+      "failures": [],
+      "unknowns": [
+        "flashed_firmware_identity",
+        "flashed_firmware_matches_source",
+        "device_model",
+        "com_port",
+        "end_to_end_latency_ms",
+        "device_counts_per_px",
+        "usb_hid_queue_depth",
+        "partial_write_recovery",
+        "device_watchdog",
+        "ok_semantics_on_device",
+        "device_execution_confirmation",
+        "remote_stop_confirmation",
+        "tensorrt_execution"
+      ],
+      "metrics": {
+        "end_max_truth_error_px": 0.0,
+        "coverage": 0.9615384615384616,
+        "demand_frames": 26
+      }
+    },
+    {
+      "protocol": "serial-assist-audit-v1",
+      "directory": "docs/evidence/serial-assist/23012432f81d7d8333521a63f5719344e398a8a6/SA02-SA04/suite/compare/diag-pn/seed-11/limited_step",
+      "status": "UNKNOWN",
+      "passed": false,
+      "unknown_counted_as_pass": false,
+      "failures": [],
+      "unknowns": [
+        "flashed_firmware_identity",
+        "flashed_firmware_matches_source",
+        "device_model",
+        "com_port",
+        "end_to_end_latency_ms",
+        "device_counts_per_px",
+        "usb_hid_queue_depth",
+        "partial_write_recovery",
+        "device_watchdog",
+        "ok_semantics_on_device",
+        "device_execution_confirmation",
+        "remote_stop_confirmation",
+        "tensorrt_execution"
+      ],
+      "metrics": {
+        "end_max_truth_error_px": 0.0,
+        "coverage": 0.9473684210526315,
+        "demand_frames": 19
+      }
+    },
+    {
+      "protocol": "serial-assist-audit-v1",
+      "directory": "docs/evidence/serial-assist/23012432f81d7d8333521a63f5719344e398a8a6/SA02-SA04/suite/compare/diag-pn/seed-11/off",
+      "status": "UNKNOWN",
+      "passed": false,
+      "unknown_counted_as_pass": false,
+      "failures": [],
+      "unknowns": [
+        "flashed_firmware_identity",
+        "flashed_firmware_matches_source",
+        "device_model",
+        "com_port",
+        "end_to_end_latency_ms",
+        "device_counts_per_px",
+        "usb_hid_queue_depth",
+        "partial_write_recovery",
+        "device_watchdog",
+        "ok_semantics_on_device",
+        "device_execution_confirmation",
+        "remote_stop_confirmation",
+        "tensorrt_execution"
+      ],
+      "metrics": {
+        "end_max_truth_error_px": 16.97056274847714,
+        "coverage": 0.0,
+        "demand_frames": 80
+      }
+    },
+    {
+      "protocol": "serial-assist-audit-v1",
+      "directory": "docs/evidence/serial-assist/23012432f81d7d8333521a63f5719344e398a8a6/SA02-SA04/suite/compare/diag-pn/seed-22/fixed_pid",
+      "status": "UNKNOWN",
+      "passed": false,
+      "unknown_counted_as_pass": false,
+      "failures": [],
+      "unknowns": [
+        "flashed_firmware_identity",
+        "flashed_firmware_matches_source",
+        "device_model",
+        "com_port",
+        "end_to_end_latency_ms",
+        "device_counts_per_px",
+        "usb_hid_queue_depth",
+        "partial_write_recovery",
+        "device_watchdog",
+        "ok_semantics_on_device",
+        "device_execution_confirmation",
+        "remote_stop_confirmation",
+        "tensorrt_execution"
+      ],
+      "metrics": {
+        "end_max_truth_error_px": 0.0,
+        "coverage": 0.9583333333333334,
+        "demand_frames": 24
+      }
+    },
+    {
+      "protocol": "serial-assist-audit-v1",
+      "directory": "docs/evidence/serial-assist/23012432f81d7d8333521a63f5719344e398a8a6/SA02-SA04/suite/compare/diag-pn/seed-22/limited_step",
+      "status": "UNKNOWN",
+      "passed": false,
+      "unknown_counted_as_pass": false,
+      "failures": [],
+      "unknowns": [
+        "flashed_firmware_identity",
+        "flashed_firmware_matches_source",
+        "device_model",
+        "com_port",
+        "end_to_end_latency_ms",
+        "device_counts_per_px",
+        "usb_hid_queue_depth",
+        "partial_write_recovery",
+        "device_watchdog",
+        "ok_semantics_on_device",
+        "device_execution_confirmation",
+        "remote_stop_confirmation",
+        "tensorrt_execution"
+      ],
+      "metrics": {
+        "end_max_truth_error_px": 0.0,
+        "coverage": 0.9473684210526315,
+        "demand_frames": 19
+      }
+    },
+    {
+      "protocol": "serial-assist-audit-v1",
+      "directory": "docs/evidence/serial-assist/23012432f81d7d8333521a63f5719344e398a8a6/SA02-SA04/suite/compare/diag-pn/seed-22/off",
+      "status": "UNKNOWN",
+      "passed": false,
+      "unknown_counted_as_pass": false,
+      "failures": [],
+      "unknowns": [
+        "flashed_firmware_identity",
+        "flashed_firmware_matches_source",
+        "device_model",
+        "com_port",
+        "end_to_end_latency_ms",
+        "device_counts_per_px",
+        "usb_hid_queue_depth",
+        "partial_write_recovery",
+        "device_watchdog",
+        "ok_semantics_on_device",
+        "device_execution_confirmation",
+        "remote_stop_confirmation",
+        "tensorrt_execution"
+      ],
+      "metrics": {
+        "end_max_truth_error_px": 16.97056274847714,
+        "coverage": 0.0,
+        "demand_frames": 80
+      }
+    },
+    {
+      "protocol": "serial-assist-audit-v1",
+      "directory": "docs/evidence/serial-assist/23012432f81d7d8333521a63f5719344e398a8a6/SA02-SA04/suite/compare/diag-pn/seed-33/fixed_pid",
+      "status": "UNKNOWN",
+      "passed": false,
+      "unknown_counted_as_pass": false,
+      "failures": [],
+      "unknowns": [
+        "flashed_firmware_identity",
+        "flashed_firmware_matches_source",
+        "device_model",
+        "com_port",
+        "end_to_end_latency_ms",
+        "device_counts_per_px",
+        "usb_hid_queue_depth",
+        "partial_write_recovery",
+        "device_watchdog",
+        "ok_semantics_on_device",
+        "device_execution_confirmation",
+        "remote_stop_confirmation",
+        "tensorrt_execution"
+      ],
+      "metrics": {
+        "end_max_truth_error_px": 0.0,
+        "coverage": 0.9583333333333334,
+        "demand_frames": 24
+      }
+    },
+    {
+      "protocol": "serial-assist-audit-v1",
+      "directory": "docs/evidence/serial-assist/23012432f81d7d8333521a63f5719344e398a8a6/SA02-SA04/suite/compare/diag-pn/seed-33/limited_step",
+      "status": "UNKNOWN",
+      "passed": false,
+      "unknown_counted_as_pass": false,
+      "failures": [],
+      "unknowns": [
+        "flashed_firmware_identity",
+        "flashed_firmware_matches_source",
+        "device_model",
+        "com_port",
+        "end_to_end_latency_ms",
+        "device_counts_per_px",
+        "usb_hid_queue_depth",
+        "partial_write_recovery",
+        "device_watchdog",
+        "ok_semantics_on_device",
+        "device_execution_confirmation",
+        "remote_stop_confirmation",
+        "tensorrt_execution"
+      ],
+      "metrics": {
+        "end_max_truth_error_px": 0.0,
+        "coverage": 0.9473684210526315,
+        "demand_frames": 19
+      }
+    },
+    {
+      "protocol": "serial-assist-audit-v1",
+      "directory": "docs/evidence/serial-assist/23012432f81d7d8333521a63f5719344e398a8a6/SA02-SA04/suite/compare/diag-pn/seed-33/off",
+      "status": "UNKNOWN",
+      "passed": false,
+      "unknown_counted_as_pass": false,
+      "failures": [],
+      "unknowns": [
+        "flashed_firmware_identity",
+        "flashed_firmware_matches_source",
+        "device_model",
+        "com_port",
+        "end_to_end_latency_ms",
+        "device_counts_per_px",
+        "usb_hid_queue_depth",
+        "partial_write_recovery",
+        "device_watchdog",
+        "ok_semantics_on_device",
+        "device_execution_confirmation",
+        "remote_stop_confirmation",
+        "tensorrt_execution"
+      ],
+      "metrics": {
+        "end_max_truth_error_px": 16.97056274847714,
+        "coverage": 0.0,
+        "demand_frames": 80
+      }
+    },
+    {
+      "protocol": "serial-assist-audit-v1",
+      "directory": "docs/evidence/serial-assist/23012432f81d7d8333521a63f5719344e398a8a6/SA02-SA04/suite/compare/diag-pp/seed-11/fixed_pid",
+      "status": "UNKNOWN",
+      "passed": false,
+      "unknown_counted_as_pass": false,
+      "failures": [],
+      "unknowns": [
+        "flashed_firmware_identity",
+        "flashed_firmware_matches_source",
+        "device_model",
+        "com_port",
+        "end_to_end_latency_ms",
+        "device_counts_per_px",
+        "usb_hid_queue_depth",
+        "partial_write_recovery",
+        "device_watchdog",
+        "ok_semantics_on_device",
+        "device_execution_confirmation",
+        "remote_stop_confirmation",
+        "tensorrt_execution"
+      ],
+      "metrics": {
+        "end_max_truth_error_px": 0.0,
+        "coverage": 0.9583333333333334,
+        "demand_frames": 24
+      }
+    },
+    {
+      "protocol": "serial-assist-audit-v1",
+      "directory": "docs/evidence/serial-assist/23012432f81d7d8333521a63f5719344e398a8a6/SA02-SA04/suite/compare/diag-pp/seed-11/limited_step",
+      "status": "UNKNOWN",
+      "passed": false,
+      "unknown_counted_as_pass": false,
+      "failures": [],
+      "unknowns": [
+        "flashed_firmware_identity",
+        "flashed_firmware_matches_source",
+        "device_model",
+        "com_port",
+        "end_to_end_latency_ms",
+        "device_counts_per_px",
+        "usb_hid_queue_depth",
+        "partial_write_recovery",
+        "device_watchdog",
+        "ok_semantics_on_device",
+        "device_execution_confirmation",
+        "remote_stop_confirmation",
+        "tensorrt_execution"
+      ],
+      "metrics": {
+        "end_max_truth_error_px": 0.0,
+        "coverage": 0.9473684210526315,
+        "demand_frames": 19
+      }
+    },
+    {
+      "protocol": "serial-assist-audit-v1",
+      "directory": "docs/evidence/serial-assist/23012432f81d7d8333521a63f5719344e398a8a6/SA02-SA04/suite/compare/diag-pp/seed-11/off",
+      "status": "UNKNOWN",
+      "passed": false,
+      "unknown_counted_as_pass": false,
+      "failures": [],
+      "unknowns": [
+        "flashed_firmware_identity",
+        "flashed_firmware_matches_source",
+        "device_model",
+        "com_port",
+        "end_to_end_latency_ms",
+        "device_counts_per_px",
+        "usb_hid_queue_depth",
+        "partial_write_recovery",
+        "device_watchdog",
+        "ok_semantics_on_device",
+        "device_execution_confirmation",
+        "remote_stop_confirmation",
+        "tensorrt_execution"
+      ],
+      "metrics": {
+        "end_max_truth_error_px": 16.97056274847714,
+        "coverage": 0.0,
+        "demand_frames": 80
+      }
+    },
+    {
+      "protocol": "serial-assist-audit-v1",
+      "directory": "docs/evidence/serial-assist/23012432f81d7d8333521a63f5719344e398a8a6/SA02-SA04/suite/compare/diag-pp/seed-22/fixed_pid",
+      "status": "UNKNOWN",
+      "passed": false,
+      "unknown_counted_as_pass": false,
+      "failures": [],
+      "unknowns": [
+        "flashed_firmware_identity",
+        "flashed_firmware_matches_source",
+        "device_model",
+        "com_port",
+        "end_to_end_latency_ms",
+        "device_counts_per_px",
+        "usb_hid_queue_depth",
+        "partial_write_recovery",
+        "device_watchdog",
+        "ok_semantics_on_device",
+        "device_execution_confirmation",
+        "remote_stop_confirmation",
+        "tensorrt_execution"
+      ],
+      "metrics": {
+        "end_max_truth_error_px": 0.0,
+        "coverage": 0.9583333333333334,
+        "demand_frames": 24
+      }
+    },
+    {
+      "protocol": "serial-assist-audit-v1",
+      "directory": "docs/evidence/serial-assist/23012432f81d7d8333521a63f5719344e398a8a6/SA02-SA04/suite/compare/diag-pp/seed-22/limited_step",
+      "status": "UNKNOWN",
+      "passed": false,
+      "unknown_counted_as_pass": false,
+      "failures": [],
+      "unknowns": [
+        "flashed_firmware_identity",
+        "flashed_firmware_matches_source",
+        "device_model",
+        "com_port",
+        "end_to_end_latency_ms",
+        "device_counts_per_px",
+        "usb_hid_queue_depth",
+        "partial_write_recovery",
+        "device_watchdog",
+        "ok_semantics_on_device",
+        "device_execution_confirmation",
+        "remote_stop_confirmation",
+        "tensorrt_execution"
+      ],
+      "metrics": {
+        "end_max_truth_error_px": 0.0,
+        "coverage": 0.9473684210526315,
+        "demand_frames": 19
+      }
+    },
+    {
+      "protocol": "serial-assist-audit-v1",
+      "directory": "docs/evidence/serial-assist/23012432f81d7d8333521a63f5719344e398a8a6/SA02-SA04/suite/compare/diag-pp/seed-22/off",
+      "status": "UNKNOWN",
+      "passed": false,
+      "unknown_counted_as_pass": false,
+      "failures": [],
+      "unknowns": [
+        "flashed_firmware_identity",
+        "flashed_firmware_matches_source",
+        "device_model",
+        "com_port",
+        "end_to_end_latency_ms",
+        "device_counts_per_px",
+        "usb_hid_queue_depth",
+        "partial_write_recovery",
+        "device_watchdog",
+        "ok_semantics_on_device",
+        "device_execution_confirmation",
+        "remote_stop_confirmation",
+        "tensorrt_execution"
+      ],
+      "metrics": {
+        "end_max_truth_error_px": 16.97056274847714,
+        "coverage": 0.0,
+        "demand_frames": 80
+      }
+    },
+    {
+      "protocol": "serial-assist-audit-v1",
+      "directory": "docs/evidence/serial-assist/23012432f81d7d8333521a63f5719344e398a8a6/SA02-SA04/suite/compare/diag-pp/seed-33/fixed_pid",
+      "status": "UNKNOWN",
+      "passed": false,
+      "unknown_counted_as_pass": false,
+      "failures": [],
+      "unknowns": [
+        "flashed_firmware_identity",
+        "flashed_firmware_matches_source",
+        "device_model",
+        "com_port",
+        "end_to_end_latency_ms",
+        "device_counts_per_px",
+        "usb_hid_queue_depth",
+        "partial_write_recovery",
+        "device_watchdog",
+        "ok_semantics_on_device",
+        "device_execution_confirmation",
+        "remote_stop_confirmation",
+        "tensorrt_execution"
+      ],
+      "metrics": {
+        "end_max_truth_error_px": 0.0,
+        "coverage": 0.9583333333333334,
+        "demand_frames": 24
+      }
+    },
+    {
+      "protocol": "serial-assist-audit-v1",
+      "directory": "docs/evidence/serial-assist/23012432f81d7d8333521a63f5719344e398a8a6/SA02-SA04/suite/compare/diag-pp/seed-33/limited_step",
+      "status": "UNKNOWN",
+      "passed": false,
+      "unknown_counted_as_pass": false,
+      "failures": [],
+      "unknowns": [
+        "flashed_firmware_identity",
+        "flashed_firmware_matches_source",
+        "device_model",
+        "com_port",
+        "end_to_end_latency_ms",
+        "device_counts_per_px",
+        "usb_hid_queue_depth",
+        "partial_write_recovery",
+        "device_watchdog",
+        "ok_semantics_on_device",
+        "device_execution_confirmation",
+        "remote_stop_confirmation",
+        "tensorrt_execution"
+      ],
+      "metrics": {
+        "end_max_truth_error_px": 0.0,
+        "coverage": 0.9473684210526315,
+        "demand_frames": 19
+      }
+    },
+    {
+      "protocol": "serial-assist-audit-v1",
+      "directory": "docs/evidence/serial-assist/23012432f81d7d8333521a63f5719344e398a8a6/SA02-SA04/suite/compare/diag-pp/seed-33/off",
+      "status": "UNKNOWN",
+      "passed": false,
+      "unknown_counted_as_pass": false,
+      "failures": [],
+      "unknowns": [
+        "flashed_firmware_identity",
+        "flashed_firmware_matches_source",
+        "device_model",
+        "com_port",
+        "end_to_end_latency_ms",
+        "device_counts_per_px",
+        "usb_hid_queue_depth",
+        "partial_write_recovery",
+        "device_watchdog",
+        "ok_semantics_on_device",
+        "device_execution_confirmation",
+        "remote_stop_confirmation",
+        "tensorrt_execution"
+      ],
+      "metrics": {
+        "end_max_truth_error_px": 16.97056274847714,
+        "coverage": 0.0,
+        "demand_frames": 80
+      }
+    },
+    {
+      "protocol": "serial-assist-audit-v1",
+      "directory": "docs/evidence/serial-assist/23012432f81d7d8333521a63f5719344e398a8a6/SA02-SA04/suite/compare/down/seed-11/fixed_pid",
+      "status": "UNKNOWN",
+      "passed": false,
+      "unknown_counted_as_pass": false,
+      "failures": [],
+      "unknowns": [
+        "flashed_firmware_identity",
+        "flashed_firmware_matches_source",
+        "device_model",
+        "com_port",
+        "end_to_end_latency_ms",
+        "device_counts_per_px",
+        "usb_hid_queue_depth",
+        "partial_write_recovery",
+        "device_watchdog",
+        "ok_semantics_on_device",
+        "device_execution_confirmation",
+        "remote_stop_confirmation",
+        "tensorrt_execution"
+      ],
+      "metrics": {
+        "end_max_truth_error_px": 1.0,
+        "coverage": 0.9743589743589743,
+        "demand_frames": 39
+      }
+    },
+    {
+      "protocol": "serial-assist-audit-v1",
+      "directory": "docs/evidence/serial-assist/23012432f81d7d8333521a63f5719344e398a8a6/SA02-SA04/suite/compare/down/seed-11/limited_step",
+      "status": "UNKNOWN",
+      "passed": false,
+      "unknown_counted_as_pass": false,
+      "failures": [],
+      "unknowns": [
+        "flashed_firmware_identity",
+        "flashed_firmware_matches_source",
+        "device_model",
+        "com_port",
+        "end_to_end_latency_ms",
+        "device_counts_per_px",
+        "usb_hid_queue_depth",
+        "partial_write_recovery",
+        "device_watchdog",
+        "ok_semantics_on_device",
+        "device_execution_confirmation",
+        "remote_stop_confirmation",
+        "tensorrt_execution"
+      ],
+      "metrics": {
+        "end_max_truth_error_px": 1.0,
+        "coverage": 0.9777777777777777,
+        "demand_frames": 45
+      }
+    },
+    {
+      "protocol": "serial-assist-audit-v1",
+      "directory": "docs/evidence/serial-assist/23012432f81d7d8333521a63f5719344e398a8a6/SA02-SA04/suite/compare/down/seed-11/off",
+      "status": "UNKNOWN",
+      "passed": false,
+      "unknown_counted_as_pass": false,
+      "failures": [],
+      "unknowns": [
+        "flashed_firmware_identity",
+        "flashed_firmware_matches_source",
+        "device_model",
+        "com_port",
+        "end_to_end_latency_ms",
+        "device_counts_per_px",
+        "usb_hid_queue_depth",
+        "partial_write_recovery",
+        "device_watchdog",
+        "ok_semantics_on_device",
+        "device_execution_confirmation",
+        "remote_stop_confirmation",
+        "tensorrt_execution"
+      ],
+      "metrics": {
+        "end_max_truth_error_px": 20.0,
+        "coverage": 0.0,
+        "demand_frames": 80
+      }
+    },
+    {
+      "protocol": "serial-assist-audit-v1",
+      "directory": "docs/evidence/serial-assist/23012432f81d7d8333521a63f5719344e398a8a6/SA02-SA04/suite/compare/down/seed-22/fixed_pid",
+      "status": "UNKNOWN",
+      "passed": false,
+      "unknown_counted_as_pass": false,
+      "failures": [],
+      "unknowns": [
+        "flashed_firmware_identity",
+        "flashed_firmware_matches_source",
+        "device_model",
+        "com_port",
+        "end_to_end_latency_ms",
+        "device_counts_per_px",
+        "usb_hid_queue_depth",
+        "partial_write_recovery",
+        "device_watchdog",
+        "ok_semantics_on_device",
+        "device_execution_confirmation",
+        "remote_stop_confirmation",
+        "tensorrt_execution"
+      ],
+      "metrics": {
+        "end_max_truth_error_px": 0.0,
+        "coverage": 0.9666666666666667,
+        "demand_frames": 30
+      }
+    },
+    {
+      "protocol": "serial-assist-audit-v1",
+      "directory": "docs/evidence/serial-assist/23012432f81d7d8333521a63f5719344e398a8a6/SA02-SA04/suite/compare/down/seed-22/limited_step",
+      "status": "UNKNOWN",
+      "passed": false,
+      "unknown_counted_as_pass": false,
+      "failures": [],
+      "unknowns": [
+        "flashed_firmware_identity",
+        "flashed_firmware_matches_source",
+        "device_model",
+        "com_port",
+        "end_to_end_latency_ms",
+        "device_counts_per_px",
+        "usb_hid_queue_depth",
+        "partial_write_recovery",
+        "device_watchdog",
+        "ok_semantics_on_device",
+        "device_execution_confirmation",
+        "remote_stop_confirmation",
+        "tensorrt_execution"
+      ],
+      "metrics": {
+        "end_max_truth_error_px": 0.0,
+        "coverage": 0.9565217391304348,
+        "demand_frames": 23
+      }
+    },
+    {
+      "protocol": "serial-assist-audit-v1",
+      "directory": "docs/evidence/serial-assist/23012432f81d7d8333521a63f5719344e398a8a6/SA02-SA04/suite/compare/down/seed-22/off",
+      "status": "UNKNOWN",
+      "passed": false,
+      "unknown_counted_as_pass": false,
+      "failures": [],
+      "unknowns": [
+        "flashed_firmware_identity",
+        "flashed_firmware_matches_source",
+        "device_model",
+        "com_port",
+        "end_to_end_latency_ms",
+        "device_counts_per_px",
+        "usb_hid_queue_depth",
+        "partial_write_recovery",
+        "device_watchdog",
+        "ok_semantics_on_device",
+        "device_execution_confirmation",
+        "remote_stop_confirmation",
+        "tensorrt_execution"
+      ],
+      "metrics": {
+        "end_max_truth_error_px": 20.0,
+        "coverage": 0.0,
+        "demand_frames": 80
+      }
+    },
+    {
+      "protocol": "serial-assist-audit-v1",
+      "directory": "docs/evidence/serial-assist/23012432f81d7d8333521a63f5719344e398a8a6/SA02-SA04/suite/compare/down/seed-33/fixed_pid",
+      "status": "UNKNOWN",
+      "passed": false,
+      "unknown_counted_as_pass": false,
+      "failures": [],
+      "unknowns": [
+        "flashed_firmware_identity",
+        "flashed_firmware_matches_source",
+        "device_model",
+        "com_port",
+        "end_to_end_latency_ms",
+        "device_counts_per_px",
+        "usb_hid_queue_depth",
+        "partial_write_recovery",
+        "device_watchdog",
+        "ok_semantics_on_device",
+        "device_execution_confirmation",
+        "remote_stop_confirmation",
+        "tensorrt_execution"
+      ],
+      "metrics": {
+        "end_max_truth_error_px": 1.0,
+        "coverage": 0.9743589743589743,
+        "demand_frames": 39
+      }
+    },
+    {
+      "protocol": "serial-assist-audit-v1",
+      "directory": "docs/evidence/serial-assist/23012432f81d7d8333521a63f5719344e398a8a6/SA02-SA04/suite/compare/down/seed-33/limited_step",
+      "status": "UNKNOWN",
+      "passed": false,
+      "unknown_counted_as_pass": false,
+      "failures": [],
+      "unknowns": [
+        "flashed_firmware_identity",
+        "flashed_firmware_matches_source",
+        "device_model",
+        "com_port",
+        "end_to_end_latency_ms",
+        "device_counts_per_px",
+        "usb_hid_queue_depth",
+        "partial_write_recovery",
+        "device_watchdog",
+        "ok_semantics_on_device",
+        "device_execution_confirmation",
+        "remote_stop_confirmation",
+        "tensorrt_execution"
+      ],
+      "metrics": {
+        "end_max_truth_error_px": 1.0,
+        "coverage": 0.9807692307692307,
+        "demand_frames": 52
+      }
+    },
+    {
+      "protocol": "serial-assist-audit-v1",
+      "directory": "docs/evidence/serial-assist/23012432f81d7d8333521a63f5719344e398a8a6/SA02-SA04/suite/compare/down/seed-33/off",
+      "status": "UNKNOWN",
+      "passed": false,
+      "unknown_counted_as_pass": false,
+      "failures": [],
+      "unknowns": [
+        "flashed_firmware_identity",
+        "flashed_firmware_matches_source",
+        "device_model",
+        "com_port",
+        "end_to_end_latency_ms",
+        "device_counts_per_px",
+        "usb_hid_queue_depth",
+        "partial_write_recovery",
+        "device_watchdog",
+        "ok_semantics_on_device",
+        "device_execution_confirmation",
+        "remote_stop_confirmation",
+        "tensorrt_execution"
+      ],
+      "metrics": {
+        "end_max_truth_error_px": 20.0,
+        "coverage": 0.0,
+        "demand_frames": 80
+      }
+    },
+    {
+      "protocol": "serial-assist-audit-v1",
+      "directory": "docs/evidence/serial-assist/23012432f81d7d8333521a63f5719344e398a8a6/SA02-SA04/suite/compare/held/seed-1/fixed_pid",
+      "status": "UNKNOWN",
+      "passed": false,
+      "unknown_counted_as_pass": false,
+      "failures": [],
+      "unknowns": [
+        "flashed_firmware_identity",
+        "flashed_firmware_matches_source",
+        "device_model",
+        "com_port",
+        "end_to_end_latency_ms",
+        "device_counts_per_px",
+        "usb_hid_queue_depth",
+        "partial_write_recovery",
+        "device_watchdog",
+        "ok_semantics_on_device",
+        "device_execution_confirmation",
+        "remote_stop_confirmation",
+        "tensorrt_execution"
+      ],
+      "metrics": {
+        "end_max_truth_error_px": 10.0,
+        "coverage": 0.9,
+        "demand_frames": 10
+      }
+    },
+    {
+      "protocol": "serial-assist-audit-v1",
+      "directory": "docs/evidence/serial-assist/23012432f81d7d8333521a63f5719344e398a8a6/SA02-SA04/suite/compare/held/seed-1/limited_step",
+      "status": "UNKNOWN",
+      "passed": false,
+      "unknown_counted_as_pass": false,
+      "failures": [],
+      "unknowns": [
+        "flashed_firmware_identity",
+        "flashed_firmware_matches_source",
+        "device_model",
+        "com_port",
+        "end_to_end_latency_ms",
+        "device_counts_per_px",
+        "usb_hid_queue_depth",
+        "partial_write_recovery",
+        "device_watchdog",
+        "ok_semantics_on_device",
+        "device_execution_confirmation",
+        "remote_stop_confirmation",
+        "tensorrt_execution"
+      ],
+      "metrics": {
+        "end_max_truth_error_px": 12.0,
+        "coverage": 0.9,
+        "demand_frames": 10
+      }
+    },
+    {
+      "protocol": "serial-assist-audit-v1",
+      "directory": "docs/evidence/serial-assist/23012432f81d7d8333521a63f5719344e398a8a6/SA02-SA04/suite/compare/held/seed-1/off",
+      "status": "UNKNOWN",
+      "passed": false,
+      "unknown_counted_as_pass": false,
+      "failures": [],
+      "unknowns": [
+        "flashed_firmware_identity",
+        "flashed_firmware_matches_source",
+        "device_model",
+        "com_port",
+        "end_to_end_latency_ms",
+        "device_counts_per_px",
+        "usb_hid_queue_depth",
+        "partial_write_recovery",
+        "device_watchdog",
+        "ok_semantics_on_device",
+        "device_execution_confirmation",
+        "remote_stop_confirmation",
+        "tensorrt_execution"
+      ],
+      "metrics": {
+        "end_max_truth_error_px": 20.0,
+        "coverage": 0.0,
+        "demand_frames": 10
+      }
+    },
+    {
+      "protocol": "serial-assist-audit-v1",
+      "directory": "docs/evidence/serial-assist/23012432f81d7d8333521a63f5719344e398a8a6/SA02-SA04/suite/compare/identity/seed-1/fixed_pid",
+      "status": "UNKNOWN",
+      "passed": false,
+      "unknown_counted_as_pass": false,
+      "failures": [],
+      "unknowns": [
+        "flashed_firmware_identity",
+        "flashed_firmware_matches_source",
+        "device_model",
+        "com_port",
+        "end_to_end_latency_ms",
+        "device_counts_per_px",
+        "usb_hid_queue_depth",
+        "partial_write_recovery",
+        "device_watchdog",
+        "ok_semantics_on_device",
+        "device_execution_confirmation",
+        "remote_stop_confirmation",
+        "tensorrt_execution"
+      ],
+      "metrics": {
+        "end_max_truth_error_px": 7.0,
+        "coverage": 0.9333333333333333,
+        "demand_frames": 15
+      }
+    },
+    {
+      "protocol": "serial-assist-audit-v1",
+      "directory": "docs/evidence/serial-assist/23012432f81d7d8333521a63f5719344e398a8a6/SA02-SA04/suite/compare/identity/seed-1/limited_step",
+      "status": "UNKNOWN",
+      "passed": false,
+      "unknown_counted_as_pass": false,
+      "failures": [],
+      "unknowns": [
+        "flashed_firmware_identity",
+        "flashed_firmware_matches_source",
+        "device_model",
+        "com_port",
+        "end_to_end_latency_ms",
+        "device_counts_per_px",
+        "usb_hid_queue_depth",
+        "partial_write_recovery",
+        "device_watchdog",
+        "ok_semantics_on_device",
+        "device_execution_confirmation",
+        "remote_stop_confirmation",
+        "tensorrt_execution"
+      ],
+      "metrics": {
+        "end_max_truth_error_px": 6.0,
+        "coverage": 0.9333333333333333,
+        "demand_frames": 15
+      }
+    },
+    {
+      "protocol": "serial-assist-audit-v1",
+      "directory": "docs/evidence/serial-assist/23012432f81d7d8333521a63f5719344e398a8a6/SA02-SA04/suite/compare/left/seed-11/fixed_pid",
+      "status": "UNKNOWN",
+      "passed": false,
+      "unknown_counted_as_pass": false,
+      "failures": [],
+      "unknowns": [
+        "flashed_firmware_identity",
+        "flashed_firmware_matches_source",
+        "device_model",
+        "com_port",
+        "end_to_end_latency_ms",
+        "device_counts_per_px",
+        "usb_hid_queue_depth",
+        "partial_write_recovery",
+        "device_watchdog",
+        "ok_semantics_on_device",
+        "device_execution_confirmation",
+        "remote_stop_confirmation",
+        "tensorrt_execution"
+      ],
+      "metrics": {
+        "end_max_truth_error_px": 0.0,
+        "coverage": 0.9705882352941176,
+        "demand_frames": 34
+      }
+    },
+    {
+      "protocol": "serial-assist-audit-v1",
+      "directory": "docs/evidence/serial-assist/23012432f81d7d8333521a63f5719344e398a8a6/SA02-SA04/suite/compare/left/seed-11/limited_step",
+      "status": "UNKNOWN",
+      "passed": false,
+      "unknown_counted_as_pass": false,
+      "failures": [],
+      "unknowns": [
+        "flashed_firmware_identity",
+        "flashed_firmware_matches_source",
+        "device_model",
+        "com_port",
+        "end_to_end_latency_ms",
+        "device_counts_per_px",
+        "usb_hid_queue_depth",
+        "partial_write_recovery",
+        "device_watchdog",
+        "ok_semantics_on_device",
+        "device_execution_confirmation",
+        "remote_stop_confirmation",
+        "tensorrt_execution"
+      ],
+      "metrics": {
+        "end_max_truth_error_px": 1.0,
+        "coverage": 0.9807692307692307,
+        "demand_frames": 52
+      }
+    },
+    {
+      "protocol": "serial-assist-audit-v1",
+      "directory": "docs/evidence/serial-assist/23012432f81d7d8333521a63f5719344e398a8a6/SA02-SA04/suite/compare/left/seed-11/off",
+      "status": "UNKNOWN",
+      "passed": false,
+      "unknown_counted_as_pass": false,
+      "failures": [],
+      "unknowns": [
+        "flashed_firmware_identity",
+        "flashed_firmware_matches_source",
+        "device_model",
+        "com_port",
+        "end_to_end_latency_ms",
+        "device_counts_per_px",
+        "usb_hid_queue_depth",
+        "partial_write_recovery",
+        "device_watchdog",
+        "ok_semantics_on_device",
+        "device_execution_confirmation",
+        "remote_stop_confirmation",
+        "tensorrt_execution"
+      ],
+      "metrics": {
+        "end_max_truth_error_px": 20.0,
+        "coverage": 0.0,
+        "demand_frames": 80
+      }
+    },
+    {
+      "protocol": "serial-assist-audit-v1",
+      "directory": "docs/evidence/serial-assist/23012432f81d7d8333521a63f5719344e398a8a6/SA02-SA04/suite/compare/left/seed-22/fixed_pid",
+      "status": "UNKNOWN",
+      "passed": false,
+      "unknown_counted_as_pass": false,
+      "failures": [],
+      "unknowns": [
+        "flashed_firmware_identity",
+        "flashed_firmware_matches_source",
+        "device_model",
+        "com_port",
+        "end_to_end_latency_ms",
+        "device_counts_per_px",
+        "usb_hid_queue_depth",
+        "partial_write_recovery",
+        "device_watchdog",
+        "ok_semantics_on_device",
+        "device_execution_confirmation",
+        "remote_stop_confirmation",
+        "tensorrt_execution"
+      ],
+      "metrics": {
+        "end_max_truth_error_px": 1.0,
+        "coverage": 0.98,
+        "demand_frames": 50
+      }
+    },
+    {
+      "protocol": "serial-assist-audit-v1",
+      "directory": "docs/evidence/serial-assist/23012432f81d7d8333521a63f5719344e398a8a6/SA02-SA04/suite/compare/left/seed-22/limited_step",
+      "status": "UNKNOWN",
+      "passed": false,
+      "unknown_counted_as_pass": false,
+      "failures": [],
+      "unknowns": [
+        "flashed_firmware_identity",
+        "flashed_firmware_matches_source",
+        "device_model",
+        "com_port",
+        "end_to_end_latency_ms",
+        "device_counts_per_px",
+        "usb_hid_queue_depth",
+        "partial_write_recovery",
+        "device_watchdog",
+        "ok_semantics_on_device",
+        "device_execution_confirmation",
+        "remote_stop_confirmation",
+        "tensorrt_execution"
+      ],
+      "metrics": {
+        "end_max_truth_error_px": 1.0,
+        "coverage": 0.9795918367346939,
+        "demand_frames": 49
+      }
+    },
+    {
+      "protocol": "serial-assist-audit-v1",
+      "directory": "docs/evidence/serial-assist/23012432f81d7d8333521a63f5719344e398a8a6/SA02-SA04/suite/compare/left/seed-22/off",
+      "status": "UNKNOWN",
+      "passed": false,
+      "unknown_counted_as_pass": false,
+      "failures": [],
+      "unknowns": [
+        "flashed_firmware_identity",
+        "flashed_firmware_matches_source",
+        "device_model",
+        "com_port",
+        "end_to_end_latency_ms",
+        "device_counts_per_px",
+        "usb_hid_queue_depth",
+        "partial_write_recovery",
+        "device_watchdog",
+        "ok_semantics_on_device",
+        "device_execution_confirmation",
+        "remote_stop_confirmation",
+        "tensorrt_execution"
+      ],
+      "metrics": {
+        "end_max_truth_error_px": 20.0,
+        "coverage": 0.0,
+        "demand_frames": 80
+      }
+    },
+    {
+      "protocol": "serial-assist-audit-v1",
+      "directory": "docs/evidence/serial-assist/23012432f81d7d8333521a63f5719344e398a8a6/SA02-SA04/suite/compare/left/seed-33/fixed_pid",
+      "status": "UNKNOWN",
+      "passed": false,
+      "unknown_counted_as_pass": false,
+      "failures": [],
+      "unknowns": [
+        "flashed_firmware_identity",
+        "flashed_firmware_matches_source",
+        "device_model",
+        "com_port",
+        "end_to_end_latency_ms",
+        "device_counts_per_px",
+        "usb_hid_queue_depth",
+        "partial_write_recovery",
+        "device_watchdog",
+        "ok_semantics_on_device",
+        "device_execution_confirmation",
+        "remote_stop_confirmation",
+        "tensorrt_execution"
+      ],
+      "metrics": {
+        "end_max_truth_error_px": 0.0,
+        "coverage": 0.9714285714285714,
+        "demand_frames": 35
+      }
+    },
+    {
+      "protocol": "serial-assist-audit-v1",
+      "directory": "docs/evidence/serial-assist/23012432f81d7d8333521a63f5719344e398a8a6/SA02-SA04/suite/compare/left/seed-33/limited_step",
+      "status": "UNKNOWN",
+      "passed": false,
+      "unknown_counted_as_pass": false,
+      "failures": [],
+      "unknowns": [
+        "flashed_firmware_identity",
+        "flashed_firmware_matches_source",
+        "device_model",
+        "com_port",
+        "end_to_end_latency_ms",
+        "device_counts_per_px",
+        "usb_hid_queue_depth",
+        "partial_write_recovery",
+        "device_watchdog",
+        "ok_semantics_on_device",
+        "device_execution_confirmation",
+        "remote_stop_confirmation",
+        "tensorrt_execution"
+      ],
+      "metrics": {
+        "end_max_truth_error_px": 1.0,
+        "coverage": 0.9795918367346939,
+        "demand_frames": 49
+      }
+    },
+    {
+      "protocol": "serial-assist-audit-v1",
+      "directory": "docs/evidence/serial-assist/23012432f81d7d8333521a63f5719344e398a8a6/SA02-SA04/suite/compare/left/seed-33/off",
+      "status": "UNKNOWN",
+      "passed": false,
+      "unknown_counted_as_pass": false,
+      "failures": [],
+      "unknowns": [
+        "flashed_firmware_identity",
+        "flashed_firmware_matches_source",
+        "device_model",
+        "com_port",
+        "end_to_end_latency_ms",
+        "device_counts_per_px",
+        "usb_hid_queue_depth",
+        "partial_write_recovery",
+        "device_watchdog",
+        "ok_semantics_on_device",
+        "device_execution_confirmation",
+        "remote_stop_confirmation",
+        "tensorrt_execution"
+      ],
+      "metrics": {
+        "end_max_truth_error_px": 20.0,
+        "coverage": 0.0,
+        "demand_frames": 80
+      }
+    },
+    {
+      "protocol": "serial-assist-audit-v1",
+      "directory": "docs/evidence/serial-assist/23012432f81d7d8333521a63f5719344e398a8a6/SA02-SA04/suite/compare/outside/seed-1/fixed_pid",
+      "status": "UNKNOWN",
+      "passed": false,
+      "unknown_counted_as_pass": false,
+      "failures": [],
+      "unknowns": [
+        "flashed_firmware_identity",
+        "flashed_firmware_matches_source",
+        "device_model",
+        "com_port",
+        "end_to_end_latency_ms",
+        "device_counts_per_px",
+        "usb_hid_queue_depth",
+        "partial_write_recovery",
+        "device_watchdog",
+        "ok_semantics_on_device",
+        "device_execution_confirmation",
+        "remote_stop_confirmation",
+        "tensorrt_execution"
+      ],
+      "metrics": {
+        "end_max_truth_error_px": 200.0,
+        "coverage": null,
+        "demand_frames": 0
+      }
+    },
+    {
+      "protocol": "serial-assist-audit-v1",
+      "directory": "docs/evidence/serial-assist/23012432f81d7d8333521a63f5719344e398a8a6/SA02-SA04/suite/compare/outside/seed-1/limited_step",
+      "status": "UNKNOWN",
+      "passed": false,
+      "unknown_counted_as_pass": false,
+      "failures": [],
+      "unknowns": [
+        "flashed_firmware_identity",
+        "flashed_firmware_matches_source",
+        "device_model",
+        "com_port",
+        "end_to_end_latency_ms",
+        "device_counts_per_px",
+        "usb_hid_queue_depth",
+        "partial_write_recovery",
+        "device_watchdog",
+        "ok_semantics_on_device",
+        "device_execution_confirmation",
+        "remote_stop_confirmation",
+        "tensorrt_execution"
+      ],
+      "metrics": {
+        "end_max_truth_error_px": 200.0,
+        "coverage": null,
+        "demand_frames": 0
+      }
+    },
+    {
+      "protocol": "serial-assist-audit-v1",
+      "directory": "docs/evidence/serial-assist/23012432f81d7d8333521a63f5719344e398a8a6/SA02-SA04/suite/compare/outside/seed-1/off",
+      "status": "UNKNOWN",
+      "passed": false,
+      "unknown_counted_as_pass": false,
+      "failures": [],
+      "unknowns": [
+        "flashed_firmware_identity",
+        "flashed_firmware_matches_source",
+        "device_model",
+        "com_port",
+        "end_to_end_latency_ms",
+        "device_counts_per_px",
+        "usb_hid_queue_depth",
+        "partial_write_recovery",
+        "device_watchdog",
+        "ok_semantics_on_device",
+        "device_execution_confirmation",
+        "remote_stop_confirmation",
+        "tensorrt_execution"
+      ],
+      "metrics": {
+        "end_max_truth_error_px": 200.0,
+        "coverage": null,
+        "demand_frames": 0
+      }
+    },
+    {
+      "protocol": "serial-assist-audit-v1",
+      "directory": "docs/evidence/serial-assist/23012432f81d7d8333521a63f5719344e398a8a6/SA02-SA04/suite/compare/pulse/seed-1/limited_step",
+      "status": "UNKNOWN",
+      "passed": false,
+      "unknown_counted_as_pass": false,
+      "failures": [],
+      "unknowns": [
+        "flashed_firmware_identity",
+        "flashed_firmware_matches_source",
+        "device_model",
+        "com_port",
+        "end_to_end_latency_ms",
+        "device_counts_per_px",
+        "usb_hid_queue_depth",
+        "partial_write_recovery",
+        "device_watchdog",
+        "ok_semantics_on_device",
+        "device_execution_confirmation",
+        "remote_stop_confirmation",
+        "tensorrt_execution"
+      ],
+      "metrics": {
+        "end_max_truth_error_px": 1.0,
+        "coverage": 0.9444444444444444,
+        "demand_frames": 18
+      }
+    },
+    {
+      "protocol": "serial-assist-audit-v1",
+      "directory": "docs/evidence/serial-assist/23012432f81d7d8333521a63f5719344e398a8a6/SA02-SA04/suite/compare/rehold/seed-1/fixed_pid",
+      "status": "UNKNOWN",
+      "passed": false,
+      "unknown_counted_as_pass": false,
+      "failures": [],
+      "unknowns": [
+        "flashed_firmware_identity",
+        "flashed_firmware_matches_source",
+        "device_model",
+        "com_port",
+        "end_to_end_latency_ms",
+        "device_counts_per_px",
+        "usb_hid_queue_depth",
+        "partial_write_recovery",
+        "device_watchdog",
+        "ok_semantics_on_device",
+        "device_execution_confirmation",
+        "remote_stop_confirmation",
+        "tensorrt_execution"
+      ],
+      "metrics": {
+        "end_max_truth_error_px": 10.0,
+        "coverage": 0.9,
+        "demand_frames": 10
+      }
+    },
+    {
+      "protocol": "serial-assist-audit-v1",
+      "directory": "docs/evidence/serial-assist/23012432f81d7d8333521a63f5719344e398a8a6/SA02-SA04/suite/compare/rehold/seed-1/limited_step",
+      "status": "UNKNOWN",
+      "passed": false,
+      "unknown_counted_as_pass": false,
+      "failures": [],
+      "unknowns": [
+        "flashed_firmware_identity",
+        "flashed_firmware_matches_source",
+        "device_model",
+        "com_port",
+        "end_to_end_latency_ms",
+        "device_counts_per_px",
+        "usb_hid_queue_depth",
+        "partial_write_recovery",
+        "device_watchdog",
+        "ok_semantics_on_device",
+        "device_execution_confirmation",
+        "remote_stop_confirmation",
+        "tensorrt_execution"
+      ],
+      "metrics": {
+        "end_max_truth_error_px": 12.0,
+        "coverage": 0.9,
+        "demand_frames": 10
+      }
+    },
+    {
+      "protocol": "serial-assist-audit-v1",
+      "directory": "docs/evidence/serial-assist/23012432f81d7d8333521a63f5719344e398a8a6/SA02-SA04/suite/compare/release/seed-1/fixed_pid",
+      "status": "UNKNOWN",
+      "passed": false,
+      "unknown_counted_as_pass": false,
+      "failures": [],
+      "unknowns": [
+        "flashed_firmware_identity",
+        "flashed_firmware_matches_source",
+        "device_model",
+        "com_port",
+        "end_to_end_latency_ms",
+        "device_counts_per_px",
+        "usb_hid_queue_depth",
+        "partial_write_recovery",
+        "device_watchdog",
+        "ok_semantics_on_device",
+        "device_execution_confirmation",
+        "remote_stop_confirmation",
+        "tensorrt_execution"
+      ],
+      "metrics": {
+        "end_max_truth_error_px": 1.0,
+        "coverage": 0.9583333333333334,
+        "demand_frames": 24
+      }
+    },
+    {
+      "protocol": "serial-assist-audit-v1",
+      "directory": "docs/evidence/serial-assist/23012432f81d7d8333521a63f5719344e398a8a6/SA02-SA04/suite/compare/release/seed-1/limited_step",
+      "status": "UNKNOWN",
+      "passed": false,
+      "unknown_counted_as_pass": false,
+      "failures": [],
+      "unknowns": [
+        "flashed_firmware_identity",
+        "flashed_firmware_matches_source",
+        "device_model",
+        "com_port",
+        "end_to_end_latency_ms",
+        "device_counts_per_px",
+        "usb_hid_queue_depth",
+        "partial_write_recovery",
+        "device_watchdog",
+        "ok_semantics_on_device",
+        "device_execution_confirmation",
+        "remote_stop_confirmation",
+        "tensorrt_execution"
+      ],
+      "metrics": {
+        "end_max_truth_error_px": 1.0,
+        "coverage": 0.9545454545454546,
+        "demand_frames": 22
+      }
+    },
+    {
+      "protocol": "serial-assist-audit-v1",
+      "directory": "docs/evidence/serial-assist/23012432f81d7d8333521a63f5719344e398a8a6/SA02-SA04/suite/compare/release/seed-1/off",
+      "status": "UNKNOWN",
+      "passed": false,
+      "unknown_counted_as_pass": false,
+      "failures": [],
+      "unknowns": [
+        "flashed_firmware_identity",
+        "flashed_firmware_matches_source",
+        "device_model",
+        "com_port",
+        "end_to_end_latency_ms",
+        "device_counts_per_px",
+        "usb_hid_queue_depth",
+        "partial_write_recovery",
+        "device_watchdog",
+        "ok_semantics_on_device",
+        "device_execution_confirmation",
+        "remote_stop_confirmation",
+        "tensorrt_execution"
+      ],
+      "metrics": {
+        "end_max_truth_error_px": 20.0,
+        "coverage": 0.0,
+        "demand_frames": 65
+      }
+    },
+    {
+      "protocol": "serial-assist-audit-v1",
+      "directory": "docs/evidence/serial-assist/23012432f81d7d8333521a63f5719344e398a8a6/SA02-SA04/suite/compare/right/seed-11/fixed_pid",
+      "status": "UNKNOWN",
+      "passed": false,
+      "unknown_counted_as_pass": false,
+      "failures": [],
+      "unknowns": [
+        "flashed_firmware_identity",
+        "flashed_firmware_matches_source",
+        "device_model",
+        "com_port",
+        "end_to_end_latency_ms",
+        "device_counts_per_px",
+        "usb_hid_queue_depth",
+        "partial_write_recovery",
+        "device_watchdog",
+        "ok_semantics_on_device",
+        "device_execution_confirmation",
+        "remote_stop_confirmation",
+        "tensorrt_execution"
+      ],
+      "metrics": {
+        "end_max_truth_error_px": 0.0,
+        "coverage": 0.9722222222222222,
+        "demand_frames": 36
+      }
+    },
+    {
+      "protocol": "serial-assist-audit-v1",
+      "directory": "docs/evidence/serial-assist/23012432f81d7d8333521a63f5719344e398a8a6/SA02-SA04/suite/compare/right/seed-11/limited_step",
+      "status": "UNKNOWN",
+      "passed": false,
+      "unknown_counted_as_pass": false,
+      "failures": [],
+      "unknowns": [
+        "flashed_firmware_identity",
+        "flashed_firmware_matches_source",
+        "device_model",
+        "com_port",
+        "end_to_end_latency_ms",
+        "device_counts_per_px",
+        "usb_hid_queue_depth",
+        "partial_write_recovery",
+        "device_watchdog",
+        "ok_semantics_on_device",
+        "device_execution_confirmation",
+        "remote_stop_confirmation",
+        "tensorrt_execution"
+      ],
+      "metrics": {
+        "end_max_truth_error_px": 1.0,
+        "coverage": 0.98,
+        "demand_frames": 50
+      }
+    },
+    {
+      "protocol": "serial-assist-audit-v1",
+      "directory": "docs/evidence/serial-assist/23012432f81d7d8333521a63f5719344e398a8a6/SA02-SA04/suite/compare/right/seed-11/off",
+      "status": "UNKNOWN",
+      "passed": false,
+      "unknown_counted_as_pass": false,
+      "failures": [],
+      "unknowns": [
+        "flashed_firmware_identity",
+        "flashed_firmware_matches_source",
+        "device_model",
+        "com_port",
+        "end_to_end_latency_ms",
+        "device_counts_per_px",
+        "usb_hid_queue_depth",
+        "partial_write_recovery",
+        "device_watchdog",
+        "ok_semantics_on_device",
+        "device_execution_confirmation",
+        "remote_stop_confirmation",
+        "tensorrt_execution"
+      ],
+      "metrics": {
+        "end_max_truth_error_px": 20.0,
+        "coverage": 0.0,
+        "demand_frames": 80
+      }
+    },
+    {
+      "protocol": "serial-assist-audit-v1",
+      "directory": "docs/evidence/serial-assist/23012432f81d7d8333521a63f5719344e398a8a6/SA02-SA04/suite/compare/right/seed-22/fixed_pid",
+      "status": "UNKNOWN",
+      "passed": false,
+      "unknown_counted_as_pass": false,
+      "failures": [],
+      "unknowns": [
+        "flashed_firmware_identity",
+        "flashed_firmware_matches_source",
+        "device_model",
+        "com_port",
+        "end_to_end_latency_ms",
+        "device_counts_per_px",
+        "usb_hid_queue_depth",
+        "partial_write_recovery",
+        "device_watchdog",
+        "ok_semantics_on_device",
+        "device_execution_confirmation",
+        "remote_stop_confirmation",
+        "tensorrt_execution"
+      ],
+      "metrics": {
+        "end_max_truth_error_px": 1.0,
+        "coverage": 0.9807692307692307,
+        "demand_frames": 52
+      }
+    },
+    {
+      "protocol": "serial-assist-audit-v1",
+      "directory": "docs/evidence/serial-assist/23012432f81d7d8333521a63f5719344e398a8a6/SA02-SA04/suite/compare/right/seed-22/limited_step",
+      "status": "UNKNOWN",
+      "passed": false,
+      "unknown_counted_as_pass": false,
+      "failures": [],
+      "unknowns": [
+        "flashed_firmware_identity",
+        "flashed_firmware_matches_source",
+        "device_model",
+        "com_port",
+        "end_to_end_latency_ms",
+        "device_counts_per_px",
+        "usb_hid_queue_depth",
+        "partial_write_recovery",
+        "device_watchdog",
+        "ok_semantics_on_device",
+        "device_execution_confirmation",
+        "remote_stop_confirmation",
+        "tensorrt_execution"
+      ],
+      "metrics": {
+        "end_max_truth_error_px": 1.0,
+        "coverage": 0.9807692307692307,
+        "demand_frames": 52
+      }
+    },
+    {
+      "protocol": "serial-assist-audit-v1",
+      "directory": "docs/evidence/serial-assist/23012432f81d7d8333521a63f5719344e398a8a6/SA02-SA04/suite/compare/right/seed-22/off",
+      "status": "UNKNOWN",
+      "passed": false,
+      "unknown_counted_as_pass": false,
+      "failures": [],
+      "unknowns": [
+        "flashed_firmware_identity",
+        "flashed_firmware_matches_source",
+        "device_model",
+        "com_port",
+        "end_to_end_latency_ms",
+        "device_counts_per_px",
+        "usb_hid_queue_depth",
+        "partial_write_recovery",
+        "device_watchdog",
+        "ok_semantics_on_device",
+        "device_execution_confirmation",
+        "remote_stop_confirmation",
+        "tensorrt_execution"
+      ],
+      "metrics": {
+        "end_max_truth_error_px": 20.0,
+        "coverage": 0.0,
+        "demand_frames": 80
+      }
+    },
+    {
+      "protocol": "serial-assist-audit-v1",
+      "directory": "docs/evidence/serial-assist/23012432f81d7d8333521a63f5719344e398a8a6/SA02-SA04/suite/compare/right/seed-33/fixed_pid",
+      "status": "UNKNOWN",
+      "passed": false,
+      "unknown_counted_as_pass": false,
+      "failures": [],
+      "unknowns": [
+        "flashed_firmware_identity",
+        "flashed_firmware_matches_source",
+        "device_model",
+        "com_port",
+        "end_to_end_latency_ms",
+        "device_counts_per_px",
+        "usb_hid_queue_depth",
+        "partial_write_recovery",
+        "device_watchdog",
+        "ok_semantics_on_device",
+        "device_execution_confirmation",
+        "remote_stop_confirmation",
+        "tensorrt_execution"
+      ],
+      "metrics": {
+        "end_max_truth_error_px": 1.0,
+        "coverage": 0.9811320754716981,
+        "demand_frames": 53
+      }
+    },
+    {
+      "protocol": "serial-assist-audit-v1",
+      "directory": "docs/evidence/serial-assist/23012432f81d7d8333521a63f5719344e398a8a6/SA02-SA04/suite/compare/right/seed-33/limited_step",
+      "status": "UNKNOWN",
+      "passed": false,
+      "unknown_counted_as_pass": false,
+      "failures": [],
+      "unknowns": [
+        "flashed_firmware_identity",
+        "flashed_firmware_matches_source",
+        "device_model",
+        "com_port",
+        "end_to_end_latency_ms",
+        "device_counts_per_px",
+        "usb_hid_queue_depth",
+        "partial_write_recovery",
+        "device_watchdog",
+        "ok_semantics_on_device",
+        "device_execution_confirmation",
+        "remote_stop_confirmation",
+        "tensorrt_execution"
+      ],
+      "metrics": {
+        "end_max_truth_error_px": 0.0,
+        "coverage": 0.9583333333333334,
+        "demand_frames": 24
+      }
+    },
+    {
+      "protocol": "serial-assist-audit-v1",
+      "directory": "docs/evidence/serial-assist/23012432f81d7d8333521a63f5719344e398a8a6/SA02-SA04/suite/compare/right/seed-33/off",
+      "status": "UNKNOWN",
+      "passed": false,
+      "unknown_counted_as_pass": false,
+      "failures": [],
+      "unknowns": [
+        "flashed_firmware_identity",
+        "flashed_firmware_matches_source",
+        "device_model",
+        "com_port",
+        "end_to_end_latency_ms",
+        "device_counts_per_px",
+        "usb_hid_queue_depth",
+        "partial_write_recovery",
+        "device_watchdog",
+        "ok_semantics_on_device",
+        "device_execution_confirmation",
+        "remote_stop_confirmation",
+        "tensorrt_execution"
+      ],
+      "metrics": {
+        "end_max_truth_error_px": 20.0,
+        "coverage": 0.0,
+        "demand_frames": 80
+      }
+    },
+    {
+      "protocol": "serial-assist-audit-v1",
+      "directory": "docs/evidence/serial-assist/23012432f81d7d8333521a63f5719344e398a8a6/SA02-SA04/suite/compare/up/seed-11/fixed_pid",
+      "status": "UNKNOWN",
+      "passed": false,
+      "unknown_counted_as_pass": false,
+      "failures": [],
+      "unknowns": [
+        "flashed_firmware_identity",
+        "flashed_firmware_matches_source",
+        "device_model",
+        "com_port",
+        "end_to_end_latency_ms",
+        "device_counts_per_px",
+        "usb_hid_queue_depth",
+        "partial_write_recovery",
+        "device_watchdog",
+        "ok_semantics_on_device",
+        "device_execution_confirmation",
+        "remote_stop_confirmation",
+        "tensorrt_execution"
+      ],
+      "metrics": {
+        "end_max_truth_error_px": 0.0,
+        "coverage": 0.9655172413793104,
+        "demand_frames": 29
+      }
+    },
+    {
+      "protocol": "serial-assist-audit-v1",
+      "directory": "docs/evidence/serial-assist/23012432f81d7d8333521a63f5719344e398a8a6/SA02-SA04/suite/compare/up/seed-11/limited_step",
+      "status": "UNKNOWN",
+      "passed": false,
+      "unknown_counted_as_pass": false,
+      "failures": [],
+      "unknowns": [
+        "flashed_firmware_identity",
+        "flashed_firmware_matches_source",
+        "device_model",
+        "com_port",
+        "end_to_end_latency_ms",
+        "device_counts_per_px",
+        "usb_hid_queue_depth",
+        "partial_write_recovery",
+        "device_watchdog",
+        "ok_semantics_on_device",
+        "device_execution_confirmation",
+        "remote_stop_confirmation",
+        "tensorrt_execution"
+      ],
+      "metrics": {
+        "end_max_truth_error_px": 0.0,
+        "coverage": 0.9583333333333334,
+        "demand_frames": 24
+      }
+    },
+    {
+      "protocol": "serial-assist-audit-v1",
+      "directory": "docs/evidence/serial-assist/23012432f81d7d8333521a63f5719344e398a8a6/SA02-SA04/suite/compare/up/seed-11/off",
+      "status": "UNKNOWN",
+      "passed": false,
+      "unknown_counted_as_pass": false,
+      "failures": [],
+      "unknowns": [
+        "flashed_firmware_identity",
+        "flashed_firmware_matches_source",
+        "device_model",
+        "com_port",
+        "end_to_end_latency_ms",
+        "device_counts_per_px",
+        "usb_hid_queue_depth",
+        "partial_write_recovery",
+        "device_watchdog",
+        "ok_semantics_on_device",
+        "device_execution_confirmation",
+        "remote_stop_confirmation",
+        "tensorrt_execution"
+      ],
+      "metrics": {
+        "end_max_truth_error_px": 20.0,
+        "coverage": 0.0,
+        "demand_frames": 80
+      }
+    },
+    {
+      "protocol": "serial-assist-audit-v1",
+      "directory": "docs/evidence/serial-assist/23012432f81d7d8333521a63f5719344e398a8a6/SA02-SA04/suite/compare/up/seed-22/fixed_pid",
+      "status": "UNKNOWN",
+      "passed": false,
+      "unknown_counted_as_pass": false,
+      "failures": [],
+      "unknowns": [
+        "flashed_firmware_identity",
+        "flashed_firmware_matches_source",
+        "device_model",
+        "com_port",
+        "end_to_end_latency_ms",
+        "device_counts_per_px",
+        "usb_hid_queue_depth",
+        "partial_write_recovery",
+        "device_watchdog",
+        "ok_semantics_on_device",
+        "device_execution_confirmation",
+        "remote_stop_confirmation",
+        "tensorrt_execution"
+      ],
+      "metrics": {
+        "end_max_truth_error_px": 0.0,
+        "coverage": 0.9696969696969697,
+        "demand_frames": 33
+      }
+    },
+    {
+      "protocol": "serial-assist-audit-v1",
+      "directory": "docs/evidence/serial-assist/23012432f81d7d8333521a63f5719344e398a8a6/SA02-SA04/suite/compare/up/seed-22/limited_step",
+      "status": "UNKNOWN",
+      "passed": false,
+      "unknown_counted_as_pass": false,
+      "failures": [],
+      "unknowns": [
+        "flashed_firmware_identity",
+        "flashed_firmware_matches_source",
+        "device_model",
+        "com_port",
+        "end_to_end_latency_ms",
+        "device_counts_per_px",
+        "usb_hid_queue_depth",
+        "partial_write_recovery",
+        "device_watchdog",
+        "ok_semantics_on_device",
+        "device_execution_confirmation",
+        "remote_stop_confirmation",
+        "tensorrt_execution"
+      ],
+      "metrics": {
+        "end_max_truth_error_px": 1.0,
+        "coverage": 0.9807692307692307,
+        "demand_frames": 52
+      }
+    },
+    {
+      "protocol": "serial-assist-audit-v1",
+      "directory": "docs/evidence/serial-assist/23012432f81d7d8333521a63f5719344e398a8a6/SA02-SA04/suite/compare/up/seed-22/off",
+      "status": "UNKNOWN",
+      "passed": false,
+      "unknown_counted_as_pass": false,
+      "failures": [],
+      "unknowns": [
+        "flashed_firmware_identity",
+        "flashed_firmware_matches_source",
+        "device_model",
+        "com_port",
+        "end_to_end_latency_ms",
+        "device_counts_per_px",
+        "usb_hid_queue_depth",
+        "partial_write_recovery",
+        "device_watchdog",
+        "ok_semantics_on_device",
+        "device_execution_confirmation",
+        "remote_stop_confirmation",
+        "tensorrt_execution"
+      ],
+      "metrics": {
+        "end_max_truth_error_px": 20.0,
+        "coverage": 0.0,
+        "demand_frames": 80
+      }
+    },
+    {
+      "protocol": "serial-assist-audit-v1",
+      "directory": "docs/evidence/serial-assist/23012432f81d7d8333521a63f5719344e398a8a6/SA02-SA04/suite/compare/up/seed-33/fixed_pid",
+      "status": "UNKNOWN",
+      "passed": false,
+      "unknown_counted_as_pass": false,
+      "failures": [],
+      "unknowns": [
+        "flashed_firmware_identity",
+        "flashed_firmware_matches_source",
+        "device_model",
+        "com_port",
+        "end_to_end_latency_ms",
+        "device_counts_per_px",
+        "usb_hid_queue_depth",
+        "partial_write_recovery",
+        "device_watchdog",
+        "ok_semantics_on_device",
+        "device_execution_confirmation",
+        "remote_stop_confirmation",
+        "tensorrt_execution"
+      ],
+      "metrics": {
+        "end_max_truth_error_px": 0.0,
+        "coverage": 0.9642857142857143,
+        "demand_frames": 28
+      }
+    },
+    {
+      "protocol": "serial-assist-audit-v1",
+      "directory": "docs/evidence/serial-assist/23012432f81d7d8333521a63f5719344e398a8a6/SA02-SA04/suite/compare/up/seed-33/limited_step",
+      "status": "UNKNOWN",
+      "passed": false,
+      "unknown_counted_as_pass": false,
+      "failures": [],
+      "unknowns": [
+        "flashed_firmware_identity",
+        "flashed_firmware_matches_source",
+        "device_model",
+        "com_port",
+        "end_to_end_latency_ms",
+        "device_counts_per_px",
+        "usb_hid_queue_depth",
+        "partial_write_recovery",
+        "device_watchdog",
+        "ok_semantics_on_device",
+        "device_execution_confirmation",
+        "remote_stop_confirmation",
+        "tensorrt_execution"
+      ],
+      "metrics": {
+        "end_max_truth_error_px": 1.0,
+        "coverage": 0.98,
+        "demand_frames": 50
+      }
+    },
+    {
+      "protocol": "serial-assist-audit-v1",
+      "directory": "docs/evidence/serial-assist/23012432f81d7d8333521a63f5719344e398a8a6/SA02-SA04/suite/compare/up/seed-33/off",
+      "status": "UNKNOWN",
+      "passed": false,
+      "unknown_counted_as_pass": false,
+      "failures": [],
+      "unknowns": [
+        "flashed_firmware_identity",
+        "flashed_firmware_matches_source",
+        "device_model",
+        "com_port",
+        "end_to_end_latency_ms",
+        "device_counts_per_px",
+        "usb_hid_queue_depth",
+        "partial_write_recovery",
+        "device_watchdog",
+        "ok_semantics_on_device",
+        "device_execution_confirmation",
+        "remote_stop_confirmation",
+        "tensorrt_execution"
+      ],
+      "metrics": {
+        "end_max_truth_error_px": 20.0,
+        "coverage": 0.0,
+        "demand_frames": 80
+      }
+    },
+    {
+      "protocol": "serial-assist-audit-v1",
+      "directory": "docs/evidence/serial-assist/23012432f81d7d8333521a63f5719344e398a8a6/SA02-SA04/suite/compare/walk-out/seed-1/fixed_pid",
+      "status": "UNKNOWN",
+      "passed": false,
+      "unknown_counted_as_pass": false,
+      "failures": [],
+      "unknowns": [
+        "flashed_firmware_identity",
+        "flashed_firmware_matches_source",
+        "device_model",
+        "com_port",
+        "end_to_end_latency_ms",
+        "device_counts_per_px",
+        "usb_hid_queue_depth",
+        "partial_write_recovery",
+        "device_watchdog",
+        "ok_semantics_on_device",
+        "device_execution_confirmation",
+        "remote_stop_confirmation",
+        "tensorrt_execution"
+      ],
+      "metrics": {
+        "end_max_truth_error_px": 58.400000000001796,
+        "coverage": 0.9875,
+        "demand_frames": 80,
+        "effect_threshold": "effect threshold not applied; latency and moving-target bars are UNKNOWN"
+      }
+    },
+    {
+      "protocol": "serial-assist-audit-v1",
+      "directory": "docs/evidence/serial-assist/23012432f81d7d8333521a63f5719344e398a8a6/SA02-SA04/suite/compare/walk-out/seed-1/limited_step",
+      "status": "UNKNOWN",
+      "passed": false,
+      "unknown_counted_as_pass": false,
+      "failures": [],
+      "unknowns": [
+        "flashed_firmware_identity",
+        "flashed_firmware_matches_source",
+        "device_model",
+        "com_port",
+        "end_to_end_latency_ms",
+        "device_counts_per_px",
+        "usb_hid_queue_depth",
+        "partial_write_recovery",
+        "device_watchdog",
+        "ok_semantics_on_device",
+        "device_execution_confirmation",
+        "remote_stop_confirmation",
+        "tensorrt_execution"
+      ],
+      "metrics": {
+        "end_max_truth_error_px": 58.80000000000177,
+        "coverage": 0.9875,
+        "demand_frames": 80,
+        "effect_threshold": "effect threshold not applied; latency and moving-target bars are UNKNOWN"
+      }
+    },
+    {
+      "protocol": "serial-assist-audit-v1",
+      "directory": "docs/evidence/serial-assist/23012432f81d7d8333521a63f5719344e398a8a6/SA02-SA04/suite/faults/async-hold/seed-1/limited_step",
+      "status": "UNKNOWN",
+      "passed": false,
+      "unknown_counted_as_pass": false,
+      "failures": [],
+      "unknowns": [
+        "flashed_firmware_identity",
+        "flashed_firmware_matches_source",
+        "device_model",
+        "com_port",
+        "end_to_end_latency_ms",
+        "device_counts_per_px",
+        "usb_hid_queue_depth",
+        "partial_write_recovery",
+        "device_watchdog",
+        "ok_semantics_on_device",
+        "device_execution_confirmation",
+        "remote_stop_confirmation",
+        "tensorrt_execution"
+      ],
+      "metrics": {
+        "end_max_truth_error_px": 18.0,
+        "coverage": 0.6666666666666666,
+        "demand_frames": 3,
+        "effect_threshold": "effect threshold not applied; latency and moving-target bars are UNKNOWN"
+      }
+    },
+    {
+      "protocol": "serial-assist-audit-v1",
+      "directory": "docs/evidence/serial-assist/23012432f81d7d8333521a63f5719344e398a8a6/SA02-SA04/suite/faults/delay-0/seed-1/fixed_pid",
+      "status": "UNKNOWN",
+      "passed": false,
+      "unknown_counted_as_pass": false,
+      "failures": [],
+      "unknowns": [
+        "flashed_firmware_identity",
+        "flashed_firmware_matches_source",
+        "device_model",
+        "com_port",
+        "end_to_end_latency_ms",
+        "device_counts_per_px",
+        "usb_hid_queue_depth",
+        "partial_write_recovery",
+        "device_watchdog",
+        "ok_semantics_on_device",
+        "device_execution_confirmation",
+        "remote_stop_confirmation",
+        "tensorrt_execution"
+      ],
+      "metrics": {
+        "end_max_truth_error_px": 1.0,
+        "coverage": 0.96,
+        "demand_frames": 25,
+        "effect_threshold": "effect threshold not applied; latency and moving-target bars are UNKNOWN"
+      }
+    },
+    {
+      "protocol": "serial-assist-audit-v1",
+      "directory": "docs/evidence/serial-assist/23012432f81d7d8333521a63f5719344e398a8a6/SA02-SA04/suite/faults/delay-0/seed-1/limited_step",
+      "status": "UNKNOWN",
+      "passed": false,
+      "unknown_counted_as_pass": false,
+      "failures": [],
+      "unknowns": [
+        "flashed_firmware_identity",
+        "flashed_firmware_matches_source",
+        "device_model",
+        "com_port",
+        "end_to_end_latency_ms",
+        "device_counts_per_px",
+        "usb_hid_queue_depth",
+        "partial_write_recovery",
+        "device_watchdog",
+        "ok_semantics_on_device",
+        "device_execution_confirmation",
+        "remote_stop_confirmation",
+        "tensorrt_execution"
+      ],
+      "metrics": {
+        "end_max_truth_error_px": 1.0,
+        "coverage": 0.9523809523809523,
+        "demand_frames": 21,
+        "effect_threshold": "effect threshold not applied; latency and moving-target bars are UNKNOWN"
+      }
+    },
+    {
+      "protocol": "serial-assist-audit-v1",
+      "directory": "docs/evidence/serial-assist/23012432f81d7d8333521a63f5719344e398a8a6/SA02-SA04/suite/faults/delay-100/seed-1/fixed_pid",
+      "status": "UNKNOWN",
+      "passed": false,
+      "unknown_counted_as_pass": false,
+      "failures": [],
+      "unknowns": [
+        "flashed_firmware_identity",
+        "flashed_firmware_matches_source",
+        "device_model",
+        "com_port",
+        "end_to_end_latency_ms",
+        "device_counts_per_px",
+        "usb_hid_queue_depth",
+        "partial_write_recovery",
+        "device_watchdog",
+        "ok_semantics_on_device",
+        "device_execution_confirmation",
+        "remote_stop_confirmation",
+        "tensorrt_execution"
+      ],
+      "metrics": {
+        "end_max_truth_error_px": 1.0,
+        "coverage": 0.9583333333333334,
+        "demand_frames": 24,
+        "effect_threshold": "effect threshold not applied; latency and moving-target bars are UNKNOWN"
+      }
+    },
+    {
+      "protocol": "serial-assist-audit-v1",
+      "directory": "docs/evidence/serial-assist/23012432f81d7d8333521a63f5719344e398a8a6/SA02-SA04/suite/faults/delay-100/seed-1/limited_step",
+      "status": "UNKNOWN",
+      "passed": false,
+      "unknown_counted_as_pass": false,
+      "failures": [],
+      "unknowns": [
+        "flashed_firmware_identity",
+        "flashed_firmware_matches_source",
+        "device_model",
+        "com_port",
+        "end_to_end_latency_ms",
+        "device_counts_per_px",
+        "usb_hid_queue_depth",
+        "partial_write_recovery",
+        "device_watchdog",
+        "ok_semantics_on_device",
+        "device_execution_confirmation",
+        "remote_stop_confirmation",
+        "tensorrt_execution"
+      ],
+      "metrics": {
+        "end_max_truth_error_px": 1.0,
+        "coverage": 0.9565217391304348,
+        "demand_frames": 23,
+        "effect_threshold": "effect threshold not applied; latency and moving-target bars are UNKNOWN"
+      }
+    },
+    {
+      "protocol": "serial-assist-audit-v1",
+      "directory": "docs/evidence/serial-assist/23012432f81d7d8333521a63f5719344e398a8a6/SA02-SA04/suite/faults/delay-20/seed-1/fixed_pid",
+      "status": "UNKNOWN",
+      "passed": false,
+      "unknown_counted_as_pass": false,
+      "failures": [],
+      "unknowns": [
+        "flashed_firmware_identity",
+        "flashed_firmware_matches_source",
+        "device_model",
+        "com_port",
+        "end_to_end_latency_ms",
+        "device_counts_per_px",
+        "usb_hid_queue_depth",
+        "partial_write_recovery",
+        "device_watchdog",
+        "ok_semantics_on_device",
+        "device_execution_confirmation",
+        "remote_stop_confirmation",
+        "tensorrt_execution"
+      ],
+      "metrics": {
+        "end_max_truth_error_px": 1.0,
+        "coverage": 0.96,
+        "demand_frames": 25,
+        "effect_threshold": "effect threshold not applied; latency and moving-target bars are UNKNOWN"
+      }
+    },
+    {
+      "protocol": "serial-assist-audit-v1",
+      "directory": "docs/evidence/serial-assist/23012432f81d7d8333521a63f5719344e398a8a6/SA02-SA04/suite/faults/delay-20/seed-1/limited_step",
+      "status": "UNKNOWN",
+      "passed": false,
+      "unknown_counted_as_pass": false,
+      "failures": [],
+      "unknowns": [
+        "flashed_firmware_identity",
+        "flashed_firmware_matches_source",
+        "device_model",
+        "com_port",
+        "end_to_end_latency_ms",
+        "device_counts_per_px",
+        "usb_hid_queue_depth",
+        "partial_write_recovery",
+        "device_watchdog",
+        "ok_semantics_on_device",
+        "device_execution_confirmation",
+        "remote_stop_confirmation",
+        "tensorrt_execution"
+      ],
+      "metrics": {
+        "end_max_truth_error_px": 1.0,
+        "coverage": 0.9523809523809523,
+        "demand_frames": 21,
+        "effect_threshold": "effect threshold not applied; latency and moving-target bars are UNKNOWN"
+      }
+    },
+    {
+      "protocol": "serial-assist-audit-v1",
+      "directory": "docs/evidence/serial-assist/23012432f81d7d8333521a63f5719344e398a8a6/SA02-SA04/suite/faults/delay-50/seed-1/fixed_pid",
+      "status": "UNKNOWN",
+      "passed": false,
+      "unknown_counted_as_pass": false,
+      "failures": [],
+      "unknowns": [
+        "flashed_firmware_identity",
+        "flashed_firmware_matches_source",
+        "device_model",
+        "com_port",
+        "end_to_end_latency_ms",
+        "device_counts_per_px",
+        "usb_hid_queue_depth",
+        "partial_write_recovery",
+        "device_watchdog",
+        "ok_semantics_on_device",
+        "device_execution_confirmation",
+        "remote_stop_confirmation",
+        "tensorrt_execution"
+      ],
+      "metrics": {
+        "end_max_truth_error_px": 1.0,
+        "coverage": 0.9615384615384616,
+        "demand_frames": 26,
+        "effect_threshold": "effect threshold not applied; latency and moving-target bars are UNKNOWN"
+      }
+    },
+    {
+      "protocol": "serial-assist-audit-v1",
+      "directory": "docs/evidence/serial-assist/23012432f81d7d8333521a63f5719344e398a8a6/SA02-SA04/suite/faults/delay-50/seed-1/limited_step",
+      "status": "UNKNOWN",
+      "passed": false,
+      "unknown_counted_as_pass": false,
+      "failures": [],
+      "unknowns": [
+        "flashed_firmware_identity",
+        "flashed_firmware_matches_source",
+        "device_model",
+        "com_port",
+        "end_to_end_latency_ms",
+        "device_counts_per_px",
+        "usb_hid_queue_depth",
+        "partial_write_recovery",
+        "device_watchdog",
+        "ok_semantics_on_device",
+        "device_execution_confirmation",
+        "remote_stop_confirmation",
+        "tensorrt_execution"
+      ],
+      "metrics": {
+        "end_max_truth_error_px": 1.0,
+        "coverage": 0.9545454545454546,
+        "demand_frames": 22,
+        "effect_threshold": "effect threshold not applied; latency and moving-target bars are UNKNOWN"
+      }
+    }
+  ],
+  "unknowns": [
+    "flashed_firmware_identity",
+    "flashed_firmware_matches_source",
+    "device_model",
+    "com_port",
+    "end_to_end_latency_ms",
+    "device_counts_per_px",
+    "usb_hid_queue_depth",
+    "partial_write_recovery",
+    "device_watchdog",
+    "ok_semantics_on_device",
+    "device_execution_confirmation",
+    "remote_stop_confirmation",
+    "tensorrt_execution"
+  ]
+}
