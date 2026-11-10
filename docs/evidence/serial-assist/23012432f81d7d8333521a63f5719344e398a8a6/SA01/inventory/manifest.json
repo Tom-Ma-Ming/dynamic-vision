@@ -1,0 +1,704 @@
+{
+  "ack": false,
+  "audit_version": "serial-assist-audit-v1",
+  "axis_max": 127,
+  "axis_min": -127,
+  "baud": 115200,
+  "calibration_version": "sim-counts-per-px-v1",
+  "click_migrated": false,
+  "coco_onnx_project_contract": false,
+  "coco_onnx_sha256": "8726dd29e8439519c8986d830d5d732fe483ab8ab90cbb965f57fa1b8b97c505",
+  "commit": "23012432f81d7d8333521a63f5719344e398a8a6",
+  "config_sha256": {
+    "/agent/repos/dynamic-vision/CMakeLists.txt": "900d8713dd7f5eac107c25a76166008ee6ef972a727889aadce08c868af30948",
+    "/agent/repos/dynamic-vision/cmake/Dependencies.cmake": "7310f725160f63b4bf312475239caeacca2ffa415b32334b55538ce285ca74cf",
+    "/agent/repos/dynamic-vision/configs/serial/acceptance-profile.json": "1920a456ecc356ce8e1c71e279884b3806a75770f65cd4e2372a7037176cb5cc",
+    "/agent/repos/dynamic-vision/configs/serial/assist.json": "e48ca4cfb2a2edbdfb87737fe8beb3fde5f6078b82cb5c5f8c18881978077f5f",
+    "/agent/repos/dynamic-vision/configs/serial/capability-table.json": "0628d4505baf44d3ecc5bd2ef1a9e08b353cc112789ba19803e04e3e67d6de97",
+    "/agent/repos/dynamic-vision/configs/serial/legacy_m_noack.json": "7add32bb3106c71c10de723504e0acb51b409642eec58ce5dfb9c9a3bdf42608"
+  },
+  "data_bits": 8,
+  "device": {
+    "firmware": null,
+    "model": null,
+    "opened": false,
+    "port": null,
+    "source_proves_flashed_firmware": false
+  },
+  "dirty": false,
+  "engine_sha256": null,
+  "engine_status": "MISSING",
+  "execution_feedback": false,
+  "host_serial": "8N1",
+  "launch_command": "/agent/repos/dynamic-vision/out/linux-cpu/serial_assist inventory --root /agent/repos/dynamic-vision --out docs/evidence/serial-assist/23012432f81d7d8333521a63f5719344e398a8a6/SA01/inventory --commit 23012432f81d7d8333521a63f5719344e398a8a6 --dirty 0",
+  "line_buffer_chars": 40,
+  "log_policy": {
+    "complete": true,
+    "dropped_critical": 0,
+    "per_frame_fsync": false
+  },
+  "m00_is_stop": false,
+  "model_sha256": null,
+  "model_status": "MISSING",
+  "name": "legacy_m_noack",
+  "parameters": {
+    "assist": {
+      "deadzone_px": 1,
+      "enter_px": 48,
+      "exit_px": 72,
+      "firmware_axis_limit": 127,
+      "human_turn_px": 12,
+      "max_accel_px_s2": 500,
+      "max_counts_per_axis": 2,
+      "max_in_flight": 1,
+      "max_speed_px_s": 50,
+      "max_step_px": 2,
+      "resume_wait_s": 0.2
+    },
+    "calibration": {
+      "counts_per_px": 1.0,
+      "device_counts_per_px": null,
+      "note": "Simulation calibration only. The device counts-per-pixel is UNKNOWN.",
+      "version": "sim-counts-per-px-v1"
+    },
+    "default_controller": "limited_step",
+    "directions": [
+      {
+        "id": "right",
+        "world": [
+          340,
+          240
+        ]
+      },
+      {
+        "id": "left",
+        "world": [
+          300,
+          240
+        ]
+      },
+      {
+        "id": "up",
+        "world": [
+          320,
+          220
+        ]
+      },
+      {
+        "id": "down",
+        "world": [
+          320,
+          260
+        ]
+      },
+      {
+        "id": "diag-pp",
+        "world": [
+          332,
+          252
+        ]
+      },
+      {
+        "id": "diag-nn",
+        "world": [
+          308,
+          228
+        ]
+      },
+      {
+        "id": "diag-pn",
+        "world": [
+          332,
+          228
+        ]
+      },
+      {
+        "id": "diag-np",
+        "world": [
+          308,
+          252
+        ]
+      }
+    ],
+    "image": {
+      "center_x": 320,
+      "center_y": 240,
+      "height": 480,
+      "width": 640
+    },
+    "pid": {
+      "autotuned": false,
+      "derivative_tau_s": 0.03,
+      "integral_limit_px_s": 20,
+      "kd": 0.02,
+      "ki": 0.0,
+      "kp": 6.0,
+      "note": "Frozen experimental gains. fixed_pid does not replace limited_step.",
+      "output_limit_px_s": 50
+    },
+    "scenes": [
+      {
+        "backend": "simulator",
+        "group": "compare",
+        "human": [],
+        "id": "outside",
+        "modes": [
+          "off",
+          "limited_step",
+          "fixed_pid"
+        ],
+        "noise_px": 0,
+        "role": "boundary",
+        "score_effect": false,
+        "seeds": [
+          1
+        ],
+        "velocity": [
+          0,
+          0
+        ],
+        "world": [
+          120,
+          240
+        ]
+      },
+      {
+        "backend": "simulator",
+        "group": "compare",
+        "human": [],
+        "id": "between",
+        "modes": [
+          "off",
+          "limited_step",
+          "fixed_pid"
+        ],
+        "noise_px": 0,
+        "role": "boundary",
+        "score_effect": false,
+        "seeds": [
+          1
+        ],
+        "velocity": [
+          0,
+          0
+        ],
+        "world": [
+          380,
+          240
+        ]
+      },
+      {
+        "backend": "simulator",
+        "group": "compare",
+        "human": [
+          {
+            "dx_px": 0,
+            "dy_px": 0,
+            "t_ns": 400000000,
+            "takeover": true
+          }
+        ],
+        "id": "held",
+        "modes": [
+          "off",
+          "limited_step",
+          "fixed_pid"
+        ],
+        "noise_px": 0,
+        "role": "hold",
+        "score_effect": false,
+        "seeds": [
+          1
+        ],
+        "velocity": [
+          0,
+          0
+        ],
+        "world": [
+          340,
+          240
+        ]
+      },
+      {
+        "backend": "simulator",
+        "group": "compare",
+        "human": [
+          {
+            "t_ns": 400000000,
+            "takeover": true
+          },
+          {
+            "release": true,
+            "t_ns": 800000000
+          }
+        ],
+        "id": "release",
+        "modes": [
+          "off",
+          "limited_step",
+          "fixed_pid"
+        ],
+        "noise_px": 0,
+        "role": "release",
+        "score_effect": false,
+        "seeds": [
+          1
+        ],
+        "velocity": [
+          0,
+          0
+        ],
+        "world": [
+          340,
+          240
+        ]
+      },
+      {
+        "backend": "simulator",
+        "group": "compare",
+        "human": [
+          {
+            "t_ns": 400000000,
+            "takeover": true
+          },
+          {
+            "release": true,
+            "t_ns": 800000000
+          },
+          {
+            "t_ns": 900000000,
+            "takeover": true
+          }
+        ],
+        "id": "rehold",
+        "modes": [
+          "limited_step",
+          "fixed_pid"
+        ],
+        "noise_px": 0,
+        "role": "fault",
+        "score_effect": false,
+        "seeds": [
+          1
+        ],
+        "velocity": [
+          0,
+          0
+        ],
+        "world": [
+          340,
+          240
+        ]
+      },
+      {
+        "backend": "simulator",
+        "group": "compare",
+        "human": [
+          {
+            "dx_px": 20,
+            "dy_px": 0,
+            "t_ns": 400000000
+          }
+        ],
+        "id": "pulse",
+        "modes": [
+          "limited_step"
+        ],
+        "noise_px": 0,
+        "role": "fault",
+        "score_effect": false,
+        "seeds": [
+          1
+        ],
+        "velocity": [
+          0,
+          0
+        ],
+        "world": [
+          340,
+          240
+        ]
+      },
+      {
+        "backend": "simulator",
+        "frames": 80,
+        "group": "compare",
+        "human": [],
+        "id": "walk-out",
+        "modes": [
+          "limited_step",
+          "fixed_pid"
+        ],
+        "noise_px": 0,
+        "role": "walk",
+        "score_effect": false,
+        "seeds": [
+          1
+        ],
+        "velocity": [
+          40,
+          0
+        ],
+        "world": [
+          330,
+          240
+        ]
+      },
+      {
+        "backend": "simulator",
+        "group": "compare",
+        "human": [],
+        "id": "identity",
+        "modes": [
+          "limited_step",
+          "fixed_pid"
+        ],
+        "noise_px": 0,
+        "role": "identity",
+        "score_effect": false,
+        "seeds": [
+          1
+        ],
+        "track_switch_frame": 15,
+        "velocity": [
+          0,
+          0
+        ],
+        "world": [
+          340,
+          240
+        ]
+      },
+      {
+        "backend": "mock_serial",
+        "frames": 20,
+        "group": "backends",
+        "human": [],
+        "id": "mock",
+        "modes": [
+          "limited_step"
+        ],
+        "noise_px": 0,
+        "role": "contract",
+        "score_effect": false,
+        "seeds": [
+          1
+        ],
+        "velocity": [
+          0,
+          0
+        ],
+        "world": [
+          340,
+          240
+        ]
+      },
+      {
+        "backend": "dry_run",
+        "frames": 20,
+        "group": "backends",
+        "human": [],
+        "id": "dry",
+        "modes": [
+          "limited_step"
+        ],
+        "noise_px": 0,
+        "role": "contract",
+        "score_effect": false,
+        "seeds": [
+          1
+        ],
+        "velocity": [
+          0,
+          0
+        ],
+        "world": [
+          340,
+          240
+        ]
+      },
+      {
+        "backend": "serial",
+        "frames": 8,
+        "group": "backends",
+        "human": [],
+        "id": "serial-refused",
+        "modes": [
+          "limited_step"
+        ],
+        "noise_px": 0,
+        "role": "contract",
+        "score_effect": false,
+        "seeds": [
+          1
+        ],
+        "velocity": [
+          0,
+          0
+        ],
+        "world": [
+          340,
+          240
+        ]
+      },
+      {
+        "backend": "mock_serial",
+        "frames": 12,
+        "group": "backends",
+        "human": [],
+        "id": "partial",
+        "modes": [
+          "limited_step"
+        ],
+        "noise_px": 0,
+        "partial_byte_limit": 3,
+        "role": "contract",
+        "score_effect": false,
+        "seeds": [
+          1
+        ],
+        "velocity": [
+          0,
+          0
+        ],
+        "world": [
+          340,
+          240
+        ]
+      },
+      {
+        "backend": "mock_serial",
+        "fail_all_writes": true,
+        "frames": 12,
+        "group": "backends",
+        "human": [],
+        "id": "send-fail",
+        "modes": [
+          "limited_step"
+        ],
+        "noise_px": 0,
+        "role": "contract",
+        "score_effect": false,
+        "seeds": [
+          1
+        ],
+        "velocity": [
+          0,
+          0
+        ],
+        "world": [
+          340,
+          240
+        ]
+      },
+      {
+        "backend": "simulator",
+        "delay_ms": 0,
+        "group": "faults",
+        "human": [],
+        "id": "delay-0",
+        "modes": [
+          "limited_step",
+          "fixed_pid"
+        ],
+        "noise_px": 0,
+        "role": "delay",
+        "score_effect": false,
+        "seeds": [
+          1
+        ],
+        "velocity": [
+          0,
+          0
+        ],
+        "world": [
+          340,
+          240
+        ]
+      },
+      {
+        "backend": "simulator",
+        "delay_ms": 20,
+        "group": "faults",
+        "human": [],
+        "id": "delay-20",
+        "modes": [
+          "limited_step",
+          "fixed_pid"
+        ],
+        "noise_px": 0,
+        "role": "delay",
+        "score_effect": false,
+        "seeds": [
+          1
+        ],
+        "velocity": [
+          0,
+          0
+        ],
+        "world": [
+          340,
+          240
+        ]
+      },
+      {
+        "backend": "simulator",
+        "delay_ms": 50,
+        "group": "faults",
+        "human": [],
+        "id": "delay-50",
+        "modes": [
+          "limited_step",
+          "fixed_pid"
+        ],
+        "noise_px": 0,
+        "role": "delay",
+        "score_effect": false,
+        "seeds": [
+          1
+        ],
+        "velocity": [
+          0,
+          0
+        ],
+        "world": [
+          340,
+          240
+        ]
+      },
+      {
+        "backend": "simulator",
+        "delay_ms": 100,
+        "group": "faults",
+        "human": [],
+        "id": "delay-100",
+        "modes": [
+          "limited_step",
+          "fixed_pid"
+        ],
+        "noise_px": 0,
+        "role": "delay",
+        "score_effect": false,
+        "seeds": [
+          1
+        ],
+        "velocity": [
+          0,
+          0
+        ],
+        "world": [
+          340,
+          240
+        ]
+      },
+      {
+        "backend": "simulator",
+        "delay_ms": 30,
+        "frames": 40,
+        "group": "faults",
+        "human": [
+          {
+            "t_ns": 120000000,
+            "takeover": true
+          }
+        ],
+        "id": "async-hold",
+        "modes": [
+          "limited_step"
+        ],
+        "noise_px": 0,
+        "role": "fault",
+        "score_effect": false,
+        "seeds": [
+          1
+        ],
+        "velocity": [
+          0,
+          0
+        ],
+        "world": [
+          340,
+          240
+        ]
+      }
+    ],
+    "timing": {
+      "command_lifetime_ns": 80000000,
+      "dt_ns": 40000000,
+      "frames": 80,
+      "min_send_interval_ns": 20000000
+    }
+  },
+  "parity": "none",
+  "patch_summary": "",
+  "project_engine": "artifacts/engines/yolo11n-v002-retrain-20261110-fp32/best-fp32.engine",
+  "project_engine_status": "MISSING",
+  "project_onnx": "artifacts/runs/yolo11n-v002-retrain-20261110-320/weights/best.onnx",
+  "project_onnx_status": "MISSING",
+  "protocol": {
+    "ack": false,
+    "axis_max": 127,
+    "axis_min": -127,
+    "baud": 115200,
+    "data_bits": 8,
+    "execution_feedback": false,
+    "host_serial": "8N1",
+    "line_buffer_chars": 40,
+    "m00_is_stop": false,
+    "name": "legacy_m_noack",
+    "parity": "none",
+    "segment_delay_is_end_to_end": false,
+    "segment_delay_ms": 2,
+    "sequence": false,
+    "source": {
+      "firmware_path": "E:/mac-share/mouse_firmware/mouse_firmware.ino",
+      "firmware_sha256": "8F5D59E13C0F3C0165F776A6034F2283066A7A30D76B78746B0C3BDB90AF25B3",
+      "host_path": "E:/mac-share/tensorRT_Pro-main/tensorRT_Pro-main/src/application/auto_aim/serial_mouse.cpp",
+      "host_sha256": "44EDDB7763111C9D154D6FAED6E15B5940820C6E5A13880E64478C85C6E7EDFB",
+      "note": "Source hashes do not prove the firmware currently flashed on a device."
+    },
+    "status": "development_baseline_not_device_identification",
+    "stop": false,
+    "stop_bits": 1,
+    "supported_motion": "M",
+    "units": "device_counts",
+    "watchdog": false
+  },
+  "role": "inventory",
+  "sdk": {
+    "gpu": "none",
+    "tensorrt": "not_loaded"
+  },
+  "segment_delay_is_end_to_end": false,
+  "segment_delay_ms": 2,
+  "sequence": false,
+  "serial_opened": false,
+  "source": {
+    "firmware_path": "E:/mac-share/mouse_firmware/mouse_firmware.ino",
+    "firmware_sha256": "8F5D59E13C0F3C0165F776A6034F2283066A7A30D76B78746B0C3BDB90AF25B3",
+    "host_path": "E:/mac-share/tensorRT_Pro-main/tensorRT_Pro-main/src/application/auto_aim/serial_mouse.cpp",
+    "host_sha256": "44EDDB7763111C9D154D6FAED6E15B5940820C6E5A13880E64478C85C6E7EDFB",
+    "note": "Source hashes do not prove the firmware currently flashed on a device."
+  },
+  "status": "development_baseline_not_device_identification",
+  "stop": false,
+  "stop_bits": 1,
+  "supported_motion": "M",
+  "units": "device_counts",
+  "unknown_fields": [
+    "flashed_firmware_identity",
+    "flashed_firmware_matches_source",
+    "device_model",
+    "com_port",
+    "end_to_end_latency_ms",
+    "device_counts_per_px",
+    "usb_hid_queue_depth",
+    "partial_write_recovery",
+    "device_watchdog",
+    "ok_semantics_on_device",
+    "device_execution_confirmation",
+    "remote_stop_confirmation",
+    "tensorrt_execution"
+  ],
+  "watchdog": false
+}

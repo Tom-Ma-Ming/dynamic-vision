@@ -1,0 +1,36 @@
+{
+  "profile": "legacy_m_noack",
+  "confirmed_from": "source_baseline_not_flashed_device",
+  "known": [
+    {"field": "baud", "value": 115200, "unit": "bit/s"},
+    {"field": "host_serial", "value": "8N1"},
+    {"field": "line_delimiter", "value": "newline"},
+    {"field": "move_format", "value": "M <integer dx> <integer dy>\\n"},
+    {"field": "move_unit", "value": "device_counts"},
+    {"field": "per_segment_range", "value": "-127..127", "note": "counts, not pixels, and not the assist step"},
+    {"field": "ack", "value": false},
+    {"field": "sequence", "value": false},
+    {"field": "stop", "value": false},
+    {"field": "execution_feedback", "value": false},
+    {"field": "supported_motion_this_round", "value": "M"},
+    {"field": "line_buffer_chars", "value": 40},
+    {"field": "firmware_segment_delay_ms", "value": 2, "note": "not end-to-end latency"},
+    {"field": "unknown_command", "value": "silently_ignored"},
+    {"field": "silence_means_healthy", "value": false}
+  ],
+  "unknown_fields": [
+    {"field": "flashed_firmware_identity", "status": "UNKNOWN"},
+    {"field": "flashed_firmware_matches_source", "status": "UNKNOWN"},
+    {"field": "device_model", "status": "UNKNOWN"},
+    {"field": "com_port", "status": "UNKNOWN"},
+    {"field": "end_to_end_latency_ms", "status": "UNKNOWN"},
+    {"field": "device_counts_per_px", "status": "UNKNOWN"},
+    {"field": "usb_hid_queue_depth", "status": "UNKNOWN"},
+    {"field": "partial_write_recovery", "status": "UNKNOWN"},
+    {"field": "device_watchdog", "status": "UNKNOWN"},
+    {"field": "ok_semantics_on_device", "status": "UNKNOWN"},
+    {"field": "device_execution_confirmation", "status": "UNKNOWN"},
+    {"field": "remote_stop_confirmation", "status": "UNKNOWN"},
+    {"field": "tensorrt_execution", "status": "UNKNOWN"}
+  ]
+}

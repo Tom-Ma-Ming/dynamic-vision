@@ -54,6 +54,25 @@ endif()
 
 include(cmake/Dependencies.cmake)
 
+add_library(vision_assist STATIC
+  src/io/sha256.cpp
+  src/io/protocol.cpp
+  src/io/backend.cpp
+  src/control/assist_controller.cpp
+  src/control/session.cpp)
+target_include_directories(vision_assist PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/include)
+target_link_libraries(vision_assist PUBLIC nlohmann_json::nlohmann_json)
+target_compile_options(vision_assist PRIVATE $<$<CXX_COMPILER_ID:MSVC>:/utf-8>)
+add_executable(serial_assist apps/serial_assist/main.cpp)
+target_link_libraries(serial_assist PRIVATE vision_assist)
+target_compile_options(serial_assist PRIVATE $<$<CXX_COMPILER_ID:MSVC>:/utf-8>)
+if(VISION_BUILD_TESTS)
+  add_executable(assist_test tests/unit/test_serial_assist.cpp)
+  target_link_libraries(assist_test PRIVATE vision_assist)
+  target_compile_options(assist_test PRIVATE $<$<CXX_COMPILER_ID:MSVC>:/utf-8>)
+  add_test(NAME serial_assist_contract COMMAND assist_test)
+endif()
+
 if(MSVC)
   add_compile_options(/utf-8)
 endif()
