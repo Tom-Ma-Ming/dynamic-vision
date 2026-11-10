@@ -1,0 +1,69 @@
+{
+  "default_controller": "limited_step",
+  "image": {"width": 640, "height": 480, "center_x": 320, "center_y": 240},
+  "timing": {
+    "dt_ns": 40000000,
+    "frames": 80,
+    "command_lifetime_ns": 80000000,
+    "min_send_interval_ns": 20000000
+  },
+  "calibration": {
+    "version": "sim-counts-per-px-v1",
+    "counts_per_px": 1.0,
+    "device_counts_per_px": null,
+    "note": "Simulation calibration only. The device counts-per-pixel is UNKNOWN."
+  },
+  "assist": {
+    "enter_px": 48,
+    "exit_px": 72,
+    "deadzone_px": 1,
+    "max_step_px": 2,
+    "max_speed_px_s": 50,
+    "max_accel_px_s2": 500,
+    "human_turn_px": 12,
+    "resume_wait_s": 0.2,
+    "max_counts_per_axis": 2,
+    "firmware_axis_limit": 127,
+    "max_in_flight": 1
+  },
+  "pid": {
+    "kp": 6.0,
+    "ki": 0.0,
+    "kd": 0.02,
+    "integral_limit_px_s": 20,
+    "derivative_tau_s": 0.03,
+    "output_limit_px_s": 50,
+    "autotuned": false,
+    "note": "Frozen experimental gains. fixed_pid does not replace limited_step."
+  },
+  "directions": [
+    {"id": "right", "world": [340, 240]},
+    {"id": "left", "world": [300, 240]},
+    {"id": "up", "world": [320, 220]},
+    {"id": "down", "world": [320, 260]},
+    {"id": "diag-pp", "world": [332, 252]},
+    {"id": "diag-nn", "world": [308, 228]},
+    {"id": "diag-pn", "world": [332, 228]},
+    {"id": "diag-np", "world": [308, 252]}
+  ],
+  "scenes": [
+    {"id": "outside", "role": "boundary", "group": "compare", "world": [120, 240], "velocity": [0, 0], "seeds": [1], "noise_px": 0, "modes": ["off", "limited_step", "fixed_pid"], "backend": "simulator", "human": [], "score_effect": false},
+    {"id": "between", "role": "boundary", "group": "compare", "world": [380, 240], "velocity": [0, 0], "seeds": [1], "noise_px": 0, "modes": ["off", "limited_step", "fixed_pid"], "backend": "simulator", "human": [], "score_effect": false},
+    {"id": "held", "role": "hold", "group": "compare", "world": [340, 240], "velocity": [0, 0], "seeds": [1], "noise_px": 0, "modes": ["off", "limited_step", "fixed_pid"], "backend": "simulator", "human": [{"t_ns": 400000000, "dx_px": 0, "dy_px": 0, "takeover": true}], "score_effect": false},
+    {"id": "release", "role": "release", "group": "compare", "world": [340, 240], "velocity": [0, 0], "seeds": [1], "noise_px": 0, "modes": ["off", "limited_step", "fixed_pid"], "backend": "simulator", "human": [{"t_ns": 400000000, "takeover": true}, {"t_ns": 800000000, "release": true}], "score_effect": false},
+    {"id": "rehold", "role": "fault", "group": "compare", "world": [340, 240], "velocity": [0, 0], "seeds": [1], "noise_px": 0, "modes": ["limited_step", "fixed_pid"], "backend": "simulator", "human": [{"t_ns": 400000000, "takeover": true}, {"t_ns": 800000000, "release": true}, {"t_ns": 900000000, "takeover": true}], "score_effect": false},
+    {"id": "pulse", "role": "fault", "group": "compare", "world": [340, 240], "velocity": [0, 0], "seeds": [1], "noise_px": 0, "modes": ["limited_step"], "backend": "simulator", "human": [{"t_ns": 400000000, "dx_px": 20, "dy_px": 0}], "score_effect": false},
+    {"id": "walk-out", "role": "walk", "group": "compare", "world": [330, 240], "velocity": [40, 0], "seeds": [1], "noise_px": 0, "frames": 80, "modes": ["limited_step", "fixed_pid"], "backend": "simulator", "human": [], "score_effect": false},
+    {"id": "identity", "role": "identity", "group": "compare", "world": [340, 240], "velocity": [0, 0], "seeds": [1], "noise_px": 0, "track_switch_frame": 15, "modes": ["limited_step", "fixed_pid"], "backend": "simulator", "human": [], "score_effect": false},
+    {"id": "mock", "role": "contract", "group": "backends", "world": [340, 240], "velocity": [0, 0], "seeds": [1], "noise_px": 0, "frames": 20, "modes": ["limited_step"], "backend": "mock_serial", "human": [], "score_effect": false},
+    {"id": "dry", "role": "contract", "group": "backends", "world": [340, 240], "velocity": [0, 0], "seeds": [1], "noise_px": 0, "frames": 20, "modes": ["limited_step"], "backend": "dry_run", "human": [], "score_effect": false},
+    {"id": "serial-refused", "role": "contract", "group": "backends", "world": [340, 240], "velocity": [0, 0], "seeds": [1], "noise_px": 0, "frames": 8, "modes": ["limited_step"], "backend": "serial", "human": [], "score_effect": false},
+    {"id": "partial", "role": "contract", "group": "backends", "world": [340, 240], "velocity": [0, 0], "seeds": [1], "noise_px": 0, "frames": 12, "modes": ["limited_step"], "backend": "mock_serial", "partial_byte_limit": 3, "human": [], "score_effect": false},
+    {"id": "send-fail", "role": "contract", "group": "backends", "world": [340, 240], "velocity": [0, 0], "seeds": [1], "noise_px": 0, "frames": 12, "modes": ["limited_step"], "backend": "mock_serial", "fail_all_writes": true, "human": [], "score_effect": false},
+    {"id": "delay-0", "role": "delay", "group": "faults", "world": [340, 240], "velocity": [0, 0], "seeds": [1], "noise_px": 0, "delay_ms": 0, "modes": ["limited_step", "fixed_pid"], "backend": "simulator", "human": [], "score_effect": false},
+    {"id": "delay-20", "role": "delay", "group": "faults", "world": [340, 240], "velocity": [0, 0], "seeds": [1], "noise_px": 0, "delay_ms": 20, "modes": ["limited_step", "fixed_pid"], "backend": "simulator", "human": [], "score_effect": false},
+    {"id": "delay-50", "role": "delay", "group": "faults", "world": [340, 240], "velocity": [0, 0], "seeds": [1], "noise_px": 0, "delay_ms": 50, "modes": ["limited_step", "fixed_pid"], "backend": "simulator", "human": [], "score_effect": false},
+    {"id": "delay-100", "role": "delay", "group": "faults", "world": [340, 240], "velocity": [0, 0], "seeds": [1], "noise_px": 0, "delay_ms": 100, "modes": ["limited_step", "fixed_pid"], "backend": "simulator", "human": [], "score_effect": false},
+    {"id": "async-hold", "role": "fault", "group": "faults", "world": [340, 240], "velocity": [0, 0], "seeds": [1], "noise_px": 0, "frames": 40, "delay_ms": 30, "modes": ["limited_step"], "backend": "simulator", "human": [{"t_ns": 120000000, "takeover": true}], "score_effect": false}
+  ]
+}

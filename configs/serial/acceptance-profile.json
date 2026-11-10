@@ -1,0 +1,32 @@
+{
+  "name": "serial-assist-experimental-v1",
+  "product_standard": false,
+  "note": "Synthetic static-target numbers are an experiment frozen before the SA04 run. They are not a user-confirmed product standard. Moving-target, device and latency thresholds are UNKNOWN and are not skipped.",
+  "hard_gates": {
+    "out_of_region_new_assist": 0,
+    "assist_during_hold": 0,
+    "identity_switch": 0,
+    "over_limit": 0,
+    "clock_regression": 0,
+    "hidden_truth_in_controller": 0,
+    "duplicate_execution": 0,
+    "command_without_host_terminal": 0,
+    "forged_ack_or_applied": 0,
+    "missing_critical_log": 0
+  },
+  "synthetic_static": {
+    "applies_to": "simulator, delay 0, inside-region direction scenes, noise as configured",
+    "end_window_frames": 25,
+    "end_error_px_max": 2.5,
+    "eligible_coverage_min": 0.9,
+    "out_of_region_violations": 0,
+    "hold_violations": 0,
+    "unit": "px"
+  },
+  "moving_target_error_px": "UNKNOWN",
+  "real_device_error_px": "UNKNOWN",
+  "latency_thresholds": "UNKNOWN",
+  "takeover_stop_p95_ns": "UNKNOWN",
+  "takeover_stop_p99_ns": "UNKNOWN",
+  "residual_counts_max": "UNKNOWN"
+}
