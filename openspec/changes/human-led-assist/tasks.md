@@ -7,5 +7,5 @@
 - [x] HA03：实现二维限幅及可靠性门控，补区内上下/斜向、区外无输出和边界抖动测试；记录实际参数。数值仍是实验值。
 - [x] HA04：反馈因果、当前协方差、坐标时钟和有界调度由既有 `sim_test` 反例覆盖；旧大偏移仍走 legacy，不记入人主导成功率。
 - [x] HA05：`configs/sim-human-led-assist.yml` 与 `tools/audit_human_led_assist.py` 已跑。审计 `human-led-audit-v1` 为 passed，需求帧覆盖率 1.0。旧 SUCCESS 锁存不是该协议。
-- [x] HA06：同源人工轨迹开/关、像素图像闭环、双人和延迟故障已跑，报告保留 FAILED/UNKNOWN。TensorRT `human_led` 命令已接到 `vision_sim_image`，本批未执行，结果 UNKNOWN。见 docs/ha06-experiments.md。
+- [x] HA06：同源人工轨迹开/关、像素图像闭环、双人和延迟故障已跑，报告保留 FAILED/UNKNOWN。YOLO ONNX 闭环已执行：开 1 px、关 24 px，120 帧有人物框。TensorRT 因本机无 NVIDIA GPU 不能执行，状态 blocked/UNKNOWN，Windows 命令仍是 `vision_sim_image ... human_led`。见 docs/ha06-experiments.md。
 - [x] HA07：代码、配置、测试和证据清单在 docs/ha07-batch-review.md。路线图已更新。实验参数单独列出。本文件是交给独立复审的材料，不是复审已经完成。

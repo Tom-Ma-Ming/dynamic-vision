@@ -80,4 +80,6 @@ CPU27/27，覆盖乱序不回退、发布因果、过载结果缓冲容量。obs
 
 ## 人主导微调入口
 
-`vision_sim_image` 最后可再追加一个参数：`legacy`（默认，保持旧追逐）、`human_led` 或 `human_led_off`。`human_led` 把标注目标放到画面中心右侧 20 px，使用与仿真相同的实验区域和步长，只在区内微调。`human_led_off` 走同一放置、不发微调，供开/关对照。feedback.jsonl 增加 assist 状态和步长，summary 记录实验参数。本批没有 Windows Engine，这条命令没有执行，HA06 报告记 UNKNOWN。已执行的是 CPU 像素闭环，见 docs/ha06-experiments.md。
+`vision_sim_image` 最后可再追加一个参数：`legacy`（默认，保持旧追逐）、`human_led` 或 `human_led_off`。`human_led` 把标注目标放到画面中心右侧 20 px，使用与仿真相同的实验区域和步长，只在区内微调。`human_led_off` 走同一放置、不发微调，供开/关对照。feedback.jsonl 增加 assist 状态和步长，summary 记录实验参数。
+
+这台 Linux 机器没有 NVIDIA GPU，TensorRT 不能加载 Engine。已经执行的 YOLO 路径是 ONNX Runtime：`sim_runner` 在 `VISION_WITH_ONNX=ON` 时接受 `yolo.onnx`，对 `image_detector: yolo` 的画面跑真实检测图，再进入同一个人主导控制器。本批模型是 YOLO11n COCO `1x84x2100`，不是色块。开微调末误差 1 px，关微调停在 24 px。见 docs/ha06-experiments.md。项目自己的 `1x6x2100` 权重不在仓库里；同一个加载器认这个形状。Windows Engine 命令仍然是 `vision_sim_image ... human_led`。

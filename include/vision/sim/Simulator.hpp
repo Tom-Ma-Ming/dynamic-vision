@@ -118,9 +118,16 @@ struct ScenarioConfig {
   float distractor_vy = 0;
   float distractor_w = 24;
   float distractor_h = 48;
-  // Empty keeps the synthetic box observer. "pixel" renders a sprite and
-  // closes the loop on a color box. It is not a TensorRT/YOLO execution.
+  // Empty keeps the synthetic box observer. "pixel" is a color box, not YOLO.
+  // "yolo" renders sprite_image and closes the loop on an ONNX YOLO graph.
   std::string image_detector;
+  std::string sprite_image;
+  std::string background_image;
+  // Person rectangle inside sprite_image. Required for the yolo detector.
+  float sprite_x = 0;
+  float sprite_y = 0;
+  float sprite_w = 0;
+  float sprite_h = 0;
   std::vector<HumanCameraSample> human_camera;
 };
 

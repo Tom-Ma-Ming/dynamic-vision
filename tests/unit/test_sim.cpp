@@ -1,4 +1,5 @@
 #include <opencv2/imgproc.hpp>
+#include "vision/detect/YoloPostprocess.hpp"
 #include "vision/sim/Simulator.hpp"
 #include "vision/sim/StageScheduler.hpp"
 
@@ -256,8 +257,27 @@ int main(int argc, char** argv) try {
   missing_center.assist_mode=AssistMode::HumanLed;
   reject_assist(missing_center,"human-led assist requires an explicit center");
   auto bad_detector=ScenarioConfig{};
-  bad_detector.image_detector="yolo";
-  reject_assist(bad_detector,"only the pixel image detector is a built-in closed loop");
+  bad_detector.image_detector="color";
+  reject_assist(bad_detector,"unknown image detectors are rejected");
+  auto yolo_without_sprite=ScenarioConfig{};
+  yolo_without_sprite.image_detector="yolo";
+  reject_assist(yolo_without_sprite,"a yolo scene needs a sprite and a person rectangle");
+  {
+    const int anchors=4;
+    std::vector<float> raw(6*anchors, 0.f);
+    raw[0]=160; raw[anchors]=120; raw[2*anchors]=40; raw[3*anchors]=80;
+    raw[5*anchors]=0.9f;
+    const auto boxes=vision::decodeYolo(raw.data(), 6, anchors, {320,320}, vision::Letterbox({320,320}), 0.25f, 0.45f);
+    require(boxes.size()==1 && boxes[0].cls==1 && boxes[0].score>0.8f &&
+            std::abs(boxes[0].box.x-140)<1e-3 && std::abs(boxes[0].box.y-80)<1e-3,
+            "the project 6-channel YOLO contract decodes a person box");
+    std::vector<float> coco(8*anchors, 0.f);
+    coco[0]=100; coco[anchors]=80; coco[2*anchors]=20; coco[3*anchors]=30;
+    coco[(4+0)*anchors]=0.7f;
+    const auto person=vision::decodeYolo(coco.data(), 8, anchors, {320,320}, vision::Letterbox({320,320}), 0.25f, 0.45f, 0);
+    require(person.size()==1 && person[0].cls==1 && std::abs(person[0].box.width-20)<1e-3,
+            "a COCO-style person channel is returned as project class 1");
+  }
   auto pixel_without_image=ScenarioConfig{};
   pixel_without_image.image_detector="pixel";
   reject_assist(pixel_without_image,"pixel mode requires a rendered observation");

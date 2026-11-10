@@ -27,7 +27,8 @@
 ## 改动位置
 
 - `include/vision/sim/Simulator.hpp`、`src/sim/simulator.cpp`：人主导微调、速度补偿、`assist_enabled`、第二个人、反馈故障停输出。
-- `apps/sim_runner/main.cpp`：读取 `assist_defaults`，像素检测闭环。
+- `apps/sim_runner/main.cpp`：读取 `assist_defaults`，像素检测闭环，以及 `yolo.onnx` 参数。
+- `src/detect/yolo_onnx.cpp`：ONNX Runtime 执行真实 YOLO 图。6 通道走项目 head/person 契约；更宽的图只取 COCO 人物通道并标成 person。
 - `apps/trt_infer/sim_image_main.cpp`：末参 `legacy` / `human_led` / `human_led_off`。本批未编译、未运行。
 - `configs/sim-human-led-compare.yml`、`sim-human-led-multi.yml`、`sim-human-led-faults.yml`、`sim-human-led-image.yml`。
 - `tools/run_ha06.py`、`tools/audit_human_led_assist.py`、`tests/unit/test_sim.cpp`、`tests/tools/test_run_ha06.py`。
@@ -49,6 +50,7 @@ HA06 数字见 [ha06-experiments.md](ha06-experiments.md)。机器可读快照�
 
 - `docs/evidence/ha06-ha07-20261109/ha05-audit.json`
 - `docs/evidence/ha06-ha07-20261109/ha06-report.json`
+- `docs/evidence/ha06-ha07-20261109/yolo-report.json`
 
 逐帧 `runs.jsonl` 在 `artifacts/human-led-assist/ha06-ha07-20261109/`，按仓库约定不入库，用上面的命令可以重建。
 
@@ -57,7 +59,7 @@ HA06 数字见 [ha06-experiments.md](ha06-experiments.md)。机器可读快照�
 - 旧 epsilon 锁存在 1 px 中心误差上仍是 FAILED。人主导分数看中心误差和审计门，不改旧检查器。
 - `dispatch-fail`、`feedback-drop` 是 UNKNOWN。
 - `delay-0` 与 `delay-80` 在 60 帧末都是 1 px。这只是本实验步长的观察，不把延迟标成无影响。
-- TensorRT 图像闭环没有执行。像素闭环明确标成 `cpu_pixel_closed_loop_not_yolo`。
+- TensorRT 图像闭环在这台机器上不能执行：没有 NVIDIA 设备，`nvidia-smi` 不存在，CMake 禁止非 Windows 打开 `VISION_WITH_TRT`，仓库里也没有 Engine。状态是 blocked / UNKNOWN。可执行的替代是同一控制器加 ONNX Runtime 上的 YOLO11n，末误差开 1 px、关 24 px，120 帧都有人物框。像素闭环仍然只是色块。
 
 ## 复审时建议看的点
 

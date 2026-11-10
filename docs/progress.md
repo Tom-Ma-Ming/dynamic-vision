@@ -154,4 +154,8 @@ feedback_transport下恢复停止确认加入nonce/epoch/期限及回传延迟�
 
 ## 2026-11-09 人主导中心微调 HA05–HA07
 
-同一人工轨迹下，微调开启把静止目标从 12 px 收到 1 px，10 px/s 慢走从约 32 px 收到约 2 px；关闭时没有辅助步长。像素闭环把 20 px 偏移收到 1 px。双人分离和交叉都保持所选 ID，交叉重叠时停止输出。反馈全丢与发送失败为 UNKNOWN，编码器全丢不发命令。HA05 审计 passed，需求覆盖率 1.0。TensorRT 图像腿未执行。实验区参数未升为产品标准。详见 ha06-experiments.md 与 ha07-batch-review.md。
+同一人工轨迹下，微调开启把静止目标从 12 px 收到 1 px，10 px/s 慢走从约 32 px 收到约 2 px；关闭时没有辅助步长。像素闭环把 20 px 偏移收到 1 px。双人分离和交叉都保持所选 ID，交叉重叠时停止输出。反馈全丢与发送失败为 UNKNOWN，编码器全丢不发命令。HA05 审计 passed，需求覆盖率 1.0。实验区参数未升为产品标准。详见 ha06-experiments.md 与 ha07-batch-review.md。
+
+## 2026-11-10 YOLO ONNX 闭环
+
+本机无 NVIDIA GPU，TensorRT 不能执行。ONNX Runtime 1.31 加载 YOLO11n COCO 320 图（1x84x2100），人物框进入同一个人主导控制器。60 帧开/关：有人物 120/120，开末误差 1 px，关停在 24 px。项目 yolo_v002 权重仍不在仓库。详见 ha06-experiments.md。

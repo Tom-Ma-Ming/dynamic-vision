@@ -1,10 +1,16 @@
 #include "vision/sim/Simulator.hpp"
+#ifdef VISION_WITH_ONNX
+#include "yolo_onnx.hpp"
+#endif
 
 #include <opencv2/core.hpp>
 #include <opencv2/core/persistence.hpp>
+#include <opencv2/imgcodecs.hpp>
 #include <opencv2/imgproc.hpp>
 
+#include <algorithm>
 #include <cmath>
+#include <memory>
 #include <filesystem>
 #include <fstream>
 #include <iomanip>
@@ -183,6 +189,12 @@ std::vector<sim::ScenarioConfig> loadScenarios(const std::string& path) {
     config.distractor_w = static_cast<float>(pickDouble(node, "distractor_w", config.distractor_w));
     config.distractor_h = static_cast<float>(pickDouble(node, "distractor_h", config.distractor_h));
     config.image_detector = stringOr(node, "image_detector", "");
+    config.sprite_image = stringOr(node, "sprite_image", "");
+    config.background_image = stringOr(node, "background_image", "");
+    config.sprite_x = static_cast<float>(pickDouble(node, "sprite_x", config.sprite_x));
+    config.sprite_y = static_cast<float>(pickDouble(node, "sprite_y", config.sprite_y));
+    config.sprite_w = static_cast<float>(pickDouble(node, "sprite_w", config.sprite_w));
+    config.sprite_h = static_cast<float>(pickDouble(node, "sprite_h", config.sprite_h));
     const cv::FileNode human = node["human_camera"];
     if (!human.empty()) {
       if (!human.isSeq()) throw std::runtime_error("human_camera must be a sequence");
@@ -329,13 +341,14 @@ std::string metricJson(const sim::Metrics& metrics) {
 }  // namespace
 
 int main(int argc, char** argv) try {
-  if (argc < 3 || argc > 4) {
+  if (argc < 3 || argc > 5) {
     throw std::runtime_error(
-        "usage: sim_runner scenarios.yml new-output-directory [tracker.yml]");
+        "usage: sim_runner scenarios.yml new-output-directory [tracker.yml [yolo.onnx]]");
   }
   const fs::path executable_dir = fs::absolute(argv[0]).parent_path();
   const std::string tracker_path =
-      argc == 4 ? argv[3] : (executable_dir / "tracker.yml").string();
+      argc >= 4 ? argv[3] : (executable_dir / "tracker.yml").string();
+  const std::string yolo_path = argc >= 5 ? argv[4] : "";
   const auto scenarios = loadScenarios(argv[1]);
   const mot::Config tracker_config = mot::Config::load(tracker_path);
 
@@ -362,9 +375,50 @@ int main(int argc, char** argv) try {
   int unknown = 0;
   bool all_terminal = true;
 
+  const bool wants_yolo = std::any_of(scenarios.begin(), scenarios.end(), [](const sim::ScenarioConfig& scenario) {
+    return scenario.image_detector == "yolo";
+  });
+#ifdef VISION_WITH_ONNX
+  std::unique_ptr<vision::YoloOnnx> yolo;
+  int yolo_person_frames = 0;
+  if (wants_yolo) {
+    if (yolo_path.empty()) throw std::runtime_error("image_detector yolo requires a yolo.onnx argument");
+    yolo = std::make_unique<vision::YoloOnnx>(yolo_path);
+  }
+#else
+  (void)yolo_path;
+  if (wants_yolo) {
+    throw std::runtime_error("image_detector yolo needs sim_runner built with VISION_WITH_ONNX and an onnx model");
+  }
+#endif
   for (const auto& scenario : scenarios) {
     sim::ImageObservation images;
-    if (scenario.image_detector == "pixel") {
+    if (scenario.image_detector == "yolo") {
+#ifdef VISION_WITH_ONNX
+      images.sprite = cv::imread(scenario.sprite_image);
+      if (images.sprite.empty()) throw std::runtime_error("Cannot read YOLO sprite: " + scenario.sprite_image);
+      if (scenario.background_image.empty()) {
+        images.background = cv::Mat(scenario.height, scenario.width, CV_8UC3, cv::Scalar(40, 40, 40));
+      } else {
+        images.background = cv::imread(scenario.background_image);
+        if (images.background.empty()) throw std::runtime_error("Cannot read background: " + scenario.background_image);
+      }
+      images.sprite_target = cv::Rect2f(scenario.sprite_x, scenario.sprite_y, scenario.sprite_w, scenario.sprite_h);
+      images.detect = [&yolo, &yolo_person_frames](const cv::Mat& image, int, std::int64_t) {
+        const auto boxes = yolo->detect(image);
+        std::vector<mot::Detection> detections;
+        bool person = false;
+        for (const auto& box : boxes) {
+          detections.push_back({box.cls, box.score, box.box});
+          if (box.cls == 1) person = true;
+        }
+        if (person) ++yolo_person_frames;
+        return detections;
+      };
+#else
+      throw std::runtime_error("YOLO image loop was not compiled");
+#endif
+    } else if (scenario.image_detector == "pixel") {
       images.sprite = cv::Mat(std::max(1, cvRound(scenario.target_h)),
                               std::max(1, cvRound(scenario.target_w)), CV_8UC3, cv::Scalar(0, 255, 0));
       images.background = cv::Mat(scenario.height, scenario.width, CV_8UC3, cv::Scalar(40, 40, 40));
@@ -422,7 +476,19 @@ int main(int argc, char** argv) try {
   std::ofstream summary(output / "summary.json");
   summary.exceptions(std::ios::badbit | std::ios::failbit);
   summary.precision(9);
-  summary << "{\"schema_version\":3,\"evaluation_window\":\"full_scenario\",\"result_semantics\":\"first_terminal_event_latched\",\"scenarios\":[";
+  summary << "{\"schema_version\":3,\"evaluation_window\":\"full_scenario\",\"result_semantics\":\"first_terminal_event_latched\"";
+#ifdef VISION_WITH_ONNX
+  if (yolo) {
+    summary << ",\"detector_backend\":\"yolo-onnx\""
+            << ",\"yolo_model\":" << jsonString(yolo->path())
+            << ",\"yolo_input_px\":" << yolo->input_size()
+            << ",\"yolo_channels\":" << yolo->channels()
+            << ",\"yolo_anchors\":" << yolo->anchors()
+            << ",\"yolo_project_contract\":" << (yolo->project_contract() ? "true" : "false")
+            << ",\"yolo_person_frames\":" << yolo_person_frames;
+  }
+#endif
+  summary << ",\"scenarios\":[";
   for (std::size_t i = 0; i < results.size(); ++i) {
     const auto& result = results[i];
     if (i) summary << ",";

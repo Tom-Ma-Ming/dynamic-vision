@@ -75,6 +75,20 @@ if(VISION_WITH_OPENCV)
   target_include_directories(vision_sim PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/include)
   target_link_libraries(vision_sim PUBLIC vision_mot ${OpenCV_LIBS})
   target_compile_options(vision_sim PRIVATE $<$<CXX_COMPILER_ID:MSVC>:/utf-8>)
+  option(VISION_WITH_ONNX "Link ONNX Runtime and run a real YOLO graph" OFF)
+  if(VISION_WITH_ONNX)
+    if(NOT ONNXRUNTIME_ROOT)
+      message(FATAL_ERROR "VISION_WITH_ONNX requires ONNXRUNTIME_ROOT")
+    endif()
+    add_library(vision_yolo STATIC src/detect/yolo_onnx.cpp)
+    target_include_directories(vision_yolo PUBLIC
+      ${CMAKE_CURRENT_SOURCE_DIR}/include
+      ${CMAKE_CURRENT_SOURCE_DIR}/src/detect
+      ${ONNXRUNTIME_ROOT}/include)
+    target_link_libraries(vision_yolo PUBLIC ${ONNXRUNTIME_ROOT}/lib/libonnxruntime.so ${OpenCV_LIBS})
+    set_target_properties(vision_yolo PROPERTIES
+      BUILD_RPATH ${ONNXRUNTIME_ROOT}/lib)
+  endif()
   add_subdirectory(apps/sim_runner)
   if(VISION_BUILD_TESTS)
     add_executable(sim_test tests/unit/test_sim.cpp)

@@ -45,7 +45,10 @@ bool validate(const ScenarioConfig& config) {
   if(center_set && !(config.assist_center_x>=0 && config.assist_center_x<=config.width &&
                      config.assist_center_y>=0 && config.assist_center_y<=config.height)) return false;
   if(config.assist_mode==AssistMode::HumanLed && !center_set) return false;
-  if(!config.image_detector.empty() && config.image_detector!="pixel") return false;
+  if(!config.image_detector.empty() && config.image_detector!="pixel" && config.image_detector!="yolo") return false;
+  if(config.image_detector=="yolo" && config.sprite_image.empty()) return false;
+  if(config.image_detector=="yolo" && !(config.sprite_w>0 && config.sprite_h>0 &&
+      config.sprite_x>=0 && config.sprite_y>=0)) return false;
   if(config.distractor && !config.image_detector.empty()) return false;
   if(config.distractor && !(config.distractor_w>0 && config.distractor_h>0 &&
       std::isfinite(config.distractor_x) && std::isfinite(config.distractor_y) &&
@@ -149,8 +152,8 @@ Simulator::Simulator(ScenarioConfig config, mot::Config tracker, ImageObservatio
   if(images_.detect && (images_.sprite.empty() || images_.background.empty() ||
       images_.sprite.type()!=CV_8UC3 || images_.background.type()!=CV_8UC3))
     throw std::invalid_argument("Image observation requires BGR sprite and background");
-  if(config_.image_detector=="pixel" && !images_.detect)
-    throw std::invalid_argument("pixel image_detector requires an image observation");
+  if((config_.image_detector=="pixel" || config_.image_detector=="yolo") && !images_.detect)
+    throw std::invalid_argument("image_detector requires an image observation");
   if(images_.detect) {
     if(images_.sprite_target==cv::Rect2f{}) images_.sprite_target={0,0,float(images_.sprite.cols),float(images_.sprite.rows)};
     const auto b=images_.sprite_target;
